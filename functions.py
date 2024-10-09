@@ -3,7 +3,7 @@ from numpy.typing import NDArray
 
 def s_rot(vect: NDArray) -> NDArray:
     """
-    Computes a 90-degree counterclockwise rotation of a 2D vector. 
+    Computes a `90-degree` counterclockwise rotation of a 2D vector. 
     Given a 2D vector `vect` represented as a NumPy array, returns a new vector 
     that is rotated 90 degrees counterclockwise.
 
