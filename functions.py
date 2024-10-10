@@ -160,5 +160,3 @@ phi_dd = 4.65
 
 r_A_d = r_Point_d(r_d, s_A, phi_d)
 r_A_dd = r_Point_dd(r_dd, s_A, phi_d, phi_dd)
-
-ecchime = 1
