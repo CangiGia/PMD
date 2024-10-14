@@ -3,12 +3,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy as sc
 
-# developed functions
+#* developed functions
 from functions import *
 
 #! s_rot
 a = np.array([2, 3])
-a_torated = s_rot(a)
+b = np.array([[2], [3]])
+validate_shape(b)
+a_rotated = s_rot(a)
+b_rotated = s_rot(b)
+
+ecchime = 1 
 
 #! A_matrix
 theta = np.pi/6

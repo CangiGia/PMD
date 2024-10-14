@@ -1,6 +1,30 @@
 import numpy as np
 from numpy.typing import *
 
+#* my func
+def validate_shape(vec: NDArray):
+    """
+    Check if the input vector is a column vector with 2 rows.
+    
+    Args
+    ----
+    vec (np.ndarray)
+        The input vector to be checked.
+
+    Raises
+    ------
+    ValueError: if the input is not a column vector with 2 rows.
+    """
+    if not isinstance(vec, np.ndarray):
+        raise TypeError("Input must be a numpy ndarray.")
+    
+    if vec.shape != (2, 1):
+        if vec.shape == (1, 2):
+            raise ValueError("Input is a row vector with 2 elements, expected a column vector with shape (2, 1).")
+        else:
+            raise ValueError("Input must be a column vector with shape (2, 1).")
+
+#* Nikravesh
 def s_rot(vect: NDArray) -> NDArray:
     """
     Computes a 90-degree counterclockwise rotation of a 2D vector. 
@@ -44,7 +68,7 @@ def A_matrix(phi: float) -> NDArray:
     A = np.array([[cp, -sp], [sp, cp]])
     return A
 
-def r_Point(r: NDArray, s_P: NDArray) -> NDArray:  # ! replaced by "my_r_Point"
+def r_Point(r: NDArray, s_P: NDArray) -> NDArray:  #! replaced by "my_r_Point"
     """
     Computes the coordinates of point `P` relative to a global reference 
     frame.
@@ -127,7 +151,7 @@ def my_r_Point(r: NDArray, s_P_local: NDArray, A: NDArray, s_P: NDArray = None) 
         r_P = r + s_P
     return r_P
 
-def r_Point_d(r_d: NDArray, s_P: NDArray, phi_d: float) -> NDArray:  # ! replaced by "my_r_Point_d"
+def r_Point_d(r_d: NDArray, s_P: NDArray, phi_d: float) -> NDArray:  #! replaced by "my_r_Point_d"
     """
     Calculate the velocity of a point belonging to a rigid body using 
     kinematic relations.
@@ -233,7 +257,7 @@ def my_r_Point_d(r_d: NDArray, s_P_local: NDArray, A: NDArray, phi_d: float, s_P
         r_P_d = r_d + s_rot(s_P) * phi_d
     return r_P_d
 
-def r_Point_dd(r_dd: NDArray, s_P_local: NDArray, A: NDArray, phi_d: float, phi_dd: float) -> NDArray: # ! replaced by "my_r_Point_dd"
+def r_Point_dd(r_dd: NDArray, s_P_local: NDArray, A: NDArray, phi_d: float, phi_dd: float) -> NDArray: #! replaced by "my_r_Point_dd"
     """
     Calculate the acceleration of a point belonging to a rigid body using 
     kinematic relations.
