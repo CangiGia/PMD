@@ -569,6 +569,11 @@ def friction_A(mu_s: float, mu_d: float, v_s: float, p: float, k_t: float, v: fl
     -------
     friction_force (float)
         The computed friction force.
+        
+    Note
+    ----
+    Typical values for the `v_s`, `p` and `k_t` are: `0.001` (m/s), `2` and 
+    `10` respectively.
     """
     friction_force = fN * (mu_d + (mu_s - mu_d) * np.exp(-(abs(v) / v_s) ** p)) * np.tanh(k_t * v)
     return friction_force
