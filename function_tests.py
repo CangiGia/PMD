@@ -3,8 +3,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy as sc
 
+
 #* developed functions
 from functions import *
+
 
 #! s_rot
 a = np.array([2, 3])
