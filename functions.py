@@ -94,6 +94,23 @@ def validate_shape(vec: NDArray):
         else:
             raise ValueError("Input must be a column vector with shape (2, 1).")
 
+def unit_vector(u: NDArray) -> NDArray: 
+    """
+    Create a unit vector along the provided one. 
+    
+    Args
+    ----
+    u (NDArray)
+        Vector along which create the unit vector. 
+
+    Returns
+    -------
+    u_hat (NDArray)
+        Unit vector required. 
+    """    
+    u_hat = u/np.linalg.norm(u)
+    return u_hat 
+
 #* Nikravesh
 def s_rot(vect: NDArray) -> NDArray:
     """

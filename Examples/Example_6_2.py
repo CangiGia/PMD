@@ -1,3 +1,4 @@
+#! This example is the continue of the Example 6_1
 import numpy as np
 from scipy.optimize import fsolve
 from PMD.functions import * 
@@ -36,5 +37,13 @@ h2 = np.vstack((w2+fsC, s_rot(s2C).T@fsC))
 # mass matrix evaluation
 diag = [m1, m1, J1, m2, m2, J2]
 M = np.diag(diag)
+
+# +++++++++++
+# Contiue 
+# +++++++++++
+r2D = colvect(0.5, 4.5)
+r2D_hat = unit_vector(r2D) # force components due to the reaction force
+s2D = r2D - r2G 
+n2 = s_rot(s2D).T@r2D_hat # moment componet due to the reaction force
 
 ecchime = 1
