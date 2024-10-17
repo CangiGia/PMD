@@ -20,7 +20,6 @@ for file in files:
     if not file.startswith("_") and file.endswith(".py"): # Only .py files, files starting with "_" are skipped.
         module_name = file[:-3]  # Remove the ".py" extension
         print(f"Loading Node:\t{module_name}")
-        
         import_statement = f"from PyFlow.Packages.PyFlowPMD.Nodes.{module_name} import {module_name}"
         exec(import_statement)
 
