@@ -53,7 +53,7 @@ fBd = -fd
 n1 = (s_rot(sA).T@fAs) + (s_rot(sB).T@fBd)
 n2 = (s_rot(sC).T@fCs)
 
-# rhs of the sistem
+# rhs of the system
 rhs = np.vstack([(fAs+fBd+fw1), n1, (fCs+fw2), n2])
 
 # computing acceleration
