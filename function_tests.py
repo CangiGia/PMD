@@ -5,7 +5,7 @@ import scipy as sc
 
 
 #* developed functions
-from functions import *
+from PMD_functions import *
 
 
 #! s_rot

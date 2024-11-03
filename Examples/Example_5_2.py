@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.optimize import fsolve
-from PMD.functions import * 
+from PMD_functions import * 
 
 
 #* fourbar function definition

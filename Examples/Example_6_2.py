@@ -1,7 +1,7 @@
 #! This example is the continue of the Example 6_1
 import numpy as np
 from scipy.optimize import fsolve
-from PMD.functions import * 
+from PMD_functions import * 
 
 
 #* Data
