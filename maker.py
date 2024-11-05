@@ -10,33 +10,6 @@ from numpy.typing import *
 from pmd_functions import *
 
 
-@staticmethod
-def group_classes():
-    """
-    Looping through all the global variables this method returns a 
-    dictionary, in which, all the defined instances are contained.
-
-    Returns
-    -------
-    dict
-        A dictionary where each key is a class name (string) and the corresponding 
-        value is a list of instances of that class type.
-    """
-    grouped_instances = {} # empty dict
-    
-    # calling global variables from another python module
-    global_vars = get_globals()
-    
-    # loop through global vars
-    for var_name, var_instance in global_vars.items():
-        if isinstance(var_instance, Base): # filtering for instances that are subclasses of "Base"
-            class_name = var_instance.get_type()
-            if class_name not in grouped_instances:
-                grouped_instances[class_name] = []
-            grouped_instances[class_name].append(var_instance)
-
-    return grouped_instances
-
 class Base:
     """
     Base class for all multi-body simulation objects.

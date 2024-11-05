@@ -16,8 +16,39 @@ def get_globals():
     dict
         A dictionary of the caller's global variables.
     """
-    caller_module = inspect.stack()[2].frame 
-    return caller_module.f_globals
+    for frame_info in inspect.stack():
+        if frame_info.function == "<module>" and frame_info.frame.f_globals.get("__name__") == "__main__":
+            return frame_info.frame.f_globals
+        
+    return inspect.stack()[1].frame.f_globals
+
+@staticmethod
+def group_classes():
+    """
+    Looping through all the global variables this method returns a 
+    dictionary, in which, all the defined instances are contained.
+
+    Returns
+    -------
+    dict
+        A dictionary where each key is a class name (string) and the corresponding 
+        value is a list of instances of that class type.
+    """
+    grouped_instances = {} # empty dict
+    
+    # calling global variables from another python module
+    global_vars = get_globals()
+    
+    # loop through global vars
+    for var_name, var_instance in global_vars.items():
+        # check if the instance has a __class__ attribute
+        if hasattr(var_instance, '__class__'):
+            class_name = var_instance.__class__.__name__
+            if class_name not in grouped_instances:
+                grouped_instances[class_name] = []
+            grouped_instances[class_name].append(var_instance)
+
+    return grouped_instances
 
 @staticmethod
 def as_column_property(name):
