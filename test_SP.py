@@ -2,6 +2,8 @@ import numpy as np
 import scipy as sc
 from maker import *
 from solver import *
+from pmd_functions import *
+
 
 #* Multi-Body model creation - Bodies, Joints, Forces
 # bodies
@@ -77,5 +79,12 @@ print(f"Number of uVector instances: {uvector_count}")
 print(f"Number of Force instances: {force_count}")
 print(f"Number of Joint instances: {joint_count}")
 
+grouped = group_classes()
+
+Bodies = grouped.get("Body", [])
+Points = grouped.get("Point", [])
+Uvectors = grouped.get("uVector", [])
+Forces = grouped.get("Force", [])
+Joints = grouped.get("Joint", [])
 
 ecchime = 1

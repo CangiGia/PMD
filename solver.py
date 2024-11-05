@@ -7,7 +7,8 @@ Author: Giacomo Cangi
 
 import numpy as np
 import scipy as sc
-from PMD_functions import *
+from pmd_functions import *
+
 
 class PmdDynamicModel:
     def __init__(self, Bodies, Points, Uvectors, Forces, Joints):

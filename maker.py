@@ -7,67 +7,90 @@ Author: Giacomo Cangi
 
 import numpy as np
 from numpy.typing import *
-from PMD_functions  import *
+from pmd_functions import *
 
 
 @staticmethod
-def as_column_property(name):
+def group_classes():
     """
-    Creates a property that ensures the assigned value is always stored as a column numpy array.
-
-    This function converts the assigned value to a column numpy array of shape (n, 1), regardless of 
-    whether the input is a list, a 1D numpy array, or a 2D numpy array.
-
-    Parameters
-    ----------
-    name : str
-        The name of the property to define. The actual value is stored in a private attribute 
-        named with an underscore prefix.
+    Looping through all the global variables this method returns a 
+    dictionary, in which, all the defined instances are contained.
 
     Returns
     -------
-    property
-        A property object that enforces column-vector format on assignment.
+    dict
+        A dictionary where each key is a class name (string) and the corresponding 
+        value is a list of instances of that class type.
     """
-    private_name = f"_{name}"
+    grouped_instances = {} # empty dict
+    
+    # calling global variables from another python module
+    global_vars = get_globals()
+    
+    # loop through global vars
+    for var_name, var_instance in global_vars.items():
+        if isinstance(var_instance, Base): # filtering for instances that are subclasses of "Base"
+            class_name = var_instance.get_type()
+            if class_name not in grouped_instances:
+                grouped_instances[class_name] = []
+            grouped_instances[class_name].append(var_instance)
 
-    @property
-    def prop(self):
-        return getattr(self, private_name)
-
-    @prop.setter
-    def prop(self, value):
-        # Convert lists to numpy arrays
-        if isinstance(value, list):
-            value = np.array(value)
-
-        # Ensure the array is a column vector
-        if isinstance(value, np.ndarray):
-            if value.ndim == 1:
-                value = value.reshape(-1, 1)
-            elif value.ndim == 2 and value.shape[0] == 1:
-                value = value.T
-        else:
-            raise ValueError("Value must be a list or numpy array.")
-
-        setattr(self, private_name, value)
-
-    return prop
+    return grouped_instances
 
 class Base:
     """
-    Base class for all the multi-body simulation objects.
+    Base class for all multi-body simulation objects.
+
+    This class provides a foundation for objects in the multi-body dynamic 
+    simulation framework. It includes functionality for instance counting 
+    and type retrieval, supporting introspection and organized tracking 
+    of different object types.
     """
-    count = 0  # class variable to keep track of the number of instances
+    COUNT = 0  # class variable to track the number of instances
 
     def __new__(cls, *args, **kwargs):
+        """
+        Create a new instance of a subclass of `Base` and increment the 
+        instance count.
+
+        Parameters
+        ----------
+        args (tuple)
+            Positional arguments passed to the constructor.
+        kwargs (dict)
+            Keyword arguments passed to the constructor.
+
+        Returns
+        -------
+        instance
+            A new instance of the class calling this method.
+        """
         instance = super().__new__(cls)
-        cls.count += 1
+        cls.COUNT += 1
         return instance
 
     @classmethod
     def get_count(cls):
-        return cls.count  # class method to get current count
+        """
+        Retrieve the current count of instances.
+
+        Returns
+        -------
+        int
+            The total count of instances derived from `Base`.
+        """
+        return cls.COUNT
+    
+    def get_type(self):
+        """
+        Get the name of the class of the instance.
+
+        Returns
+        -------
+        str
+            The class name of the instance.
+        """
+        return self.__class__.__name__
 
 class Body(Base):
     """
@@ -427,77 +450,3 @@ class Function(Base):
         self.dfdt_end = 1
         self.ncoeff = 4
         self.coeff = []
-
-# uncomment for debugging
-# # bodies
-# b1 = Body()
-# b1.m = 5
-# b1.J = 4
-# b1.r = np.array([1, 0.2])
-
-# b2 = Body()
-# b2.m = 2
-# b2.J = 0.2 
-# b2.r = np.array([1.25, -0.233])
-# b2.p = np.pi/6
-
-# # points
-# p1 = Point()
-# p1.Bindex = 0
-# p1.sPlocal = np.array([0, 0.2])
-
-# p2 = Point()
-# p2.Bindex = 1
-# p1.sPlocal = np.array([0, 0])
-
-# p3 = Point()
-# p3.Bindex = 2
-# p3.sPlocal = np.array([0, 0.5])
-
-# # unit vectors
-# u1 = uVector()
-# u1.Bindex = 0 
-# u1.ulocal = np.array([1, 0])
-
-# u2 = uVector()
-# u2.Bindex = 1
-# u2.ulocal = np.array([1, 0])
-
-# # forces
-# f1 = Force()
-# f1.type = "ptp"
-# f1.iPindex = 2
-# f1.jPindex = 1
-# f1.k = 20
-# f1.L0 = 0.6
-
-# f2 = Force()
-# f2.type = "weight"
-# f2.gravity = 9.81
-# f2.wgt = np.array([0, -1])
-
-# j1 = Joint()
-# j1.type = "tran"
-# j1.iPindex = 2
-# j1.jPindex = 1
-# j1.iUindex = 2
-# j1.jUindex = 1
-
-# j2 = Joint()
-# j2.type = "rev"
-# j2.iPindex = 2
-# j2.jPindex = 3
-
-# body_count = Body.get_count()
-# point_count = Point.get_count()
-# uvector_count = uVector.get_count()
-# force_count = Force.get_count()
-# joint_count = Joint.get_count()
-
-# print(f"Number of Body instances: {body_count}")
-# print(f"Number of Point instances: {point_count}")
-# print(f"Number of uVector instances: {uvector_count}")
-# print(f"Number of Force instances: {force_count}")
-# print(f"Number of Joint instances: {joint_count}")
-
-# ecchime = 1

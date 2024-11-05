@@ -1,10 +1,69 @@
+import inspect
 import numpy as np
 from numpy.typing import *
 
 
-#* my func
-import numpy as np
+@staticmethod
+def get_globals():
+    """
+    Retrieve the global variables of the calling module.
 
+    This method uses the inspect module to access the stack and 
+    fetch the global variables from the caller's context.
+
+    Returns
+    -------
+    dict
+        A dictionary of the caller's global variables.
+    """
+    caller_module = inspect.stack()[2].frame 
+    return caller_module.f_globals
+
+@staticmethod
+def as_column_property(name):
+    """
+    Creates a property that ensures the assigned value is always stored 
+    as a column numpy array.
+
+    This function converts the assigned value to a column numpy array of 
+    shape (n, 1), regardless of whether the input is a list, a 1D numpy 
+    array, or a 2D numpy array.
+
+    Parameters
+    ----------
+    name (str)
+        The name of the property to define. The actual value is stored in a private attribute 
+        named with an underscore prefix.
+
+    Returns
+    -------
+    property
+        A property object that enforces column-vector format on assignment.
+    """
+    private_name = f"_{name}"
+
+    @property
+    def prop(self):
+        return getattr(self, private_name)
+
+    @prop.setter
+    def prop(self, value):
+        # convert lists to numpy arrays
+        if isinstance(value, list):
+            value = np.array(value)
+
+        # ensure the array is a column vector
+        if isinstance(value, np.ndarray):
+            if value.ndim == 1:
+                value = value.reshape(-1, 1)
+            elif value.ndim == 2 and value.shape[0] == 1:
+                value = value.T
+        else:
+            raise ValueError("Value must be a list or numpy array.")
+
+        setattr(self, private_name, value)
+
+    return prop
 
 def colvect(*args):
     """
