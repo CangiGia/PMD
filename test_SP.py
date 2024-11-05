@@ -79,12 +79,6 @@ print(f"Number of uVector instances: {uvector_count}")
 print(f"Number of Force instances: {force_count}")
 print(f"Number of Joint instances: {joint_count}")
 
-grouped = group_classes()
-
-Bodies = grouped.get("Body", [])
-Points = grouped.get("Point", [])
-Uvectors = grouped.get("uVector", [])
-Forces = grouped.get("Force", [])
-Joints = grouped.get("Joint", [])
+my_dynamic_model = PmdDynamicModel()
 
 ecchime = 1
