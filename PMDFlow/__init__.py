@@ -20,7 +20,7 @@ for file in files:
     if not file.startswith("_") and file.endswith(".py"): # Only .py files, files starting with "_" are skipped.
         module_name = file[:-3]  # Remove the ".py" extension
         print(f"Loading Node:\t{module_name}")
-        import_statement = f"from PyFlow.Packages.PyFlowPMD.Nodes.{module_name} import {module_name}"
+        import_statement = f"from PyFlow.Packages.PMDFlow.Nodes.{module_name} import {module_name}"
         exec(import_statement)
 
 		# Load the nodes...
@@ -35,9 +35,9 @@ _TOOLS = OrderedDict()
 _PREFS_WIDGETS = OrderedDict()
 _EXPORTERS = OrderedDict()
 
-class PyFlowPMD(IPackage):
+class PMDFlow(IPackage):
 	def __init__(self):
-		super(PyFlowPMD, self).__init__()
+		super(PMDFlow, self).__init__()
 
 	@staticmethod
 	def GetExporters():

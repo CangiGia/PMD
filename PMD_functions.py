@@ -201,6 +201,60 @@ def unit_vector(u: NDArray) -> NDArray:
     u_hat = u/np.linalg.norm(u)
     return u_hat 
 
+@staticmethod
+def functData(Ci, Functs):
+    funct_type = Functs[Ci]['type']
+    
+    #
+    if funct_type == 'a':
+        Functs[Ci]['ncoeff'] = 4
+        Functs[Ci]['coeff'][3] = 2 * Functs[Ci]['coeff'][2]
+    
+    #    
+    elif funct_type == 'b':
+        Functs[Ci]['ncoeff'] = 9
+        xe = Functs[Ci]['t_end'] - Functs[Ci]['t_start']
+        fe = Functs[Ci]['f_end'] - Functs[Ci]['f_start']
+        
+        C = np.array([
+            [xe**3, xe**4, xe**5],
+            [3 * xe**2, 4 * xe**3, 5 * xe**4],
+            [6 * xe, 12 * xe**2, 20 * xe**3]
+        ])
+        
+        sol = np.linalg.solve(C, np.array([fe, 0, 0]))
+        
+        Functs[Ci]['coeff'][0:3] = sol
+        Functs[Ci]['coeff'][3] = 3 * sol[0]
+        Functs[Ci]['coeff'][4] = 4 * sol[1]
+        Functs[Ci]['coeff'][5] = 5 * sol[2]
+        Functs[Ci]['coeff'][6] = 6 * sol[0]
+        Functs[Ci]['coeff'][7] = 12 * sol[1]
+        Functs[Ci]['coeff'][8] = 20 * sol[2]
+    
+    #
+    elif funct_type == 'c':
+        # Caso 'c'
+        Functs[Ci]['ncoeff'] = 9
+        xe = Functs[Ci]['t_end'] - Functs[Ci]['t_start']
+        fpe = Functs[Ci]['dfdt_end']
+
+        C = np.array([
+            [4 * xe**3, 5 * xe**4, 6 * xe**5],
+            [12 * xe**2, 20 * xe**3, 30 * xe**4],
+            [24 * xe, 60 * xe**2, 120 * xe**3]
+        ])
+        
+        sol = np.linalg.solve(C, np.array([fpe, 0, 0]))
+        
+        Functs[Ci]['coeff'][0:3] = sol
+        Functs[Ci]['coeff'][3] = 4 * sol[0]
+        Functs[Ci]['coeff'][4] = 5 * sol[1]
+        Functs[Ci]['coeff'][5] = 6 * sol[2]
+        Functs[Ci]['coeff'][6] = 12 * sol[0]
+        Functs[Ci]['coeff'][7] = 20 * sol[1]
+        Functs[Ci]['coeff'][8] = 30 * sol[2]
+
 #* Nikravesh
 def s_rot(vect: NDArray) -> NDArray:
     """

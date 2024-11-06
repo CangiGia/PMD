@@ -19,17 +19,17 @@ b2.r = np.array([1.25, -0.233])
 b2.p = np.pi/6
 
 # points
-p1 = Point()
-p1.Bindex = 0
-p1.sPlocal = np.array([0, 0.2])
+p0 = Point()
+p0.Bindex = 0
+p0.sPlocal = np.array([0, 0.2])
 
-p2 = Point()
-p2.Bindex = 1
+p1 = Point()
+p1.Bindex = 1
 p1.sPlocal = np.array([0, 0])
 
-p3 = Point()
-p3.Bindex = 2
-p3.sPlocal = np.array([0, 0.5])
+p2 = Point()
+p2.Bindex = 2
+p2.sPlocal = np.array([0, 0.5])
 
 # unit vectors
 u1 = uVector()
@@ -43,8 +43,8 @@ u2.ulocal = np.array([1, 0])
 # forces
 f1 = Force()
 f1.type = "ptp"
-f1.iPindex = 2
-f1.jPindex = 1
+f1.iPindex = 1
+f1.jPindex = 0
 f1.k = 20
 f1.L0 = 0.6
 
@@ -56,15 +56,15 @@ f2.wgt = np.array([0, -1])
 # joints
 j1 = Joint()
 j1.type = "tran"
-j1.iPindex = 2
-j1.jPindex = 1
+j1.iPindex = 1
+j1.jPindex = 0
 j1.iUindex = 2
 j1.jUindex = 1
 
 j2 = Joint()
 j2.type = "rev"
-j2.iPindex = 2
-j2.jPindex = 3
+j2.iPindex = 1
+j2.jPindex = 2
 
 # some checks ... 
 body_count = Body.get_count()

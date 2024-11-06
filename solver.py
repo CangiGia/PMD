@@ -18,7 +18,9 @@ class PmdDynamicModel:
         self.uVectors = grouped_calsses.get("uVector", [])
         self.Forces = grouped_calsses.get("Force", [])
         self.Joints = grouped_calsses.get("Joint", [])
+        self.Functs = grouped_calsses.get("Function", []) if "Function" in grouped_calsses else []
 
+        # initialize the model for simulation
         self.initialize()
 
     def initialize(self):
@@ -58,68 +60,154 @@ class PmdDynamicModel:
                 point.rP = point.sP
 
             for Bi in range(nB):
-                if point.Bindex == Bi:
+                if point.Bindex == (Bi+1): #! aggiunto il +1 per correggere l'assegnazione dei punti, check con MATLAB
                     self.Bodies[Bi].pts.append(Pi)  # append point index to the body's points
         ##### ##### ##### ##### #####
 
-        # Unit vectors
+        # unit vectors
         ##### ##### ##### ##### #####
-        nU = len(self.Uvectors)
+        nU = len(self.uVectors)
         for Vi in range(nU):
-            unit_vector = self.Uvectors[Vi]
+            unit_vector = self.uVectors[Vi]
             if unit_vector.Bindex == 0:
                 unit_vector.u = unit_vector.ulocal
                 unit_vector.u_r = s_rot(unit_vector.u)
         ##### ##### ##### ##### #####
 
-        # # Force elements
-        # nF = len(self.Forces)
-        # for Fi in range(nF):
-        #     force = self.Forces[Fi]
-        #     if force.type == 'weight':
-        #         ug = force.gravity * force.wgt
-        #         for Bi in range(nB):
-        #             self.Bodies[Bi].wgt = self.Bodies[Bi].m * ug
-        #     elif force.type == 'ptp':
-        #         Pi = force.iPindex
-        #         Pj = force.jPindex
-        #         force.iBindex = self.Points[Pi].Bindex
-        #         force.jBindex = self.Points[Pj].Bindex
+        # force elements
+        ##### ##### ##### ##### #####
+        nF = len(self.Forces)
+        for Fi in range(nF):
+            force = self.Forces[Fi]
+            if force.type == 'weight':
+                ug = force.gravity * force.wgt
+                for Bi in range(nB):
+                    self.Bodies[Bi].wgt = self.Bodies[Bi].m * ug
+            elif force.type == 'ptp':
+                Pi = force.iPindex
+                Pj = force.jPindex
+                force.iBindex = self.Points[Pi].Bindex
+                force.jBindex = self.Points[Pj].Bindex
+        ##### ##### ##### ##### #####
 
-        # # Joints
-        # nJ = len(self.Joints)
-        # for Ji in range(nJ):
-        #     joint = self.Joints[Ji]
-        #     if joint.type == 'rev':
-        #         joint.mrows = 2
-        #         joint.nbody = 2
-        #         Pi = joint.iPindex
-        #         Pj = joint.jPindex
-        #         joint.iBindex = self.Points[Pi].Bindex
-        #         joint.jBindex = self.Points[Pj].Bindex
-        #         if joint.fix == 1:
-        #             joint.mrows = 3
-        #             if joint.iBindex == 0:
-        #                 joint.p0 = -self.Bodies[joint.jBindex].p
-        #             elif joint.jBindex == 0:
-        #                 joint.p0 = self.Bodies[joint.iBindex].p
-        #             else:
-        #                 joint.p0 = self.Bodies[joint.iBindex].p - self.Bodies[joint.jBindex].p
-        #     elif joint.type == 'tran':
-        #         joint.mrows = 2
-        #         joint.nbody = 2
-        #         Pi = joint.iPindex
-        #         Pj = joint.jPindex
-        #         joint.iBindex = self.Points[Pi].Bindex
-        #         joint.jBindex = self.Points[Pj].Bindex
-        #         if joint.fix == 1:
-        #             joint.mrows = 3
-        #             if joint.iBindex == 0:
-        #                 joint.p0 = np.linalg.norm(self.Points[Pi].rP - self.Bodies[joint.jBindex].r - self.Bodies[joint.jBindex].A @ self.Points[Pj].sPlocal)
-        #             elif joint.jBindex == 0:
-        #                 joint.p0 = np.linalg.norm(self.Bodies[joint.iBindex].r + self.Bodies[joint.iBindex].A @ self.Points[Pi].sPlocal - self.Points[Pj].rP)
-        #             else:
-        #                 joint.p0 = np.linalg.norm(self.Bodies[joint.iBindex].r + self.Bodies[joint.iBindex].A @ self.Points[Pi].sPlocal - self.Bodies[joint.jBindex].r - self.Bodies[joint.jBindex].A @ self.Points[Pj].sPlocal)
+        # joints
+        ##### ##### ##### ##### #####
+        nJ = len(self.Joints)
+        cfriction = 0
 
-# Usage example:
-# model = DynamicModel(Bodies, Points, Points_anim, Uvectors, Forces, Joints)
+        for Ji in range(nJ):
+            joint = self.Joints[Ji]
+            if joint.type == 'rev':
+                joint.mrows = 2
+                joint.nbody = 2
+                Pi = joint.iPindex
+                Pj = joint.jPindex
+                joint.iBindex = self.Points[Pi].Bindex
+                joint.jBindex = self.Points[Pj].Bindex
+                if joint.fix == 1:
+                    joint.mrows = 3
+                    if joint.iBindex == 0:
+                        joint.p0 = -self.Bodies[joint.jBindex].p
+                    elif joint.jBindex == 0:
+                        joint.p0 = self.Bodies[joint.iBindex].p
+                    else:
+                        joint.p0 = self.Bodies[joint.iBindex].p - self.Bodies[joint.jBindex].p
+
+            elif joint.type == 'tran':
+                joint.mrows = 2
+                joint.nbody = 2
+                Pi = joint.iPindex
+                Pj = joint.jPindex
+                joint.iBindex = self.Points[Pi].Bindex
+                joint.jBindex = self.Points[Pj].Bindex
+                if joint.fix == 1:
+                    joint.mrows = 3
+                    if joint.iBindex == 0:
+                        joint.p0 = np.linalg.norm(self.Points[Pi].rP - 
+                                                self.Bodies[joint.jBindex].r - 
+                                                self.Bodies[joint.jBindex].A @ 
+                                                self.Points[Pj].sPlocal)
+                    elif joint.jBindex == 0:
+                        joint.p0 = np.linalg.norm(self.Bodies[joint.iBindex].r + 
+                                                self.Bodies[joint.iBindex].A @ 
+                                                self.Points[Pi].sPlocal - 
+                                                self.Points[Pj].rP)
+                    else:
+                        joint.p0 = np.linalg.norm(self.Bodies[joint.iBindex].r + 
+                                                self.Bodies[joint.iBindex].A @ 
+                                                self.Points[Pi].sPlocal - 
+                                                self.Bodies[joint.jBindex].r - 
+                                                self.Bodies[joint.jBindex].A @ 
+                                                self.Points[Pj].sPlocal)
+
+            elif joint.type == 'rev-rev':
+                joint.mrows = 1
+                joint.nbody = 2
+                Pi = joint.iPindex
+                Pj = joint.jPindex
+                joint.iBindex = self.Points[Pi].Bindex
+                joint.jBindex = self.Points[Pj].Bindex
+
+            elif joint.type == 'rev-tran':
+                joint.mrows = 1
+                joint.nbody = 2
+                Pi = joint.iPindex
+                Pj = joint.jPindex
+                joint.iBindex = self.Points[Pi].Bindex
+                joint.jBindex = self.Points[Pj].Bindex
+
+            elif joint.type in {'rel-rot', 'rel-tran'}:
+                joint.mrows = 1
+                joint.nbody = 1
+
+            elif joint.type == 'disc':
+                joint.mrows = 2
+                joint.nbody = 1
+
+            elif joint.type == 'rigid':
+                joint.mrows = 3
+                joint.nbody = 2
+                Bi = joint.iBindex
+                Bj = joint.jBindex
+                if Bi == 0:
+                    joint.d0 = -self.Bodies[Bj].A.T @ self.Bodies[Bj].r
+                    joint.p0 = -self.Bodies[Bj].p
+                elif Bj == 0:
+                    joint.d0 = self.Bodies[Bi].r
+                    joint.p0 = self.Bodies[Bi].p
+                else:
+                    joint.d0 = self.Bodies[Bj].A.T @ (self.Bodies[Bi].r - self.Bodies[Bj].r)
+                    joint.p0 = self.Bodies[Bi].p - self.Bodies[Bj].p
+            else:
+                raise ValueError("Tipo di giunto non definito")
+        ##### ##### ##### ##### #####
+
+        # functions
+        ##### ##### ##### ##### #####
+        if self.Functs:
+            nFc = len(self.Functs)
+            for Ci in range(nFc):
+                functData(Ci)
+        else:
+            pass
+        ##### ##### ##### ##### #####
+
+        # compute number of constraints and determine row/column pointers
+        ##### ##### ##### ##### #####
+        nConst = 0
+        for Ji in range(nJ):
+            joint = self.Joints[Ji]
+            joint.rows = nConst + 1
+            joint.rowe = nConst + joint.mrows
+            nConst = joint.rowe
+
+            Bi = joint.iBindex
+            if Bi != 0:
+                joint.colis = 3 * (Bi - 1) + 1
+                joint.colie = 3 * Bi
+
+            Bj = joint.jBindex
+            if Bj != 0:
+                joint.coljs = 3 * (Bj - 1) + 1
+                joint.colje = 3 * Bj
+        ##### ##### ##### ##### #####
