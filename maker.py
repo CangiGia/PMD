@@ -7,7 +7,7 @@ Author: Giacomo Cangi
 
 import numpy as np
 from numpy.typing import *
-from pmd_functions import *
+from PMD.pmd_functions import *
 
 
 class Base:

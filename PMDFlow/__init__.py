@@ -1,8 +1,11 @@
-PACKAGE_NAME = 'PyFlowPMD'
+PACKAGE_NAME = 'PMDFlow'
 import os
 from collections import OrderedDict
 from PyFlow.UI.UIInterfaces import IPackage
 
+#* Pins
+from PyFlow.Packages.PMDFlow.Pins.InstancePin import InstancePin #!
+from PyFlow.Packages.PMDFlow.Pins.MCPin import MCPin #!
 
 #* Retrieve the directory containing this __init__.py file
 master_folder_path = os.path.dirname(__file__)
@@ -34,6 +37,13 @@ _PINS = {}
 _TOOLS = OrderedDict()
 _PREFS_WIDGETS = OrderedDict()
 _EXPORTERS = OrderedDict()
+
+#* LIST CUSTOM NODES
+# no more required
+
+#* LIST CUSTOM PINS
+_PINS[InstancePin.__name__] = InstancePin #!
+_PINS[MCPin.__name__] = MCPin #!
 
 class PMDFlow(IPackage):
 	def __init__(self):

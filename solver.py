@@ -7,8 +7,8 @@ Author: Giacomo Cangi
 
 import numpy as np
 import scipy as sc
-from pmd_functions import *
-
+import numpy.linalg as lng
+from PMD.pmd_functions import *
 
 class PmdDynamicModel:
     def __init__(self):
@@ -22,8 +22,12 @@ class PmdDynamicModel:
 
         # initialize the model for simulation
         self.initialize()
-
+        
     def initialize(self):
+        """
+        Initializi the multi-body model considering the values typed 
+        by the user.
+        """
         # initialize variables
         nB = len(self.Bodies)
         nB3 = 3 * nB
@@ -211,3 +215,25 @@ class PmdDynamicModel:
                 joint.coljs = 3 * (Bj - 1) + 1
                 joint.colje = 3 * Bj
         ##### ##### ##### ##### #####
+
+    def ic_correct(self): 
+        """
+        Corrects initial conditions on the body coordinates and
+        velocities if required by the user.
+        """
+        
+    # def solve(self):
+    #     """
+        
+    #     """
+    #     # initial conditions and Jacobian matrix definition
+    #     if self.nConst != 0:
+    #         ans = input("Do you want to correct the initial conditions? [(y)es/(n)o] ").lower()
+    #         if ans == 'y':
+    #             self.ic_correct()
+
+    #         D = self.Jacobian
+    #         redund = np.linalg.matrix_rank(D) # check the rank of D for redundancy
+
+    #         if redund < self.nConst:
+    #             print("Redundancy in the constraints")
