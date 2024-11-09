@@ -204,12 +204,10 @@ class PmdDynamicModel:
             joint.rows = nConst + 1
             joint.rowe = nConst + joint.mrows
             nConst = joint.rowe
-
             Bi = joint.iBindex
             if Bi != 0:
                 joint.colis = 3 * (Bi - 1) + 1
                 joint.colie = 3 * Bi
-
             Bj = joint.jBindex
             if Bj != 0:
                 joint.coljs = 3 * (Bj - 1) + 1
@@ -219,7 +217,7 @@ class PmdDynamicModel:
     def ic_correct(self): 
         """
         Corrects initial conditions on the body coordinates and
-        velocities if required by the user.
+        velocities, if required by the user.
         """
         
     # def solve(self):
