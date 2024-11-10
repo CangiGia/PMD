@@ -21,9 +21,9 @@ class PmdDynamicModel:
         self.Functs = grouped_calsses.get("Function", []) if "Function" in grouped_calsses else []
 
         # initialize the model for simulation
-        self.initialize()
+        self.__initialize()
         
-    def initialize(self):
+    def __initialize(self):
         """
         Initializi the multi-body model considering the values typed 
         by the user.
@@ -214,11 +214,88 @@ class PmdDynamicModel:
                 joint.colje = 3 * Bj
         ##### ##### ##### ##### #####
 
-    def ic_correct(self): 
+   def __ic_correct(self):
         """
-        Corrects initial conditions on the body coordinates and
-        velocities, if required by the user.
+        Corrects initial conditions on the body coordinates and velocities.
         """
+        # Include global variables and definitions
+        # Note: Replace 'include_global' from MATLAB with appropriate initializations
+        # Assuming `Phi`, `D`, and `rhs` are attributes or can be computed
+
+        # Coordinate correction
+        flag = False
+
+        for _ in range(20):
+            self.__update_position()  # Update position entities
+            Phi = self.__constraints(0)  # Evaluate constraints
+            D = self.__jacobian()  # Evaluate Jacobian
+            ff = np.sqrt(np.dot(Phi.T, Phi))  # Are the constraints violated?
+
+            if ff < 1.0e-10:
+                flag = True
+                break
+
+            # Solve for corrections
+            delta_c = -D.T @ np.linalg.solve(D @ D.T, Phi)
+
+            # Correct estimates
+            nB = len(self.Bodies)
+            for Bi in range(nB):
+                ir = 3 * Bi
+                self.Bodies[Bi].r += delta_c[ir:ir + 2]
+                self.Bodies[Bi].p += delta_c[ir + 2]
+
+        if not flag:
+            raise ValueError("Convergence failed in Newton-Raphson")
+
+        # Velocity correction
+        nB = len(self.Bodies)
+        Phi = np.zeros((3 * nB, 1))  # Move velocities to an arbitrary array Phi
+        for Bi in range(nB):
+            ir = 3 * Bi
+            Phi[ir:ir + 2, 0] = self.Bodies[Bi].r_d
+            Phi[ir + 2, 0] = self.Bodies[Bi].p_d
+
+        rhs = self.__rhs_velocity(0)  # Compute rhs
+        delta_v = -D.T @ np.linalg.solve(D @ D.T, D @ Phi - rhs)  # Compute corrections
+
+        # Move corrected velocities to sub-arrays
+        for Bi in range(nB):
+            ir = 3 * Bi
+            self.Bodies[Bi].r_d += delta_v[ir:ir + 2]
+            self.Bodies[Bi].p_d += delta_v[ir + 2]
+
+        # Report corrected coordinates and velocities
+        coords = np.zeros((nB, 3))
+        vels = np.zeros((nB, 3))
+        for Bi in range(nB):
+            coords[Bi, :] = np.hstack((self.Bodies[Bi].r, self.Bodies[Bi].p))
+            vels[Bi, :] = np.hstack((self.Bodies[Bi].r_d, self.Bodies[Bi].p_d))
+
+        print("\nCorrected coordinates")
+        print(" x           y           phi")
+        print(coords)
+        print("Corrected velocities")
+        print(" x-dot       y-dot       phi-dot")
+        print(vels)
+        print()
+
+    # Placeholder methods for constraints, Jacobian, etc.
+    def __update_position(self):
+        # Implement this method to update position entities
+        pass
+
+    def __constraints(self, flag):
+        # Implement this method to evaluate constraints
+        return np.array([])  # Example, replace with actual constraints calculation
+
+    def __jacobian(self):
+        # Implement this method to evaluate the Jacobian
+        return np.array([[]])  # Example, replace with actual Jacobian matrix
+
+    def __rhs_velocity(self, flag):
+        # Implement this method to compute rhs for velocity correction
+        return np.array([])  # Example, replace with actual rhs calculation
         
     # def solve(self):
     #     """
