@@ -214,6 +214,156 @@ class PmdDynamicModel:
                 joint.colje = 3 * Bj
         ##### ##### ##### ##### #####
 
+    def __update_position(self):
+        """
+        Update position entities.
+        """
+        # update rotation matrix of the body
+        nB = len(self.Bodies)
+        for Bi in range(nB):
+            body = self.Bodies[Bi]
+            body.A = A_matrix(body.p)
+
+        # compute sP = A * sP_prime; rP = r + sP
+        nP = len(self.Points)
+        for Pi in range(nP):
+            point = self.Points[Pi]
+            Bi = point.Bindex
+            if Bi != 0:
+                body = self.Bodies[Bi-1]
+                point.sP = body.A @ point.sPlocal
+                point.sP_rotated = s_rot(point.sP)
+                point.rP = body.r + point.sP
+
+        # compute u = A * up
+        nU = len(self.uVectors)
+        for Vi in range(nU):
+            unit_vector = self.uVectors[Vi]
+            Bi = unit_vector.Bindex
+            if Bi != 0:
+                body = self.Bodies[Bi - 1]
+                unit_vector.u = body.A @ unit_vector.ulocal
+                unit_vector.u_r = s_rot(unit_vector.u)
+
+    def __constraints(self): #! - To be completed -
+        nConst = self.Joints[-1].rowe
+        phi = np.zeros(nConst)
+
+        for joint_data in self.Joints:
+            joint_type = joint_data['type']
+
+            # if joint_type == 'rev':
+            #     joint = RevoluteJoint(joint_data, self.Points, self.Bodies)
+            # elif joint_type == 'tran':
+            #     joint = TranslationalJoint(joint_data, self.Points, self.Bodies, self.uVectors)
+            # elif joint_type == 'rev-rev':
+            #     joint = RevRevJoint(joint_data, self.Points, self.Bodies)  # Classe da implementare
+            # elif joint_type == 'rev-tran':
+            #     joint = RevTranJoint(joint_data, self.Points, self.Bodies)  # Classe da implementare
+            # elif joint_type == 'rigid':
+            #     joint = RigidJoint(joint_data, self.Points, self.Bodies)  # Classe da implementare
+            # elif joint_type == 'disc':
+            #     joint = DiscJoint(joint_data, self.Points, self.Bodies)  # Classe da implementare
+            # elif joint_type == 'rel-rot':
+            #     joint = RelRotJoint(joint_data, self.Points, self.Bodies)  # Classe da implementare
+            # elif joint_type == 'rel-tran':
+            #     joint = RelTranJoint(joint_data, self.Points, self.Bodies)  # Classe da implementare
+            # else:
+            #     raise ValueError(f"Joint type '{joint_type}' is not supported.")
+
+            # rs = joint_data['rows']
+            # re = joint_data['rowe']
+
+            # phi[rs:re] = joint.evaluate_constraints()
+            pass
+        return phi
+
+    def __jacobian(self):
+        # Implement this method to evaluate the Jacobian
+        return np.array([[]])  # Example, replace with actual Jacobian matrix
+
+    def __rhs_velocity(self, flag):
+        # Implement this method to compute rhs for velocity correction
+        return np.array([])  # Example, replace with actual rhs calculation
+    
+    def __ic_correct(self):
+        """
+        Corrects initial conditions on the body coordinates and velocities.
+        """
+        flag = False
+
+        for _ in range(20): #! 20 is an arbitrary value ... could be a parameter!
+            self.__update_position()            # update position entities
+            Phi = self.__constraints()         # evaluate constraints
+            D = self.__jacobian()               # evaluate Jacobian
+            ff = np.sqrt(np.dot(Phi.T, Phi))    # are the constraints violated?
+
+            if ff < 1.0e-10:
+                flag = True
+                break
+
+            # solve for corrections
+            delta_c = -D.T @ np.linalg.solve(D @ D.T, Phi)
+
+            # correct estimates
+            nB = len(self.Bodies)
+            for Bi in range(nB):
+                ir = 3 * Bi
+                self.Bodies[Bi].r += delta_c[ir:ir + 2]
+                self.Bodies[Bi].p += delta_c[ir + 2]
+
+        if not flag:
+            raise ValueError("Convergence failed in Newton-Raphson!")
+
+        # velocity correction
+        nB = len(self.Bodies)
+        Phi = np.zeros([3 * nB, 1])
+        for Bi in range(nB):
+            ir = 3 * Bi
+            Phi[ir:ir + 2, 0] = self.Bodies[Bi].r_d
+            Phi[ir + 2, 0] = self.Bodies[Bi].p_d
+
+        rhs = self.__rhs_velocity(0)  # Compute rhs
+        delta_v = -D.T @ np.linalg.solve(D @ D.T, D @ Phi - rhs)  # Compute corrections
+
+        # Move corrected velocities to sub-arrays
+        for Bi in range(nB):
+            ir = 3 * Bi
+            self.Bodies[Bi].r_d += delta_v[ir:ir + 2]
+            self.Bodies[Bi].p_d += delta_v[ir + 2]
+
+        # Report corrected coordinates and velocities
+        coords = np.zeros((nB, 3))
+        vels = np.zeros((nB, 3))
+        for Bi in range(nB):
+            coords[Bi, :] = np.hstack((self.Bodies[Bi].r, self.Bodies[Bi].p))
+            vels[Bi, :] = np.hstack((self.Bodies[Bi].r_d, self.Bodies[Bi].p_d))
+
+        print("\nCorrected coordinates")
+        print(" x           y           phi")
+        print(coords)
+        print("Corrected velocities")
+        print(" x-dot       y-dot       phi-dot")
+        print(vels)
+        print()
+        
+    def solve(self):
+        """
+        
+        """
+        # initial conditions and Jacobian matrix definition
+        nConst = self.Joints[-1].rowe
+        if nConst != 0:
+            ans = input("Do you want to correct the initial conditions? [(y)es/(n)o] ").lower()
+            if ans == 'y':
+                self.__ic_correct()
+
+            D = self.__jacobian
+            redund = np.linalg.matrix_rank(D) # check the rank of D for redundancy
+
+            if redund < nConst:
+                print("Redundancy in the constraints")
+                
     def __ic_correct(self):
         """
         Corrects initial conditions on the body coordinates and velocities.
