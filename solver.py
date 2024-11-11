@@ -245,7 +245,7 @@ class PmdDynamicModel:
                 unit_vector.u = body.A @ unit_vector.ulocal
                 unit_vector.u_r = s_rot(unit_vector.u)
 
-    def __constraints(self):
+    def __constraints(self): #! - To be completed -
         nConst = self.Joints[-1].rowe
         phi = np.zeros(nConst)
 
