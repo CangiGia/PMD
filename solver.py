@@ -183,7 +183,7 @@ class PmdDynamicModel:
                     joint.d0 = self.Bodies[Bj].A.T @ (self.Bodies[Bi].r - self.Bodies[Bj].r)
                     joint.p0 = self.Bodies[Bi].p - self.Bodies[Bj].p
             else:
-                raise ValueError("Tipo di giunto non definito")
+                raise ValueError("Joint type doesn't supported!")
         ##### ##### ##### ##### #####
 
         # functions
@@ -214,7 +214,7 @@ class PmdDynamicModel:
                 joint.colje = 3 * Bj
         ##### ##### ##### ##### #####
 
-   def __ic_correct(self):
+    def __ic_correct(self):
         """
         Corrects initial conditions on the body coordinates and velocities.
         """
