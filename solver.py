@@ -20,9 +20,9 @@ class PmdDynamicModel:
         self.Joints = grouped_calsses.get("Joint", [])
         self.Functs = grouped_calsses.get("Function", []) if "Function" in grouped_calsses else []
 
-        # initialize the model for simulation
+        # initialize the model for simulation automatically
         self.__initialize()
-        
+                
     def __initialize(self):
         """
         Initializi the multi-body model considering the values typed 
@@ -218,27 +218,22 @@ class PmdDynamicModel:
         """
         Corrects initial conditions on the body coordinates and velocities.
         """
-        # Include global variables and definitions
-        # Note: Replace 'include_global' from MATLAB with appropriate initializations
-        # Assuming `Phi`, `D`, and `rhs` are attributes or can be computed
-
-        # Coordinate correction
         flag = False
 
-        for _ in range(20):
-            self.__update_position()  # Update position entities
-            Phi = self.__constraints(0)  # Evaluate constraints
-            D = self.__jacobian()  # Evaluate Jacobian
-            ff = np.sqrt(np.dot(Phi.T, Phi))  # Are the constraints violated?
+        for _ in range(20): #! 20 is an arbitrary value ... could be a parameter!
+            self.__update_position()            # update position entities
+            Phi = self.__constraints()         # evaluate constraints
+            D = self.__jacobian()               # evaluate Jacobian
+            ff = np.sqrt(np.dot(Phi.T, Phi))    # are the constraints violated?
 
             if ff < 1.0e-10:
                 flag = True
                 break
 
-            # Solve for corrections
+            # solve for corrections
             delta_c = -D.T @ np.linalg.solve(D @ D.T, Phi)
 
-            # Correct estimates
+            # correct estimates
             nB = len(self.Bodies)
             for Bi in range(nB):
                 ir = 3 * Bi
@@ -246,11 +241,11 @@ class PmdDynamicModel:
                 self.Bodies[Bi].p += delta_c[ir + 2]
 
         if not flag:
-            raise ValueError("Convergence failed in Newton-Raphson")
+            raise ValueError("Convergence failed in Newton-Raphson!")
 
-        # Velocity correction
+        # velocity correction
         nB = len(self.Bodies)
-        Phi = np.zeros((3 * nB, 1))  # Move velocities to an arbitrary array Phi
+        Phi = np.zeros([3 * nB, 1])
         for Bi in range(nB):
             ir = 3 * Bi
             Phi[ir:ir + 2, 0] = self.Bodies[Bi].r_d
@@ -279,36 +274,20 @@ class PmdDynamicModel:
         print(" x-dot       y-dot       phi-dot")
         print(vels)
         print()
-
-    # Placeholder methods for constraints, Jacobian, etc.
-    def __update_position(self):
-        # Implement this method to update position entities
-        pass
-
-    def __constraints(self, flag):
-        # Implement this method to evaluate constraints
-        return np.array([])  # Example, replace with actual constraints calculation
-
-    def __jacobian(self):
-        # Implement this method to evaluate the Jacobian
-        return np.array([[]])  # Example, replace with actual Jacobian matrix
-
-    def __rhs_velocity(self, flag):
-        # Implement this method to compute rhs for velocity correction
-        return np.array([])  # Example, replace with actual rhs calculation
         
-    # def solve(self):
-    #     """
+    def solve(self):
+        """
         
-    #     """
-    #     # initial conditions and Jacobian matrix definition
-    #     if self.nConst != 0:
-    #         ans = input("Do you want to correct the initial conditions? [(y)es/(n)o] ").lower()
-    #         if ans == 'y':
-    #             self.ic_correct()
+        """
+        # initial conditions and Jacobian matrix definition
+        nConst = self.Joints[-1].rowe
+        if nConst != 0:
+            ans = input("Do you want to correct the initial conditions? [(y)es/(n)o] ").lower()
+            if ans == 'y':
+                self.__ic_correct()
 
-    #         D = self.Jacobian
-    #         redund = np.linalg.matrix_rank(D) # check the rank of D for redundancy
+            D = self.__jacobian
+            redund = np.linalg.matrix_rank(D) # check the rank of D for redundancy
 
-    #         if redund < self.nConst:
-    #             print("Redundancy in the constraints")
+            if redund < nConst:
+                print("Redundancy in the constraints")
