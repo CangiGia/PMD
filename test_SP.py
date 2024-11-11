@@ -58,8 +58,8 @@ j1 = Joint()
 j1.type = "tran"
 j1.iPindex = 1
 j1.jPindex = 0
-j1.iUindex = 2
-j1.jUindex = 1
+j1.iUindex = 1
+j1.jUindex = 0
 
 j2 = Joint()
 j2.type = "rev"
