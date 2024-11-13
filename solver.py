@@ -10,6 +10,7 @@ import scipy as sc
 import numpy.linalg as lng
 from PMD.pmd_functions import *
 
+
 class PmdDynamicModel:
     def __init__(self):
         grouped_calsses = group_classes()
@@ -22,7 +23,7 @@ class PmdDynamicModel:
 
         # initialize the model for simulation automatically
         self.__initialize()
-                
+
     def __initialize(self):
         """
         Initializi the multi-body model considering the values typed 
@@ -270,7 +271,7 @@ class PmdDynamicModel:
                         f = np.append(f, (self.Bodies[iBindex].p - joint_data.p0))
                     else:
                         f = np.append(f, (self.Bodies[iBindex].p - self.Bodies[jBindex].p - joint_data.p0))
-                
+
             elif joint_type == 'tran':
                 Pi = joint_data.iPindex
                 Pj = joint_data.jPindex
@@ -285,7 +286,7 @@ class PmdDynamicModel:
                 # additional constraint if fixed
                 if joint_data.fix == 1:
                     f = np.append(f, (ui.T @ d - joint_data.p0) / 2).reshape(3,1)
-                
+
             elif joint_type == 'rev-rev':
                 pass
             elif joint_type == 'rev-tran':
@@ -307,20 +308,138 @@ class PmdDynamicModel:
             
         return phi
 
-    def __jacobian(self):
-        # Implement this method to evaluate the Jacobian
-        return np.array([[]])  # Example, replace with actual Jacobian matrix
+    def __jacobian(self): #! - To be completed for all joint type -
+        """
+        Calculate the Jacobian matrix D for the system constraints.
 
-    def __rhs_velocity(self, flag):
-        # Implement this method to compute rhs for velocity correction
-        return np.array([])  # Example, replace with actual rhs calculation
+        Returns
+        -------
+            D (NDArray)
+                The Jacobian matrix of shape (nConst, nB3).
+        """
+        nConst = self.Joints[-1].rowe
+        nB3 = 3 * len(self.Bodies)
+        D = np.zeros((nConst, nB3))
+        
+        for Ji in range(len(self.Joints)):
+            joint = self.Joints[Ji]
+
+            if joint.type == 'rev':
+                Pi = joint.iPindex
+                Pj = joint.jPindex
+
+                Di = np.block([
+                    [np.eye(2), self.Points[Pi].sP_rotated.reshape(2, 1)]
+                ])
+                Dj = np.block([
+                    [-np.eye(2), -self.Points[Pj].sP_rotated.reshape(2, 1)]
+                ])
+
+                if joint.fix == 1:
+                    Di = np.vstack([
+                        Di,
+                        [0, 0, 1]
+                    ])
+                    Dj = np.vstack([
+                        Dj,
+                        [0, 0, -1]
+                    ])
+
+            elif joint.type == 'tran':
+                Pi = joint.iPindex
+                Pj = joint.jPindex
+
+                uj = self.uVectors[joint.jUindex].u
+                uj_r = self.uVectors[joint.jUindex].u_r
+                d = self.Points[Pi].rP - self.Points[Pj].rP
+
+                Di = np.block([
+                    [uj_r.T, np.dot(uj.T, self.Points[Pi].sP).reshape(1, 1)],
+                    [np.array([0, 0, 1])]
+                ])
+                Dj = np.block([
+                    [-uj_r.T, -np.dot(uj.T, (self.Points[Pj].sP + d)).reshape(1, 1)],
+                    [np.array([0, 0, -1])]
+                ])
+
+                if joint.fix == 1:
+                    Di = np.vstack([
+                        Di,
+                        [uj.T, np.dot(uj.T, self.Points[Pi].sP_rotated).reshape(1)]
+                    ])
+                    Dj = np.vstack([
+                        Dj,
+                        [-uj.T, -np.dot(uj.T, self.Points[Pj].sP_rotated).reshape(1)]
+                    ])
+
+            elif joint.type == 'rev-rev':
+                pass
+            elif joint.type == 'rev-tran':
+                pass
+            elif joint.type == 'rigid':
+                pass
+            elif joint.type == 'disc':
+                pass
+            elif joint.type == 'rel-rot':
+                pass
+            elif joint.type == 'rel-tran':
+                pass
+            else:
+                raise ValueError(f"Joint type '{joint.type}' is not supported.")
+
+            # row indices for the current joint in the Jacobian matrix
+            rs = joint.rows - 1
+            re = joint.rowe
+
+            #! Possibile problema con gli indici, risolvere a monte, 
+            #! quando attribuisco i valori a cis e cie !!!
+            # column indices for body i 
+            if joint.iBindex != 0:
+                cis = joint.colis - 1
+                cie = joint.colie
+                D[rs:re, cis:cie] = Di
+
+            # column indices for body j
+            if joint.jBindex != 0:
+                cjs = joint.coljs - 1
+                cje = joint.colje
+                D[rs:re, cjs:cje] = Dj
+
+        return D
+
+    def __rhs_velocity(self):
+        """
+        Calculate the right-hand side velocity vector for the system constraints.
+
+        Returns
+        -------
+        rhs : NDArray
+            A column vector representing the right-hand side of the velocity equations.
+        """
+
+        nConst = self.Joints[-1].rowe
+        rhs = np.zeros((nConst, 1))
+
+        for Ji in range(len(self.Joints)):
+            joint = self.Joints[Ji]
+
+            if joint.type == 'rel-rot':
+                f = self.V_rel_rot(joint)
+                rhs[joint.rows - 1:joint.rowe] = f
                 
+            elif joint.type == 'rel-tran':
+                f = self.V_rel_tran(joint)
+                rhs[joint.rows - 1:joint.rowe] = f
+
+        return rhs
+
     def __ic_correct(self):
         """
         Corrects initial conditions on the body coordinates and velocities.
         """
         flag = False
 
+        # position correction
         for _ in range(20): #! 20 is an arbitrary value ... could be a parameter!
             self.__update_position()            # update position entities
             Phi = self.__compute_constraints()  # evaluate constraints
@@ -338,8 +457,8 @@ class PmdDynamicModel:
             nB = len(self.Bodies)
             for Bi in range(nB):
                 ir = 3 * Bi
-                self.Bodies[Bi].r += delta_c[ir:ir + 2]
-                self.Bodies[Bi].p += delta_c[ir + 2]
+                self.Bodies[Bi].r = self.Bodies[Bi].r + delta_c[ir:ir + 2]
+                self.Bodies[Bi].p = self.Bodies[Bi].p + delta_c[ir + 2][0] # [0] because I need to extract the single value
 
         if not flag:
             raise ValueError("Convergence failed in Newton-Raphson!")
@@ -349,46 +468,56 @@ class PmdDynamicModel:
         Phi = np.zeros([3 * nB, 1])
         for Bi in range(nB):
             ir = 3 * Bi
-            Phi[ir:ir + 2, 0] = self.Bodies[Bi].r_d
-            Phi[ir + 2, 0] = self.Bodies[Bi].p_d
+            Phi[ir:ir + 2] = self.Bodies[Bi].r_d
+            Phi[ir + 2] = self.Bodies[Bi].p_d
 
-        rhs = self.__rhs_velocity(0)  # Compute rhs
-        delta_v = -D.T @ np.linalg.solve(D @ D.T, D @ Phi - rhs)  # Compute corrections
+        rhsv = self.__rhs_velocity()  
+        
+        # solve for corrections
+        delta_v = -D.T @ np.linalg.solve(D @ D.T, D @ Phi - rhsv)  
 
-        # Move corrected velocities to sub-arrays
+        # move corrected velocities to sub-arrays
         for Bi in range(nB):
             ir = 3 * Bi
-            self.Bodies[Bi].r_d += delta_v[ir:ir + 2]
-            self.Bodies[Bi].p_d += delta_v[ir + 2]
+            self.Bodies[Bi].r_d = self.Bodies[Bi].r_d + delta_v[ir:ir + 2]
+            self.Bodies[Bi].p_d = self.Bodies[Bi].p_d + delta_v[ir + 2][0] # [0] because I need to extract the single value
 
-        # Report corrected coordinates and velocities
         coords = np.zeros((nB, 3))
         vels = np.zeros((nB, 3))
         for Bi in range(nB):
-            coords[Bi, :] = np.hstack((self.Bodies[Bi].r, self.Bodies[Bi].p))
-            vels[Bi, :] = np.hstack((self.Bodies[Bi].r_d, self.Bodies[Bi].p_d))
+            coords[Bi, :] = np.hstack((self.Bodies[Bi].r.T, np.array(self.Bodies[Bi].p).reshape(-1, 1)))
+            vels[Bi, :] = np.hstack((self.Bodies[Bi].r_d.T, np.array(self.Bodies[Bi].p_d).reshape(-1, 1)))
 
+        # print("\nCorrected coordinates")
+        # print(" x           y           phi")
+        # print(coords)
+        # print("Corrected velocities")
+        # print(" x-dot       y-dot       phi-dot")
+        # print(vels)
+        # print()
+
+        #! orded print
         print("\nCorrected coordinates")
         print(" x           y           phi")
-        print(coords)
-        print("Corrected velocities")
+        for row in coords:
+            print(f"{row[0]:<12.5f}{row[1]:<12.5f}{row[2]:<12.5f}")
+
+        print("\nCorrected velocities")
         print(" x-dot       y-dot       phi-dot")
-        print(vels)
-        print()
-        
+        for row in vels:
+            print(f"{row[0]:<12.5f}{row[1]:<12.5f}{row[2]:<12.5f}")
+
     def solve(self):
         """
-        
+        Solve the EQMs of the planar multi-body system.
         """
         # initial conditions and Jacobian matrix definition
         nConst = self.Joints[-1].rowe
+        ans = input("Do you want to correct the initial conditions? [(y)es/(n)o] ").lower()
         if nConst != 0:
-            ans = input("Do you want to correct the initial conditions? [(y)es/(n)o] ").lower()
             if ans == 'y':
                 self.__ic_correct()
-
-            D = self.__jacobian
+            D = self.__jacobian()
             redund = np.linalg.matrix_rank(D) # check the rank of D for redundancy
-
             if redund < nConst:
                 print("Redundancy in the constraints")

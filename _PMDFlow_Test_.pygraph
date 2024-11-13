@@ -1,0 +1,210 @@
+{
+    "name": "root",
+    "category": "",
+    "vars": [],
+    "nodes": [
+        {
+            "package": "PMDFlow",
+            "lib": null,
+            "type": "makeBody",
+            "owningGraphName": "root",
+            "name": "Slider",
+            "uuid": "11a7c90c-c60d-401b-ae79-656ed54cfb5f",
+            "inputs": [
+                {
+                    "name": "J - body inertia moment [kg*m^2]",
+                    "package": "PyFlowBase",
+                    "fullName": "Slider_J - body inertia moment [kg*m^2]",
+                    "dataType": "FloatPin",
+                    "direction": 0,
+                    "value": "0.0",
+                    "uuid": "f9d22962-0471-4c76-8d8d-11e5717d5f18",
+                    "linkedTo": [],
+                    "pinIndex": 2,
+                    "options": [
+                        1,
+                        2,
+                        256
+                    ],
+                    "structure": 3,
+                    "alwaysList": false,
+                    "alwaysSingle": false,
+                    "alwaysDict": false,
+                    "wrapper": {
+                        "bLabelHidden": false,
+                        "displayName": "J - body inertia moment [kg*m^2]",
+                        "wires": {}
+                    }
+                },
+                {
+                    "name": "pd - body orientation vector der. (opt) [rad/s]",
+                    "package": "PyFlowBase",
+                    "fullName": "Slider_pd - body orientation vector der. (opt) [rad/s]",
+                    "dataType": "FloatPin",
+                    "direction": 0,
+                    "value": "0.0",
+                    "uuid": "b6d9ba42-3577-4eae-bf84-b20b63e9a2fe",
+                    "linkedTo": [],
+                    "pinIndex": 6,
+                    "options": [
+                        1,
+                        2,
+                        256
+                    ],
+                    "structure": 3,
+                    "alwaysList": false,
+                    "alwaysSingle": false,
+                    "alwaysDict": false,
+                    "wrapper": {
+                        "bLabelHidden": false,
+                        "displayName": "pd - body orientation vector der. (opt) [rad/s]",
+                        "wires": {}
+                    }
+                },
+                {
+                    "name": "p - body orientation angle [rad]",
+                    "package": "PyFlowBase",
+                    "fullName": "Slider_p - body orientation angle [rad]",
+                    "dataType": "FloatPin",
+                    "direction": 0,
+                    "value": "0.0",
+                    "uuid": "1cb08ed4-4b39-4c22-8c48-7a5903376d98",
+                    "linkedTo": [],
+                    "pinIndex": 4,
+                    "options": [
+                        1,
+                        2,
+                        256
+                    ],
+                    "structure": 3,
+                    "alwaysList": false,
+                    "alwaysSingle": false,
+                    "alwaysDict": false,
+                    "wrapper": {
+                        "bLabelHidden": false,
+                        "displayName": "p - body orientation angle [rad]",
+                        "wires": {}
+                    }
+                },
+                {
+                    "name": "m - body mass [kg]",
+                    "package": "PyFlowBase",
+                    "fullName": "Slider_m - body mass [kg]",
+                    "dataType": "FloatPin",
+                    "direction": 0,
+                    "value": "0.0",
+                    "uuid": "ee3366da-21ea-4a67-a2ff-b9dd85fc370d",
+                    "linkedTo": [],
+                    "pinIndex": 1,
+                    "options": [
+                        1,
+                        2,
+                        256
+                    ],
+                    "structure": 3,
+                    "alwaysList": false,
+                    "alwaysSingle": false,
+                    "alwaysDict": false,
+                    "wrapper": {
+                        "bLabelHidden": false,
+                        "displayName": "m - body mass [kg]",
+                        "wires": {}
+                    }
+                },
+                {
+                    "name": "rd - body CoG position vector der. (opt) [m/s]",
+                    "package": "PyFlowBase",
+                    "fullName": "Slider_rd - body CoG position vector der. (opt) [m/s]",
+                    "dataType": "AnyPin",
+                    "direction": 0,
+                    "value": null,
+                    "uuid": "d4489f93-0b61-4bd2-82a9-69a2c222e1e7",
+                    "linkedTo": [],
+                    "pinIndex": 5,
+                    "options": [
+                        4,
+                        256
+                    ],
+                    "structure": 1,
+                    "alwaysList": true,
+                    "alwaysSingle": false,
+                    "alwaysDict": false,
+                    "wrapper": {
+                        "bLabelHidden": false,
+                        "displayName": "rd - body CoG position vector der. (opt) [m/s]",
+                        "wires": {}
+                    }
+                },
+                {
+                    "name": "r - body CoG position vector [mm]",
+                    "package": "PyFlowBase",
+                    "fullName": "Slider_r - body CoG position vector [mm]",
+                    "dataType": "AnyPin",
+                    "direction": 0,
+                    "value": null,
+                    "uuid": "25b76cdd-72ea-4174-9438-4a12e9b2ce48",
+                    "linkedTo": [],
+                    "pinIndex": 3,
+                    "options": [
+                        4,
+                        256
+                    ],
+                    "structure": 1,
+                    "alwaysList": true,
+                    "alwaysSingle": false,
+                    "alwaysDict": false,
+                    "wrapper": {
+                        "bLabelHidden": false,
+                        "displayName": "r - body CoG position vector [mm]",
+                        "wires": {}
+                    }
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "body",
+                    "package": "PMDFlow",
+                    "fullName": "Slider_body",
+                    "dataType": "InstancePin",
+                    "direction": 1,
+                    "value": null,
+                    "uuid": "66a73b40-1ff7-440a-8ac6-f0c554593cca",
+                    "linkedTo": [],
+                    "pinIndex": 1,
+                    "options": [
+                        4
+                    ],
+                    "structure": 1,
+                    "alwaysList": true,
+                    "alwaysSingle": false,
+                    "alwaysDict": false,
+                    "wrapper": {
+                        "bLabelHidden": false,
+                        "displayName": "body",
+                        "wires": {}
+                    }
+                }
+            ],
+            "meta": {
+                "var": {},
+                "label": "Slider"
+            },
+            "wrapper": {
+                "collapsed": false,
+                "headerHtml": "<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.0//EN\" \"http://www.w3.org/TR/REC-html40/strict.dtd\">\n<html><head><meta name=\"qrichtext\" content=\"1\" /><meta charset=\"utf-8\" /><style type=\"text/css\">\np, li { white-space: pre-wrap; }\nhr { height: 1px; border-width: 0; }\nli.unchecked::marker { content: \"\\2610\"; }\nli.checked::marker { content: \"\\2612\"; }\n</style></head><body style=\" font-family:'Consolas'; font-size:6pt; font-weight:400; font-style:normal;\">\n<p style=\" margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;\">Slider</p></body></html>",
+                "exposeInputsToCompound": false,
+                "groups": {
+                    "input": {},
+                    "output": {}
+                }
+            },
+            "x": -678.9058098183158,
+            "y": -379.816152532867
+        }
+    ],
+    "depth": 1,
+    "isRoot": true,
+    "parentGraphName": "None",
+    "fileVersion": "3.0.0",
+    "activeGraph": "root"
+}

@@ -31,12 +31,12 @@ class makeBody(NodeBase):
         # self.inexec = self.createInputPin(pinName="inExec", dataType="ExecPin", callback=self.processNode) 
         
         # Create Standard Input pins
-        self.m = self.createInputPin("m (body mass) [kg]",'FloatPin', defaultValue=0.0, structure=StructureType.Multi, constraint="1", structConstraint="1")
-        self.J = self.createInputPin("J (body inertia moment [kg*m^2])",'FloatPin', defaultValue=0.0, structure=StructureType.Multi, constraint="1", structConstraint="1")
-        self.r = self.createInputPin("r (body CoG position vector [mm])",'FloatPin', structure=StructureType.Array, constraint="1", structConstraint="1")
-        self.p = self.createInputPin("p (body orientation angle [rad])",'FloatPin', defaultValue=0.0, structure=StructureType.Multi, constraint="1", structConstraint="1")
-        self.r_d = self.createInputPin("rd (body CoG position vector der., opt.) [m/s]",'FloatPin', structure=StructureType.Array, constraint="1", structConstraint="1")
-        self.p_d = self.createInputPin("pd (body orientation vector der., opt) [rad/s]",'FloatPin', defaultValue=0.0, structure=StructureType.Multi, constraint="1", structConstraint="1")
+        self.m = self.createInputPin("m - body mass [kg]",'FloatPin', defaultValue=0.0, structure=StructureType.Single, constraint="1", structConstraint="1")
+        self.J = self.createInputPin("J - body inertia moment [kg*m^2]",'FloatPin', defaultValue=0.0, structure=StructureType.Single, constraint="1", structConstraint="1")
+        # self.r = self.createInputPin("r - body CoG position vector [mm]",'StringPin', structure=StructureType.Single, constraint="1", structConstraint="1")
+        self.p = self.createInputPin("p - body orientation angle [rad]",'FloatPin', defaultValue=0.0, structure=StructureType.Single, constraint="1", structConstraint="1")
+        # self.r_d = self.createInputPin("rd - body CoG position vector der. (opt) [m/s]",'StringPin', structure=StructureType.Array, constraint="1", structConstraint="1")
+        self.p_d = self.createInputPin("pd - body orientation vector der. (opt) [rad/s]",'FloatPin', defaultValue=0.0, structure=StructureType.Single, constraint="1", structConstraint="1")
         
         # Create Standard Output pins
         self.b = self.createOutputPin(pinName="body", dataType="InstancePin", defaultValue=None, structure=StructureType.Array, constraint=None, structConstraint=None, supportedPinDataTypes=[], group="")
@@ -68,11 +68,12 @@ class makeBody(NodeBase):
         body = Body()
         body.m = self.m
         body.J = self.J 
-        body.r = self.r (* 10**(-3)) # brings unit to m instad of mm
+        # body.r = self.r * (10**(-3)) # brings unit to m instad of mm
         body.p = self.p
-        body.r_d = self.r_d
+        # body.r_d = self.r_d
         body.p_d = self.p_d
         
         #* Send data to output
-        self.b.setData(body)
+        self.b.setData([body])
         print(f"Body for simulation created!")
+        print("Body mass::", body.m, "[kg]")
