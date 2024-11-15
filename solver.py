@@ -5,10 +5,12 @@ planar multi-body dynamic models.
 Author: Giacomo Cangi
 """
 
+import os
 import numpy as np
 import scipy as sc
 import numpy.linalg as lng
 from PMD.pmd_functions import *
+from scipy.integrate import solve_ivp
 
 
 class PmdDynamicModel:
@@ -246,6 +248,21 @@ class PmdDynamicModel:
                 unit_vector.u = body.A @ unit_vector.ulocal
                 unit_vector.u_r = s_rot(unit_vector.u)
 
+    def __update_velocity(self):
+        """
+        Compute sP_dot and rP_dot vectors and update velocity components.
+        """
+        for Pi, point in enumerate(self.Points):
+            Bi = point.Bindex
+            if Bi != 0:
+                point.sP_d = point.sP_r * self.Bodies[Bi].p_d
+                point.rP_d = self.Bodies[Bi].r_d + point.sP_d
+
+        for Vi, uvector in enumerate(self.Uvectors):
+            Bi = uvector.Bindex
+            if Bi != 0:
+                uvector.u_d = uvector.u_r * self.Bodies[Bi].p_d
+            
     def __compute_constraints(self): #! - To be completed for all joint type -
         nConst = self.Joints[-1].rowe
         phi = np.zeros([nConst, 1])
@@ -308,7 +325,7 @@ class PmdDynamicModel:
             
         return phi
 
-    def __jacobian(self): #! - To be completed for all joint type -
+    def __compute_jacobian(self): #! - To be completed for all joint type -
         """
         Calculate the Jacobian matrix D for the system constraints.
 
@@ -407,6 +424,7 @@ class PmdDynamicModel:
 
         return D
 
+    #! ?? utilizzato solo in casi particolari di vincoli ??
     def __rhs_velocity(self):
         """
         Calculate the right-hand side velocity vector for the system constraints.
@@ -433,6 +451,81 @@ class PmdDynamicModel:
 
         return rhs
 
+    def __bodies2u(self): 
+        """ 
+        Pack coordinates and velocities into the u array.
+        """
+        nB = len(self.Bodies)
+        u = np.zeros([(3 * nB * 2), 1])
+
+        for Bi in range(nB):
+            ir = self.Bodies[Bi].irc - 1
+            ird = self.Bodies[Bi].irv - 1
+            u[ir:ir+3] = np.block([[self.Bodies[Bi].r],[self.Bodies[Bi].p]])
+            u[ird:ird+3] = np.block([[self.Bodies[Bi].r_d], [self.Bodies[Bi].p_d]])
+
+        return u
+    
+    def __u2bodies(self):
+        """
+        Unpack u into coordinate and velocity sub-arrays.
+        """ 
+        nB = len(self.Bodies)
+        for Bi in range(nB): 
+            ir = self.Bodies(Bi).irc - 1
+            ird = self. Bodies(Bi).irv - 1
+            self.Bodies(Bi).r   = self.u[ir:ir+2] #! attention to the index
+            self.Bodies(Bi).p   = self.u[ir+2]
+            self.Bodies(Bi).r_d = self.u[ird:ird+2]
+            self.Bodies(Bi).p_d = self.u[ird+2]
+
+    def __compute_force(self, t):
+        """
+        Compute and return the array of forces acting on the system at time t.
+        """
+
+        # Initialize body force vectors
+        for body in self.Bodies:
+            body.f = np.array([0.0, 0.0])  # Initialize force vector
+            body.n = 0.0  # Initialize torque (moment) scalar
+
+        # Loop over all forces and apply them to the appropriate bodies
+        for force in self.Forces:
+            if force.type == 'weight':
+                # Apply weight to each body
+                for body in self.Bodies:
+                    body.f += body.wgt
+            elif force.type == 'ptp':
+                # Call method or function for point-to-point force
+                self.SDA_ptp()
+            elif force.type == 'rot-sda':
+                # Call method or function for rotational SDA force
+                self.SDA_rot()
+            elif force.type == 'flocal':
+                # Apply local force to the specified body
+                Bi = force.iBindex
+                self.Bodies[Bi].f += self.Bodies[Bi].A @ force.flocal
+            elif force.type == 'f':
+                # Apply a global force to the specified body
+                Bi = force.iBindex
+                self.Bodies[Bi].f += force.f
+            elif force.type == 'T':
+                # Apply a torque to the specified body
+                Bi = force.iBindex
+                self.Bodies[Bi].n += force.T
+            elif force.type == 'user':
+                # Call a user-defined force function
+                self.user_force()
+
+        # Construct the force array g
+        g = np.zeros(self.nB3)  # Initialize force array
+        for Bi, body in enumerate(self.Bodies):
+            ks = body.irc
+            ke = ks + 2
+            g[ks:ke] = np.concatenate([body.f, [body.n]])
+
+        return g
+
     def __ic_correct(self):
         """
         Corrects initial conditions on the body coordinates and velocities.
@@ -443,7 +536,7 @@ class PmdDynamicModel:
         for _ in range(20): #! 20 is an arbitrary value ... could be a parameter!
             self.__update_position()            # update position entities
             Phi = self.__compute_constraints()  # evaluate constraints
-            D = self.__jacobian()               # evaluate Jacobian
+            D = self.__compute_jacobian()               # evaluate Jacobian
             ff = np.sqrt(np.dot(Phi.T, Phi))    # are the constraints violated?
 
             if ff < 1.0e-10:
@@ -496,7 +589,7 @@ class PmdDynamicModel:
         # print(vels)
         # print()
 
-        #! orded print
+        #! orded print of the correction
         print("\nCorrected coordinates")
         print(" x           y           phi")
         for row in coords:
@@ -507,17 +600,93 @@ class PmdDynamicModel:
         for row in vels:
             print(f"{row[0]:<12.5f}{row[1]:<12.5f}{row[2]:<12.5f}")
 
+    def __analysis(self, t, u):
+        """
+        Solve the constrained equations of motion at time t with the standard
+        Lagrange multiplier method.
+        """
+        nConst = self.Joints[-1].rowe
+        self.__u2bodies()  # unpack u into coordinate and velocity sub-arrays
+        self.__update_position()
+        self.__update_velocity()
+        h_a = self.__compute_force(t)  # array of applied forces
+
+        if nConst == 0:
+            c_dd = self.M_inv_array * h_a # solve for accelerations
+        else:
+            D = self.__compute_jacobian()
+            rhsA = self.rhs_acc(t)  # right-hand side of acceleration constraints (gamma)
+
+            # construct the matrix system to solve
+            DMD = np.block([
+                [np.diag(self.M_array), -D.T],
+                [D, np.zeros((nConst, nConst))]
+            ])
+            rhs = np.concatenate([h_a, rhsA])
+
+            # solve the system of equations
+            sol = np.linalg.solve(DMD, rhs)
+            c_dd = sol[:self.nB3]
+            Lambda = sol[self.nB3:]
+
+        # update accelerations for each body
+        for Bi, body in enumerate(self.Bodies):
+            ir = body.irc
+            i2 = ir + 1
+            i3 = i2 + 1
+            body.r_dd = c_dd[ir:i2 + 1]
+            body.p_dd = c_dd[i3]
+
+        self.__bodies_to_u_d()  # pack velocities and accelerations into u_d
+
+        # Increment the number of function evaluations
+        self.num += 1
+
+        if self.showtime == 1:
+            # Inform the user of progress every 100 function evaluations
+            if self.t10 % 100 == 0:
+                print(t)
+            self.t10 += 1
+    
     def solve(self):
         """
         Solve the EQMs of the planar multi-body system.
         """
         # initial conditions and Jacobian matrix definition
         nConst = self.Joints[-1].rowe
+        nB = len(self.Bodies)
+        nB6 = 6 * nB
+        u = np.zeros(nB6)
         ans = input("Do you want to correct the initial conditions? [(y)es/(n)o] ").lower()
         if nConst != 0:
             if ans == 'y':
                 self.__ic_correct()
-            D = self.__jacobian()
+            D = self.__compute_jacobian()
             redund = np.linalg.matrix_rank(D) # check the rank of D for redundancy
             if redund < nConst:
                 print("Redundancy in the constraints")
+
+        # pack coordinates and velocities ito u array
+        self.__bodies2u()
+        t_initial = 0
+        t_final = float(input("Final time = ? "))
+
+        if t_final == 0:
+            self.__analysis(0, u)
+            T = [0]
+            uT = [u]
+        else:
+            dt = float(input("Reporting time-step = ? "))
+            Tspan = np.arange(t_initial, t_final + dt, dt)
+
+        #     def __wrapper_analysis(t, y):
+        #         return self.__analysis(t, y) 
+
+        #     options = {'rtol': 1e-6, 'atol': 1e-9}
+        #     sol = solve_ivp(wrapper_analysis, [t_initial, t_final], u, t_eval=Tspan, **options)
+        #     T = sol.t
+        #     uT = sol.y.T
+
+        # num_evals = len(T)
+        # print(f"Number of function evaluations = {num_evals}")
+        # os.system("echo -en '\\007'")
