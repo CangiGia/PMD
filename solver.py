@@ -13,7 +13,7 @@ from PMD.pmd_functions import *
 from scipy.integrate import solve_ivp
 
 
-class PmdDynamicModel:
+class PlanarDynamicModel:
     def __init__(self):
         grouped_calsses = group_classes()
         self.Bodies = grouped_calsses.get("Body", [])
@@ -25,7 +25,7 @@ class PmdDynamicModel:
 
         # initialize the model for simulation automatically
         self.__initialize()
-
+ 
     def __initialize(self):
         """
         Initializi the multi-body model considering the values typed 
@@ -47,14 +47,14 @@ class PmdDynamicModel:
             body.A = A_matrix(body.p)
 
         # mass (inertia) matrix as an array
-        M_array = np.zeros((nB3, 1))
-        M_inv_array = np.zeros((nB3, 1))
+        self.M_array = np.zeros((nB3, 1))
+        self.M_inv_array = np.zeros((nB3, 1))
         for Bi in range(nB):
             is_ = 3 * Bi
             ie_ = is_ + 3
-            M_array[is_:ie_] = np.array([[self.Bodies[Bi].m], [self.Bodies[Bi].m], [self.Bodies[Bi].J]])
-            M_inv_array[is_:ie_] = np.array([[self.Bodies[Bi].m_inv], [self.Bodies[Bi].m_inv], [self.Bodies[Bi].J_inv]])
-        ##### ##### ##### ##### ##### 
+            self.M_array[is_:ie_] = np.array([[self.Bodies[Bi].m], [self.Bodies[Bi].m], [self.Bodies[Bi].J]])
+            self.M_inv_array[is_:ie_] = np.array([[self.Bodies[Bi].m_inv], [self.Bodies[Bi].m_inv], [self.Bodies[Bi].J_inv]])
+        ##### ##### ##### ##### #####  
 
         # points #! CHECK CON MATLAB - Probabile problema di indicizzazione
         ##### ##### ##### ##### #####
@@ -63,7 +63,7 @@ class PmdDynamicModel:
             point = self.Points[Pi]
             if point.Bindex == 0:
                 point.sP = point.sPlocal
-                point.sP_rotated = s_rot(point.sP)
+                point.sP_r = s_rot(point.sP)
                 point.rP = point.sP
 
             for Bi in range(nB):
@@ -235,7 +235,7 @@ class PmdDynamicModel:
             if Bi != 0:
                 body = self.Bodies[Bi-1]
                 point.sP = body.A @ point.sPlocal
-                point.sP_rotated = s_rot(point.sP)
+                point.sP_r = s_rot(point.sP)
                 point.rP = body.r + point.sP
 
         # compute u = A * up
@@ -255,13 +255,13 @@ class PmdDynamicModel:
         for Pi, point in enumerate(self.Points):
             Bi = point.Bindex
             if Bi != 0:
-                point.sP_d = point.sP_r * self.Bodies[Bi].p_d
-                point.rP_d = self.Bodies[Bi].r_d + point.sP_d
+                point.dsp = point.sP_r * self.Bodies[Bi-1].p_d
+                point.drp = self.Bodies[Bi-1].r_d + point.dsp
 
-        for Vi, uvector in enumerate(self.Uvectors):
+        for Vi, uvector in enumerate(self.uVectors):
             Bi = uvector.Bindex
             if Bi != 0:
-                uvector.u_d = uvector.u_r * self.Bodies[Bi].p_d
+                uvector.u_d = uvector.u_r * self.Bodies[Bi-1].p_d
             
     def __compute_constraints(self): #! - To be completed for all joint type -
         nConst = self.Joints[-1].rowe
@@ -346,10 +346,10 @@ class PmdDynamicModel:
                 Pj = joint.jPindex
 
                 Di = np.block([
-                    [np.eye(2), self.Points[Pi].sP_rotated.reshape(2, 1)]
+                    [np.eye(2), self.Points[Pi].sP_r.reshape(2, 1)]
                 ])
                 Dj = np.block([
-                    [-np.eye(2), -self.Points[Pj].sP_rotated.reshape(2, 1)]
+                    [-np.eye(2), -self.Points[Pj].sP_r.reshape(2, 1)]
                 ])
 
                 if joint.fix == 1:
@@ -382,11 +382,11 @@ class PmdDynamicModel:
                 if joint.fix == 1:
                     Di = np.vstack([
                         Di,
-                        [uj.T, np.dot(uj.T, self.Points[Pi].sP_rotated).reshape(1)]
+                        [uj.T, np.dot(uj.T, self.Points[Pi].sP_r).reshape(1)]
                     ])
                     Dj = np.vstack([
                         Dj,
-                        [-uj.T, -np.dot(uj.T, self.Points[Pj].sP_rotated).reshape(1)]
+                        [-uj.T, -np.dot(uj.T, self.Points[Pj].sP_r).reshape(1)]
                     ])
 
             elif joint.type == 'rev-rev':
@@ -463,21 +463,21 @@ class PmdDynamicModel:
             ird = self.Bodies[Bi].irv - 1
             u[ir:ir+3] = np.block([[self.Bodies[Bi].r],[self.Bodies[Bi].p]])
             u[ird:ird+3] = np.block([[self.Bodies[Bi].r_d], [self.Bodies[Bi].p_d]])
-
+        
         return u
-    
-    def __u2bodies(self):
+
+    def __u2bodies(self, u):
         """
         Unpack u into coordinate and velocity sub-arrays.
         """ 
         nB = len(self.Bodies)
         for Bi in range(nB): 
-            ir = self.Bodies(Bi).irc - 1
-            ird = self. Bodies(Bi).irv - 1
-            self.Bodies(Bi).r   = self.u[ir:ir+2] #! attention to the index
-            self.Bodies(Bi).p   = self.u[ir+2]
-            self.Bodies(Bi).r_d = self.u[ird:ird+2]
-            self.Bodies(Bi).p_d = self.u[ird+2]
+            ir = self.Bodies[Bi].irc - 1
+            ird = self. Bodies[Bi].irv - 1
+            self.Bodies[Bi].r   = u[ir:ir+2] #! attention to the index
+            self.Bodies[Bi].p   = u[ir+2].item()
+            self.Bodies[Bi].r_d = u[ird:ird+2]
+            self.Bodies[Bi].p_d = u[ird+2].item()
 
     def __compute_force(self, t):
         """
@@ -594,7 +594,6 @@ class PmdDynamicModel:
         print(" x           y           phi")
         for row in coords:
             print(f"{row[0]:<12.5f}{row[1]:<12.5f}{row[2]:<12.5f}")
-
         print("\nCorrected velocities")
         print(" x-dot       y-dot       phi-dot")
         for row in vels:
@@ -606,7 +605,7 @@ class PmdDynamicModel:
         Lagrange multiplier method.
         """
         nConst = self.Joints[-1].rowe
-        self.__u2bodies()  # unpack u into coordinate and velocity sub-arrays
+        self.__u2bodies(u)  # unpack u into coordinate and velocity sub-arrays
         self.__update_position()
         self.__update_velocity()
         h_a = self.__compute_force(t)  # array of applied forces
@@ -667,7 +666,7 @@ class PmdDynamicModel:
                 print("Redundancy in the constraints")
 
         # pack coordinates and velocities ito u array
-        self.__bodies2u()
+        u = self.__bodies2u()
         t_initial = 0
         t_final = float(input("Final time = ? "))
 
