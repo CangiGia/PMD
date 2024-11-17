@@ -25,7 +25,7 @@ class PlanarDynamicModel:
 
         # initialize the model for simulation automatically
         self.__initialize()
- 
+
     def __initialize(self):
         """
         Initializi the multi-body model considering the values typed 
@@ -483,46 +483,67 @@ class PlanarDynamicModel:
         """
         Compute and return the array of forces acting on the system at time t.
         """
-
-        # Initialize body force vectors
+        #! !!! THIS PART OF CODE NEED TO BE COMPELTED !!!
+        #! is it necessary ??
         for body in self.Bodies:
-            body.f = np.array([0.0, 0.0])  # Initialize force vector
-            body.n = 0.0  # Initialize torque (moment) scalar
+            body.f = colvect([0.0, 0.0]) # initialize body force vectors
+            body.n = 0.0                 # initialize torque (moment) scalar
 
-        # Loop over all forces and apply them to the appropriate bodies
-        for force in self.Forces:
-            if force.type == 'weight':
-                # Apply weight to each body
-                for body in self.Bodies:
+        #! the below code used to build the force array need to be optimized, 
+        #! the class Force should keep inside all the method required to build
+        #! the specific type of force -> code easier and more readable.
+        # loop over all forces and apply them to the appropriate bodies
+        for Fi, force in enumerate(self.Forces):
+            if force.type == 'weight':      # apply weight to each body
+                for body in self.Bodies: 
                     body.f += body.wgt
-            elif force.type == 'ptp':
-                # Call method or function for point-to-point force
-                self.SDA_ptp()
-            elif force.type == 'rot-sda':
-                # Call method or function for rotational SDA force
-                self.SDA_rot()
-            elif force.type == 'flocal':
-                # Apply local force to the specified body
-                Bi = force.iBindex
-                self.Bodies[Bi].f += self.Bodies[Bi].A @ force.flocal
-            elif force.type == 'f':
-                # Apply a global force to the specified body
-                Bi = force.iBindex
-                self.Bodies[Bi].f += force.f
-            elif force.type == 'T':
-                # Apply a torque to the specified body
-                Bi = force.iBindex
-                self.Bodies[Bi].n += force.T
-            elif force.type == 'user':
-                # Call a user-defined force function
-                self.user_force()
 
-        # Construct the force array g
-        g = np.zeros(self.nB3)  # Initialize force array
+            elif force.type == 'ptp':       # call method or function for point-to-point force
+                Pi, Pj = force.iPindex, force.jPindex
+                Bi, Bj = force.iBindex, force.jBindex
+                d = self.Points[Pi].rP - self.Points[Pj].rP
+                dd = self.Points[Pi].drP - self.Points[Pj].drP
+                L = np.sqrt(d.T@d)
+                dL = d.T@dd/L
+                delta = L - self.Forces[Fi].L0
+                u = d/L 
+
+                f = self.Forces[Fi].k*delta + self.Forces[Fi].dc*dL + self.Forces[Fi].f_a
+                fi = f*u
+
+                if Bi != 0:
+                    self.Bodies[Bi-1].f = self.Bodies[Bi-1].f - fi
+                    self.Bodies[Bi-1].n = self.Bodies[Bi-1].n - ((self.Points[Pi].sP_r).T@fi).item() # extracting the single value
+                
+                if Bj != 0: 
+                    self.Bodies[Bj-1].f = self.Bodies[Bj-1].f + fi
+                    self.Bodies[Bj-1].n = self.Bodies[Bj-1].n + ((self.Points[Pj].sP_r).T@fi).item() # extracting the single value
+
+            elif force.type == 'rot-sda':   # call method or function for rotational SDA force
+                # self.SDA_rot()
+                pass
+            elif force.type == 'flocal':    # apply local force to the specified body
+                # Bi = force.iBindex
+                # self.Bodies[Bi].f += self.Bodies[Bi].A @ force.flocal
+                pass
+            elif force.type == 'f':         # apply a global force to the specified body
+                # Bi = force.iBindex
+                # self.Bodies[Bi].f += force.f
+                pass
+            elif force.type == 'T':         # apply a torque to the specified body
+                # Bi = force.iBindex
+                # self.Bodies[Bi].n += force.T
+                pass
+            elif force.type == 'user':      # call a user-defined force function
+                # self.user_force()
+                pass
+
+        nB3 = 3 * len(self.Bodies)
+        g = np.zeros([nB3, 1])
         for Bi, body in enumerate(self.Bodies):
-            ks = body.irc
-            ke = ks + 2
-            g[ks:ke] = np.concatenate([body.f, [body.n]])
+            ks = body.irc - 1
+            ke = ks + 3
+            g[ks:ke] = np.vstack([body.f, body.n])
 
         return g
 
@@ -536,7 +557,7 @@ class PlanarDynamicModel:
         for _ in range(20): #! 20 is an arbitrary value ... could be a parameter!
             self.__update_position()            # update position entities
             Phi = self.__compute_constraints()  # evaluate constraints
-            D = self.__compute_jacobian()               # evaluate Jacobian
+            D = self.__compute_jacobian()       # evaluate Jacobian
             ff = np.sqrt(np.dot(Phi.T, Phi))    # are the constraints violated?
 
             if ff < 1.0e-10:
@@ -604,6 +625,7 @@ class PlanarDynamicModel:
         Solve the constrained equations of motion at time t with the standard
         Lagrange multiplier method.
         """
+        nB3 = 3 * len(self.Bodies)
         nConst = self.Joints[-1].rowe
         self.__u2bodies(u)  # unpack u into coordinate and velocity sub-arrays
         self.__update_position()
@@ -625,8 +647,8 @@ class PlanarDynamicModel:
 
             # solve the system of equations
             sol = np.linalg.solve(DMD, rhs)
-            c_dd = sol[:self.nB3]
-            Lambda = sol[self.nB3:]
+            c_dd = sol[:nB3]
+            Lambda = sol[nB3:]
 
         # update accelerations for each body
         for Bi, body in enumerate(self.Bodies):
@@ -636,14 +658,11 @@ class PlanarDynamicModel:
             body.r_dd = c_dd[ir:i2 + 1]
             body.p_dd = c_dd[i3]
 
-        self.__bodies_to_u_d()  # pack velocities and accelerations into u_d
-
-        # Increment the number of function evaluations
-        self.num += 1
+        self.__bodies2ud()          # pack velocities and accelerations into ud
+        self.num += 1               # increment the number of function evaluations
 
         if self.showtime == 1:
-            # Inform the user of progress every 100 function evaluations
-            if self.t10 % 100 == 0:
+            if self.t10 % 100 == 0: # inform the user of progress every 100 function evaluations
                 print(t)
             self.t10 += 1
     
