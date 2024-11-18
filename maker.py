@@ -185,7 +185,7 @@ class Point(Base):
         self.Bindex = 0
         self.sPlocal = colvect(0, 0)
         self.sP = colvect(0, 0)
-        self.sP_rotated = colvect(0, 0)
+        self.sP_r = colvect(0, 0)
         self.rP = colvect(0, 0)
         self.dsP = colvect(0, 0)
         self.drP = colvect(0, 0)
@@ -194,7 +194,7 @@ class Point(Base):
     # new values will be automatically defined as column vector
     sPlocal = as_column_property("sPlocal")
     sP = as_column_property("sP")
-    sP_rotated = as_column_property("sP_rotated")
+    sP_r = as_column_property("sP_r")
     rP = as_column_property("rP")
     dsP = as_column_property("dsP")
     drP = as_column_property("drP")

@@ -79,7 +79,7 @@ print(f"Number of uVector instances: {uvector_count}")
 print(f"Number of Force instances: {force_count}")
 print(f"Number of Joint instances: {joint_count}")
 
-my_dynamic_model = PmdDynamicModel()
+my_dynamic_model = PlanarDynamicModel()
 my_dynamic_model.solve()
 
 ecchime = 1

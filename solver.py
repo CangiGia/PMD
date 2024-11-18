@@ -13,7 +13,7 @@ from PMD.pmd_functions import *
 from scipy.integrate import solve_ivp
 
 
-class PmdDynamicModel:
+class PlanarDynamicModel:
     def __init__(self):
         grouped_calsses = group_classes()
         self.Bodies = grouped_calsses.get("Body", [])
@@ -47,14 +47,14 @@ class PmdDynamicModel:
             body.A = A_matrix(body.p)
 
         # mass (inertia) matrix as an array
-        M_array = np.zeros((nB3, 1))
-        M_inv_array = np.zeros((nB3, 1))
+        self.M_array = np.zeros((nB3, 1))
+        self.M_inv_array = np.zeros((nB3, 1))
         for Bi in range(nB):
             is_ = 3 * Bi
             ie_ = is_ + 3
-            M_array[is_:ie_] = np.array([[self.Bodies[Bi].m], [self.Bodies[Bi].m], [self.Bodies[Bi].J]])
-            M_inv_array[is_:ie_] = np.array([[self.Bodies[Bi].m_inv], [self.Bodies[Bi].m_inv], [self.Bodies[Bi].J_inv]])
-        ##### ##### ##### ##### ##### 
+            self.M_array[is_:ie_] = np.array([[self.Bodies[Bi].m], [self.Bodies[Bi].m], [self.Bodies[Bi].J]])
+            self.M_inv_array[is_:ie_] = np.array([[self.Bodies[Bi].m_inv], [self.Bodies[Bi].m_inv], [self.Bodies[Bi].J_inv]])
+        ##### ##### ##### ##### #####  
 
         # points #! CHECK CON MATLAB - Probabile problema di indicizzazione
         ##### ##### ##### ##### #####
@@ -63,7 +63,7 @@ class PmdDynamicModel:
             point = self.Points[Pi]
             if point.Bindex == 0:
                 point.sP = point.sPlocal
-                point.sP_rotated = s_rot(point.sP)
+                point.sP_r = s_rot(point.sP)
                 point.rP = point.sP
 
             for Bi in range(nB):
@@ -235,7 +235,7 @@ class PmdDynamicModel:
             if Bi != 0:
                 body = self.Bodies[Bi-1]
                 point.sP = body.A @ point.sPlocal
-                point.sP_rotated = s_rot(point.sP)
+                point.sP_r = s_rot(point.sP)
                 point.rP = body.r + point.sP
 
         # compute u = A * up
@@ -255,13 +255,13 @@ class PmdDynamicModel:
         for Pi, point in enumerate(self.Points):
             Bi = point.Bindex
             if Bi != 0:
-                point.sP_d = point.sP_r * self.Bodies[Bi].p_d
-                point.rP_d = self.Bodies[Bi].r_d + point.sP_d
+                point.dsp = point.sP_r * self.Bodies[Bi-1].p_d
+                point.drp = self.Bodies[Bi-1].r_d + point.dsp
 
-        for Vi, uvector in enumerate(self.Uvectors):
+        for Vi, uvector in enumerate(self.uVectors):
             Bi = uvector.Bindex
             if Bi != 0:
-                uvector.u_d = uvector.u_r * self.Bodies[Bi].p_d
+                uvector.u_d = uvector.u_r * self.Bodies[Bi-1].p_d
             
     def __compute_constraints(self): #! - To be completed for all joint type -
         nConst = self.Joints[-1].rowe
@@ -346,10 +346,10 @@ class PmdDynamicModel:
                 Pj = joint.jPindex
 
                 Di = np.block([
-                    [np.eye(2), self.Points[Pi].sP_rotated.reshape(2, 1)]
+                    [np.eye(2), self.Points[Pi].sP_r.reshape(2, 1)]
                 ])
                 Dj = np.block([
-                    [-np.eye(2), -self.Points[Pj].sP_rotated.reshape(2, 1)]
+                    [-np.eye(2), -self.Points[Pj].sP_r.reshape(2, 1)]
                 ])
 
                 if joint.fix == 1:
@@ -382,11 +382,11 @@ class PmdDynamicModel:
                 if joint.fix == 1:
                     Di = np.vstack([
                         Di,
-                        [uj.T, np.dot(uj.T, self.Points[Pi].sP_rotated).reshape(1)]
+                        [uj.T, np.dot(uj.T, self.Points[Pi].sP_r).reshape(1)]
                     ])
                     Dj = np.vstack([
                         Dj,
-                        [-uj.T, -np.dot(uj.T, self.Points[Pj].sP_rotated).reshape(1)]
+                        [-uj.T, -np.dot(uj.T, self.Points[Pj].sP_r).reshape(1)]
                     ])
 
             elif joint.type == 'rev-rev':
@@ -478,66 +478,87 @@ class PmdDynamicModel:
             ird = self.Bodies[Bi].irv - 1
             u[ir:ir+3] = np.block([[self.Bodies[Bi].r],[self.Bodies[Bi].p]])
             u[ird:ird+3] = np.block([[self.Bodies[Bi].r_d], [self.Bodies[Bi].p_d]])
-
+        
         return u
-    
-    def __u2bodies(self):
+
+    def __u2bodies(self, u):
         """
         Unpack u into coordinate and velocity sub-arrays.
         """ 
         nB = len(self.Bodies)
         for Bi in range(nB): 
-            ir = self.Bodies(Bi).irc - 1
-            ird = self. Bodies(Bi).irv - 1
-            self.Bodies(Bi).r   = self.u[ir:ir+2] #! attention to the index
-            self.Bodies(Bi).p   = self.u[ir+2]
-            self.Bodies(Bi).r_d = self.u[ird:ird+2]
-            self.Bodies(Bi).p_d = self.u[ird+2]
+            ir = self.Bodies[Bi].irc - 1
+            ird = self. Bodies[Bi].irv - 1
+            self.Bodies[Bi].r   = u[ir:ir+2] #! attention to the index
+            self.Bodies[Bi].p   = u[ir+2].item()
+            self.Bodies[Bi].r_d = u[ird:ird+2]
+            self.Bodies[Bi].p_d = u[ird+2].item()
 
     def __compute_force(self, t):
         """
         Compute and return the array of forces acting on the system at time t.
         """
-
-        # Initialize body force vectors
+        #! !!! THIS PART OF CODE NEED TO BE COMPELTED !!!
+        #! is it necessary ??
         for body in self.Bodies:
-            body.f = np.array([0.0, 0.0])  # Initialize force vector
-            body.n = 0.0  # Initialize torque (moment) scalar
+            body.f = colvect([0.0, 0.0]) # initialize body force vectors
+            body.n = 0.0                 # initialize torque (moment) scalar
 
-        # Loop over all forces and apply them to the appropriate bodies
-        for force in self.Forces:
-            if force.type == 'weight':
-                # Apply weight to each body
-                for body in self.Bodies:
+        #! the below code used to build the force array need to be optimized, 
+        #! the class Force should keep inside all the method required to build
+        #! the specific type of force -> code easier and more readable.
+        # loop over all forces and apply them to the appropriate bodies
+        for Fi, force in enumerate(self.Forces):
+            if force.type == 'weight':      # apply weight to each body
+                for body in self.Bodies: 
                     body.f += body.wgt
-            elif force.type == 'ptp':
-                # Call method or function for point-to-point force
-                self.SDA_ptp()
-            elif force.type == 'rot-sda':
-                # Call method or function for rotational SDA force
-                self.SDA_rot()
-            elif force.type == 'flocal':
-                # Apply local force to the specified body
-                Bi = force.iBindex
-                self.Bodies[Bi].f += self.Bodies[Bi].A @ force.flocal
-            elif force.type == 'f':
-                # Apply a global force to the specified body
-                Bi = force.iBindex
-                self.Bodies[Bi].f += force.f
-            elif force.type == 'T':
-                # Apply a torque to the specified body
-                Bi = force.iBindex
-                self.Bodies[Bi].n += force.T
-            elif force.type == 'user':
-                # Call a user-defined force function
-                self.user_force()
 
-        # Construct the force array g
-        g = np.zeros(self.nB3)  # Initialize force array
+            elif force.type == 'ptp':       # call method or function for point-to-point force
+                Pi, Pj = force.iPindex, force.jPindex
+                Bi, Bj = force.iBindex, force.jBindex
+                d = self.Points[Pi].rP - self.Points[Pj].rP
+                dd = self.Points[Pi].drP - self.Points[Pj].drP
+                L = np.sqrt(d.T@d)
+                dL = d.T@dd/L
+                delta = L - self.Forces[Fi].L0
+                u = d/L 
+
+                f = self.Forces[Fi].k*delta + self.Forces[Fi].dc*dL + self.Forces[Fi].f_a
+                fi = f*u
+
+                if Bi != 0:
+                    self.Bodies[Bi-1].f = self.Bodies[Bi-1].f - fi
+                    self.Bodies[Bi-1].n = self.Bodies[Bi-1].n - ((self.Points[Pi].sP_r).T@fi).item() # extracting the single value
+                
+                if Bj != 0: 
+                    self.Bodies[Bj-1].f = self.Bodies[Bj-1].f + fi
+                    self.Bodies[Bj-1].n = self.Bodies[Bj-1].n + ((self.Points[Pj].sP_r).T@fi).item() # extracting the single value
+
+            elif force.type == 'rot-sda':   # call method or function for rotational SDA force
+                # self.SDA_rot()
+                pass
+            elif force.type == 'flocal':    # apply local force to the specified body
+                # Bi = force.iBindex
+                # self.Bodies[Bi].f += self.Bodies[Bi].A @ force.flocal
+                pass
+            elif force.type == 'f':         # apply a global force to the specified body
+                # Bi = force.iBindex
+                # self.Bodies[Bi].f += force.f
+                pass
+            elif force.type == 'T':         # apply a torque to the specified body
+                # Bi = force.iBindex
+                # self.Bodies[Bi].n += force.T
+                pass
+            elif force.type == 'user':      # call a user-defined force function
+                # self.user_force()
+                pass
+
+        nB3 = 3 * len(self.Bodies)
+        g = np.zeros([nB3, 1])
         for Bi, body in enumerate(self.Bodies):
-            ks = body.irc
-            ke = ks + 2
-            g[ks:ke] = np.concatenate([body.f, [body.n]])
+            ks = body.irc - 1
+            ke = ks + 3
+            g[ks:ke] = np.vstack([body.f, body.n])
 
         return g
 
@@ -551,7 +572,7 @@ class PmdDynamicModel:
         for _ in range(20): #! 20 is an arbitrary value ... could be a parameter!
             self.__update_position()            # update position entities
             Phi = self.__compute_constraints()  # evaluate constraints
-            D = self.__compute_jacobian()               # evaluate Jacobian
+            D = self.__compute_jacobian()       # evaluate Jacobian
             ff = np.sqrt(np.dot(Phi.T, Phi))    # are the constraints violated?
 
             if ff < 1.0e-10:
@@ -609,7 +630,6 @@ class PmdDynamicModel:
         print(" x           y           phi")
         for row in coords:
             print(f"{row[0]:<12.5f}{row[1]:<12.5f}{row[2]:<12.5f}")
-
         print("\nCorrected velocities")
         print(" x-dot       y-dot       phi-dot")
         for row in vels:
@@ -620,8 +640,9 @@ class PmdDynamicModel:
         Solve the constrained equations of motion at time t with the standard
         Lagrange multiplier method.
         """
+        nB3 = 3 * len(self.Bodies)
         nConst = self.Joints[-1].rowe
-        self.__u2bodies()  # unpack u into coordinate and velocity sub-arrays
+        self.__u2bodies(u)  # unpack u into coordinate and velocity sub-arrays
         self.__update_position()
         self.__update_velocity()
         h_a = self.__compute_force(t)  # array of applied forces
@@ -641,8 +662,8 @@ class PmdDynamicModel:
 
             # solve the system of equations
             sol = np.linalg.solve(DMD, rhs)
-            c_dd = sol[:self.nB3]
-            Lambda = sol[self.nB3:]
+            c_dd = sol[:nB3]
+            Lambda = sol[nB3:]
 
         # update accelerations for each body
         for Bi, body in enumerate(self.Bodies):
@@ -652,14 +673,11 @@ class PmdDynamicModel:
             body.r_dd = c_dd[ir:i2 + 1]
             body.p_dd = c_dd[i3]
 
-        self.__bodies_to_u_d()  # pack velocities and accelerations into u_d
-
-        # Increment the number of function evaluations
-        self.num += 1
+        self.__bodies2ud()          # pack velocities and accelerations into ud
+        self.num += 1               # increment the number of function evaluations
 
         if self.showtime == 1:
-            # Inform the user of progress every 100 function evaluations
-            if self.t10 % 100 == 0:
+            if self.t10 % 100 == 0: # inform the user of progress every 100 function evaluations
                 print(t)
             self.t10 += 1
     
@@ -682,7 +700,7 @@ class PmdDynamicModel:
                 print("Redundancy in the constraints")
 
         # pack coordinates and velocities ito u array
-        self.__bodies2u()
+        u = self.__bodies2u()
         t_initial = 0
         t_final = float(input("Final time = ? "))
 
