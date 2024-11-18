@@ -427,30 +427,45 @@ class PmdDynamicModel:
     #! ?? utilizzato solo in casi particolari di vincoli ??
     def __rhs_velocity(self):
         """
-        Calculate the right-hand side velocity vector for the system constraints.
+        Calculate the right-hand side velocity vector for the system 
+        constraints.
 
         Returns
         -------
-        rhs : NDArray
-            A column vector representing the right-hand side of the velocity equations.
+        rhsv : NDArray
+            A column vector representing the right-hand side of the 
+            velocity equations.
         """
 
         nConst = self.Joints[-1].rowe
-        rhs = np.zeros((nConst, 1))
+        rhsv = np.zeros((nConst, 1))
 
         for Ji in range(len(self.Joints)):
             joint = self.Joints[Ji]
 
             if joint.type == 'rel-rot':
                 f = self.V_rel_rot(joint)
-                rhs[joint.rows - 1:joint.rowe] = f
+                rhsv[joint.rows - 1:joint.rowe] = f
                 
             elif joint.type == 'rel-tran':
                 f = self.V_rel_tran(joint)
-                rhs[joint.rows - 1:joint.rowe] = f
+                rhsv[joint.rows - 1:joint.rowe] = f
 
-        return rhs
+        return rhsv
 
+    def __rhs_acceleration(): 
+        """
+        Calculate the right-hand side acceleration vector for the system 
+        constraints.
+
+        Returns
+        -------
+        rhsa : NDArray
+            A column vector representing the right-hand side of the 
+            accceleration equations.
+        """
+        pass
+    
     def __bodies2u(self): 
         """ 
         Pack coordinates and velocities into the u array.
@@ -615,7 +630,7 @@ class PmdDynamicModel:
             c_dd = self.M_inv_array * h_a # solve for accelerations
         else:
             D = self.__compute_jacobian()
-            rhsA = self.rhs_acc(t)  # right-hand side of acceleration constraints (gamma)
+            rhsA = self.__rhs_acceleration()  # right-hand side of acceleration constraints (gamma)
 
             # construct the matrix system to solve
             DMD = np.block([
