@@ -1,8 +1,11 @@
 """
+- Planar Multi-body Dynamics simulation solver - 
+== 
+
 This Python module provides the necessary algorithms and functions to solve 
 planar multi-body dynamic models.
 
-Author: Giacomo Cangi
+Author: - Giacomo Cangi, PhD student @ UniPG -
 """
 
 import os
@@ -453,7 +456,7 @@ class PlanarDynamicModel:
 
         return rhsv
 
-    def __rhs_acceleration(): 
+    def __rhs_acceleration(self):
         """
         Calculate the right-hand side acceleration vector for the system 
         constraints.
@@ -462,10 +465,85 @@ class PlanarDynamicModel:
         -------
         rhsa : NDArray
             A column vector representing the right-hand side of the 
-            accceleration equations.
+            acceleration equations.
         """
-        pass
-    
+        nConst = self.Joints[-1].rowe
+        rhsa = np.zeros([nConst, 1])
+        
+        for Ji, joint in enumerate(self.Joints):
+            if joint.type == "rev":
+                Pi, Pj = joint.iPindex, joint.jPindex
+                Bi, Bj = self.Points[Pi].Bindex, self.Points[Pj].Bindex
+
+                if Bi == 0:
+                    f = s_rot(self.Points[Pj].dsP) * self.Bodies[Bj - 1].p_d
+                elif Bj == 0:
+                    f = -s_rot(self.Points[Pi].dsP) * self.Bodies[Bi - 1].p_d
+                else:
+                    f = -s_rot(self.Points[Pi].dsP) * self.Bodies[Bi - 1].p_d 
+                    + s_rot(self.Points[Pj].dsP) * self.Bodies[Bj - 1].p_d
+
+                if joint.fix == 1:
+                    f = np.vstack([f, [0]])
+            
+            elif joint.type == "tran":
+                Bi, Bj = joint.iBindex, joint.jBindex
+                Pi, Pj = joint.iPindex, joint.jPindex
+                ujd = self.uVectors[joint.jUindex].u_d
+                ujd_r = s_rot(ujd)
+
+                if Bi == 0:
+                    f2 = 0
+                elif Bj == 0:
+                    f2 = 0
+                else:
+                    r_diff = self.Bodies[Bi].r - self.Bodies[Bj].r
+                    p_d_product = np.dot(ujd.T, r_diff) * self.Bodies[Bi].p_d
+                    r_d_diff = self.Bodies[Bi].r_d - self.Bodies[Bj].r_d
+                    f2 = p_d_product - 2 * np.dot(ujd_r.T, r_d_diff)
+
+                f = np.array([[f2], [0]])
+
+                if joint.fix == 1:
+                    d = self.Points[Pi].rP - self.Points[Pj].rP
+                    d_d = self.Points[Pi].rP_d - self.Points[Pj].rP_d
+                    L = joint.p0
+                    u = d / L
+                    u_d = d_d / L
+                    f3 = -np.dot(u_d.T, d_d)
+
+                    if Bi == 0:
+                        f3 += np.dot(u.T, self.s_rot(self.Points[Pj].sP_d) * self.Bodies[Bj].p_d)
+                    elif Bj == 0:
+                        f3 -= np.dot(u.T, self.s_rot(self.Points[Pi].sP_d) * self.Bodies[Bi].p_d)
+                    else:
+                        term1 = self.Points[Pi].sP_d * self.Bodies[Bi].p_d
+                        term2 = self.Points[Pj].sP_d * self.Bodies[Bj].p_d
+                        f3 -= np.dot(u.T, self.s_rot(term1 - term2))
+
+                    f = np.vstack([f, [f3]])
+                
+            elif joint.type == "rev-rev": 
+                pass
+            elif joint.type == "rev-tran": 
+                pass
+            elif joint.type == "rigid": 
+                pass
+            elif joint.type == "disc": 
+                pass
+            elif joint.type == "rel-rot": 
+                pass
+            elif joint.type == "rel-tran": 
+                pass
+        
+            #! -1 should be fixed during the constraint definition, to avoid
+            #! this continuos managing od indexis for slicing operations
+            rs = joint.rows - 1 
+            re = rs + 2 
+            rhsa[rs:re] = f
+        
+        return rhsa
+
     def __bodies2u(self): 
         """ 
         Pack coordinates and velocities into the u array.
@@ -481,6 +559,21 @@ class PlanarDynamicModel:
         
         return u
 
+    def __bodies2ud(self):
+        """ 
+        Pack velocities and accelerations into ud. 
+        """
+        nB6 = 6 * len(self.Bodies)
+        ud = np.zeros([nB6, 1])
+
+        for Bi, body in enumerate(self.Bodies):
+            ir = body.irc - 1
+            ird = body.irv - 1
+            ud[ir:ir + 3] = np.vstack([body.r_d, body.p_d]).reshape(3, 1)
+            ud[ird:ird + 3] = np.vstack([body.r_dd, body.p_dd]).reshape(3, 1)
+
+        return ud
+    
     def __u2bodies(self, u):
         """
         Unpack u into coordinate and velocity sub-arrays.
@@ -654,9 +747,12 @@ class PlanarDynamicModel:
             rhsA = self.__rhs_acceleration()  # right-hand side of acceleration constraints (gamma)
 
             # construct the matrix system to solve
+            #! devo estrarre i singoli valori dal vettore M_array perchè
+            #! è un vettore di array, da modificare sopra sulla creazione 
+            #! del vettore stesso !!!
             DMD = np.block([
-                [np.diag(self.M_array), -D.T],
-                [D, np.zeros((nConst, nConst))]
+                [np.diag([arr[0] for arr in self.M_array]), -D.T], 
+                [D, np.zeros([nConst, nConst])]
             ])
             rhs = np.concatenate([h_a, rhsA])
 
@@ -667,19 +763,19 @@ class PlanarDynamicModel:
 
         # update accelerations for each body
         for Bi, body in enumerate(self.Bodies):
-            ir = body.irc
-            i2 = ir + 1
-            i3 = i2 + 1
-            body.r_dd = c_dd[ir:i2 + 1]
+            ir = body.irc - 1
+            i2 = ir + 2
+            i3 = i2
+            body.r_dd = c_dd[ir:i2]
             body.p_dd = c_dd[i3]
 
-        self.__bodies2ud()          # pack velocities and accelerations into ud
-        self.num += 1               # increment the number of function evaluations
+        ud = self.__bodies2ud()          # pack velocities and accelerations into ud
+        self.__num += 1               # increment the number of function evaluations
 
-        if self.showtime == 1:
-            if self.t10 % 100 == 0: # inform the user of progress every 100 function evaluations
+        if self.__showtime == 1:
+            if self.__t10 % 100 == 0: # inform the user of progress every 100 function evaluations
                 print(t)
-            self.t10 += 1
+            self.__t10 += 1
     
     def solve(self):
         """
@@ -691,6 +787,7 @@ class PlanarDynamicModel:
         nB6 = 6 * nB
         u = np.zeros(nB6)
         ans = input("Do you want to correct the initial conditions? [(y)es/(n)o] ").lower()
+
         if nConst != 0:
             if ans == 'y':
                 self.__ic_correct()
@@ -704,22 +801,30 @@ class PlanarDynamicModel:
         t_initial = 0
         t_final = float(input("Final time = ? "))
 
+        # utils to check the convergence
+        self.__showtime = 1
+        self.__num = 0
+        self.__t10 = 0
+        
         if t_final == 0:
             self.__analysis(0, u)
-            T = [0]
-            uT = [u]
+            T = 0
+            uT = u.T
         else:
             dt = float(input("Reporting time-step = ? "))
             Tspan = np.arange(t_initial, t_final + dt, dt)
 
-        #     def __wrapper_analysis(t, y):
-        #         return self.__analysis(t, y) 
+            def __wrapped_analysis(t, y):
+                return self.__analysis(t, y)
 
-        #     options = {'rtol': 1e-6, 'atol': 1e-9}
-        #     sol = solve_ivp(wrapper_analysis, [t_initial, t_final], u, t_eval=Tspan, **options)
-        #     T = sol.t
-        #     uT = sol.y.T
+            usol = u.flatten()
+            options = {'rtol': 1e-6, 'atol': 1e-9}
+            sol = solve_ivp(__wrapped_analysis, [t_initial, t_final], usol, t_eval=Tspan, **options)
+            T = sol.t
+            uT = sol.y.T
 
-        # num_evals = len(T)
-        # print(f"Number of function evaluations = {num_evals}")
-        # os.system("echo -en '\\007'")
+        num_evals = self._PlanarDynamicModel__t10
+        print(f"Number of function evaluations = {num_evals}")
+        print(f"Simulation completed!")
+        
+        return T, uT
