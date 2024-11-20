@@ -12,7 +12,7 @@ import os
 import numpy as np
 import scipy as sc
 import numpy.linalg as lng
-from PMD.pmd_functions import *
+from .pmd_functions import *
 from scipy.integrate import solve_ivp
 
 
@@ -756,6 +756,11 @@ class PlanarDynamicModel:
             ])
             rhs = np.concatenate([h_a, rhsA])
 
+            #* check on conditioned index of the coefficient matrix
+            cond_number = np.linalg.cond(DMD)
+            if cond_number > 1e12:
+                print(f"Warning: DMD matrix is poorly conditioned with condition number {cond_number}")
+    
             # solve the system of equations
             sol = np.linalg.solve(DMD, rhs)
             c_dd = sol[:nB3]
@@ -769,13 +774,17 @@ class PlanarDynamicModel:
             body.r_dd = c_dd[ir:i2]
             body.p_dd = c_dd[i3]
 
-        ud = self.__bodies2ud()          # pack velocities and accelerations into ud
-        self.__num += 1               # increment the number of function evaluations
+        ud = self.__bodies2ud()             # pack velocities and accelerations into ud
+        self.__num += 1                     # increment the number of function evaluations
 
         if self.__showtime == 1:
-            if self.__t10 % 100 == 0: # inform the user of progress every 100 function evaluations
-                print(t)
-            self.__t10 += 1
+            if self.__t10 % 100 == 0:
+                print(f"Time: {t}")
+                print(f"Positions: {[body.r for body in self.Bodies]}")
+                print(f"Velocities: {[body.r_d for body in self.Bodies]}")
+                print(f"Accelerations: {[body.r_dd for body in self.Bodies]}")
+    
+        return ud
     
     def solve(self):
         """
@@ -798,6 +807,11 @@ class PlanarDynamicModel:
 
         # pack coordinates and velocities ito u array
         u = self.__bodies2u()
+        
+        #* check on u array
+        if np.any(np.isnan(u)) or np.any(np.isinf(u)):
+            raise ValueError("Initial conditions contain NaN or Inf values.")
+
         t_initial = 0
         t_final = float(input("Final time = ? "))
 
@@ -814,12 +828,9 @@ class PlanarDynamicModel:
             dt = float(input("Reporting time-step = ? "))
             Tspan = np.arange(t_initial, t_final + dt, dt)
 
-            def __wrapped_analysis(t, y):
-                return self.__analysis(t, y)
-
             usol = u.flatten()
             options = {'rtol': 1e-6, 'atol': 1e-9}
-            sol = solve_ivp(__wrapped_analysis, [t_initial, t_final], usol, t_eval=Tspan, **options)
+            sol = solve_ivp(self.__analysis, [t_initial, t_final], usol, t_eval=Tspan, method='DOP853', **options)
             T = sol.t
             uT = sol.y.T
 
