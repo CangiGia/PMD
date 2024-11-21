@@ -34,9 +34,7 @@ def group_classes():
         A dictionary where each key is a class name (string) and the corresponding 
         value is a list of instances of that class type.
     """
-    grouped_instances = {} # empty dict
-    
-    # calling global variables from another python module
+    grouped_instances = {}
     global_vars = get_globals()
     
     # loop through global vars

@@ -12,7 +12,7 @@ import os
 import numpy as np
 import scipy as sc
 import numpy.linalg as lng
-from .pmd_functions import *
+from pmd_functions import *
 from scipy.integrate import solve_ivp
 
 
@@ -583,9 +583,9 @@ class PlanarDynamicModel:
             ir = self.Bodies[Bi].irc - 1
             ird = self. Bodies[Bi].irv - 1
             self.Bodies[Bi].r   = u[ir:ir+2] #! attention to the index
-            self.Bodies[Bi].p   = u[ir+2].item()
+            self.Bodies[Bi].p   = u[ir+2][0]
             self.Bodies[Bi].r_d = u[ird:ird+2]
-            self.Bodies[Bi].p_d = u[ird+2].item()
+            self.Bodies[Bi].p_d = u[ird+2][0]
 
     def __compute_force(self, t):
         """
@@ -779,13 +779,31 @@ class PlanarDynamicModel:
 
         if self.__showtime == 1:
             if self.__t10 % 100 == 0:
-                print(f"Time: {t}")
-                print(f"Positions: {[body.r for body in self.Bodies]}")
-                print(f"Velocities: {[body.r_d for body in self.Bodies]}")
-                print(f"Accelerations: {[body.r_dd for body in self.Bodies]}")
-    
+                #* print to check - only for debuggin purpouse
+                print(f"Time: {t}\n")
+
+                print("Positions:")
+                for i, body in enumerate(self.Bodies):
+                    print(f"Body {i+1}")
+                    for row in np.atleast_2d(body.r):
+                        for value in row:
+                            print(f"    [{value:>10.6f}]") 
+                
+                print("\nVelocities:")
+                for i, body in enumerate(self.Bodies):
+                    print(f"Body {i+1}")
+                    for row in np.atleast_2d(body.r_d):
+                        for value in row:
+                            print(f"    [{value:>10.6f}]")
+                
+                print("\nAccelerations:")
+                for i, body in enumerate(self.Bodies):
+                    print(f"Body {i+1}")
+                    for row in np.atleast_2d(body.r_dd):
+                        for value in row:
+                            print(f"    [{value:>10.6f}]")
         return ud
-    
+
     def solve(self):
         """
         Solve the EQMs of the planar multi-body system.
@@ -834,7 +852,7 @@ class PlanarDynamicModel:
             T = sol.t
             uT = sol.y.T
 
-        num_evals = self._PlanarDynamicModel__t10
+        num_evals = self._PlanarDynamicModel__num
         print(f"Number of function evaluations = {num_evals}")
         print(f"Simulation completed!")
         
