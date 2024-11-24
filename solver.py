@@ -15,6 +15,9 @@ import numpy.linalg as lng
 from pmd_functions import *
 from scipy.integrate import solve_ivp
 
+# for debugging porpouse
+import pdb 
+
 
 class PlanarDynamicModel:
     def __init__(self):
@@ -334,8 +337,8 @@ class PlanarDynamicModel:
 
         Returns
         -------
-            D (NDArray)
-                The Jacobian matrix of shape (nConst, nB3).
+        D (NDArray)
+            The Jacobian matrix of shape (nConst, nB3).
         """
         nConst = self.Joints[-1].rowe
         nB3 = 3 * len(self.Bodies)
@@ -578,6 +581,9 @@ class PlanarDynamicModel:
         """
         Unpack u into coordinate and velocity sub-arrays.
         """ 
+        #* for debugging purpose
+        pdb.set_trace()
+        
         nB = len(self.Bodies)
         for Bi in range(nB): 
             ir = self.Bodies[Bi].irc - 1
@@ -779,7 +785,7 @@ class PlanarDynamicModel:
 
         if self.__showtime == 1:
             if self.__t10 % 100 == 0:
-                #* print to check - only for debuggin purpouse
+                #* print to check - only for debuggin purpose
                 print(f"Time: {t}\n")
 
                 print("Positions:")
@@ -812,7 +818,6 @@ class PlanarDynamicModel:
         nConst = self.Joints[-1].rowe
         nB = len(self.Bodies)
         nB6 = 6 * nB
-        u = np.zeros(nB6)
         ans = input("Do you want to correct the initial conditions? [(y)es/(n)o] ").lower()
 
         if nConst != 0:
