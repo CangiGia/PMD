@@ -2,8 +2,8 @@
 - Planar Multi-body Dynamics simulation solver - 
 == 
 
-This Python module provides the necessary algorithms and functions to solve 
-planar multi-body dynamic models.
+This Python module provides the necessary algorithms and functions to 
+solve any planar multi-body dynamic model.
 
 Author: - Giacomo Cangi, PhD student @ UniPG -
 """
@@ -581,9 +581,13 @@ class PlanarDynamicModel:
         """
         Unpack u into coordinate and velocity sub-arrays.
         """ 
-        #* for debugging purpose
-        pdb.set_trace()
+        #* for debugging purpose - uncomment the below row
+        # pdb.set_trace()
         
+        # check on "u" shape, avoid errors during the simulation
+        if u.ndim != 2:
+            u = u.reshape(-1, 1)
+            
         nB = len(self.Bodies)
         for Bi in range(nB): 
             ir = self.Bodies[Bi].irc - 1
@@ -593,7 +597,7 @@ class PlanarDynamicModel:
             self.Bodies[Bi].r_d = u[ird:ird+2]
             self.Bodies[Bi].p_d = u[ird+2][0]
 
-    def __compute_force(self, t):
+    def __compute_force(self):
         """
         Compute and return the array of forces acting on the system at time t.
         """
@@ -744,7 +748,7 @@ class PlanarDynamicModel:
         self.__u2bodies(u)  # unpack u into coordinate and velocity sub-arrays
         self.__update_position()
         self.__update_velocity()
-        h_a = self.__compute_force(t)  # array of applied forces
+        h_a = self.__compute_force()  # array of applied forces
 
         if nConst == 0:
             c_dd = self.M_inv_array * h_a # solve for accelerations
@@ -783,31 +787,29 @@ class PlanarDynamicModel:
         ud = self.__bodies2ud()             # pack velocities and accelerations into ud
         self.__num += 1                     # increment the number of function evaluations
 
-        if self.__showtime == 1:
-            if self.__t10 % 100 == 0:
-                #* print to check - only for debuggin purpose
-                print(f"Time: {t}\n")
-
-                print("Positions:")
-                for i, body in enumerate(self.Bodies):
-                    print(f"Body {i+1}")
-                    for row in np.atleast_2d(body.r):
-                        for value in row:
-                            print(f"    [{value:>10.6f}]") 
+        # if self.__showtime == 1:
+        #     if self.__t10 % 100 == 0:
+        #         #* print to check - only for debuggin purpose
+        #         print("Positions:")
+        #         for i, body in enumerate(self.Bodies):
+        #             print(f"Body {i+1}")
+        #             for row in np.atleast_2d(body.r):
+        #                 for value in row:
+        #                     print(f"    [{value:>10.6f}]") 
                 
-                print("\nVelocities:")
-                for i, body in enumerate(self.Bodies):
-                    print(f"Body {i+1}")
-                    for row in np.atleast_2d(body.r_d):
-                        for value in row:
-                            print(f"    [{value:>10.6f}]")
+        #         print("\nVelocities:")
+        #         for i, body in enumerate(self.Bodies):
+        #             print(f"Body {i+1}")
+        #             for row in np.atleast_2d(body.r_d):
+        #                 for value in row:
+        #                     print(f"    [{value:>10.6f}]")
                 
-                print("\nAccelerations:")
-                for i, body in enumerate(self.Bodies):
-                    print(f"Body {i+1}")
-                    for row in np.atleast_2d(body.r_dd):
-                        for value in row:
-                            print(f"    [{value:>10.6f}]")
+        #         print("\nAccelerations:")
+        #         for i, body in enumerate(self.Bodies):
+        #             print(f"Body {i+1}")
+        #             for row in np.atleast_2d(body.r_dd):
+        #                 for value in row:
+        #                     print(f"    [{value:>10.6f}]")
         return ud
 
     def solve(self):
@@ -849,11 +851,10 @@ class PlanarDynamicModel:
             uT = u.T
         else:
             dt = float(input("Reporting time-step = ? "))
-            Tspan = np.arange(t_initial, t_final + dt, dt)
-
-            usol = u.flatten()
-            options = {'rtol': 1e-6, 'atol': 1e-9}
-            sol = solve_ivp(self.__analysis, [t_initial, t_final], usol, t_eval=Tspan, method='DOP853', **options)
+            Tspan = np.arange(t_initial, t_final, dt)
+            u0 = u.flatten()
+            options = {'rtol': 1e-6, 'atol': 1e-9, 'max_step': (Tspan[1] - Tspan[0])}
+            sol = solve_ivp(self.__analysis, [t_initial, t_final], u0, t_eval=Tspan, method='LSODA', **options)
             T = sol.t
             uT = sol.y.T
 

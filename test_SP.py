@@ -3,6 +3,7 @@ import scipy as sc
 from maker import *
 from solver import *
 from pmd_functions import *
+import matplotlib.pyplot as plt
 
 
 #* Multi-Body model creation - Bodies, Joints, Forces
@@ -81,5 +82,9 @@ print(f"Number of Joint instances: {joint_count}")
 
 my_dynamic_model = PlanarDynamicModel()
 time, solution = my_dynamic_model.solve()
+
+plt.figure()
+plt.plot(time, solution[:,5])
+plt.show() 
 
 ecchime = 1
