@@ -61,15 +61,19 @@ def as_column_property(name):
     Parameters
     ----------
     name (str)
-        The name of the property to define. The actual value is stored in a private attribute 
-        named with an underscore prefix.
+        The name of the property to define. The actual value is stored in a 
+        private attribute named with an underscore prefix.
 
     Returns
     -------
     property
         A property object that enforces column-vector format on assignment.
     """
-    private_name = f"_{name}"
+    # Determine the private attribute name based on the input
+    if name.startswith("_"):
+        private_name = f"__{name.lstrip('_')}"
+    else:
+        private_name = f"__{name}"
 
     @property
     def prop(self):
@@ -88,7 +92,7 @@ def as_column_property(name):
             elif value.ndim == 2 and value.shape[0] == 1:
                 value = value.T
         else:
-            raise ValueError("Value must be a list or numpy array.")
+            raise ValueError("The value must be a list or a NumPy array. Received: {}".format(type(value)))
 
         setattr(self, private_name, value)
 

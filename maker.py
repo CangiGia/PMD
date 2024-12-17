@@ -1,13 +1,16 @@
 """
+- Planar Multi-body Dynamics simulation maker - 
+== 
+
 This Python module encompasses all the essential components for constructing a 
 planar multi-body dynamic model.
 
-Author: Giacomo Cangi
+Author: - Giacomo Cangi, PhD student @ UniPG -
 """
 
 import numpy as np
 from numpy.typing import *
-from PMD.pmd_functions import *
+from pmd_functions import *
 
 
 class Base:
@@ -79,47 +82,36 @@ class Body(Base):
         Position vector (x, y) of the body.
     p (float) 
         Orientation angle (phi) of the body.
-    r_d (NDArray) 
+    dr (NDArray) 
         Time derivative of position (x, y).
-    p_d (float) 
+    dp (float) 
         Time derivative of the orientation angle (phi).
-    A (NDArray) 
-        Rotational transformation matrix.
-    r_dd (NDArray) 
+    ddr (NDArray) 
         Second derivative of position (x, y).
-    p_dd (float) 
+    ddp (float) 
         Second time derivative of the orientation angle (phi).
-    irc (int) 
+
+    Notes
+    -----
+    _A (NDArray) 
+        Rotational transformation matrix.
+    _irc (int) 
         Index of the first element of r in u.
-    irv (int) 
+    _irv (int) 
         Index of the first element of r_dot in u.
-    ira (int) 
+    _ira (int) 
         Index of the first element of r_dot2 in v.
-    m_inv (float) 
+    _invm (float) 
         Inverse of the mass.
-    J_inv (float) 
+    _invJ (float) 
         Inverse of the moment of inertia.
-    wgt (NDArray) 
+    _wgt (NDArray) 
         Weight of the body as a force vector.
-    f (NDArray) 
+    _f (NDArray) 
         Sum of forces acting on the body.
-    n (float) 
+    _n (float) 
         Sum of moments acting on the body.
-    shape (str) 
-        Shape of the body ('circle', 'rect', 'line').
-    R (float) 
-        Radius (for circular bodies).
-    circ (list) 
-        Points on the circumference of the body.
-    W (float) 
-        Width of the body (for rectangular bodies).
-    H (float) 
-        Height of the body (for rectangular bodies).
-    color (str) 
-        Color of the body for visualization.
-    P4 (list) 
-        List of 4 corners of the rectangle.
-    pts (list) 
+    _pts (list) 
         List of point indexes associated with this body.
     """
 
@@ -129,32 +121,26 @@ class Body(Base):
         self.J = 1
         self.r = colvect(0, 0)
         self.p = 0
-        self.r_d = colvect(0, 0)
-        self.p_d = 0
-        self.A = np.eye(2)
-        self.r_dd = colvect(0, 0)
-        self.p_dd = 0
-        self.irc = 0
-        self.irv = 0
-        self.ira = 0
-        self.m_inv = 1
-        self.J_inv = 1
-        self.wgt = colvect(0, 0)
-        self.f = colvect(0, 0)
-        self.n = 0
-        self.shape = ''
-        self.R = 1
-        self.circ = []
-        self.W = 0
-        self.H = 0
-        self.color = 'k'
-        self.P4 = []
-        self.pts = []
+        self.dr = colvect(0, 0)    # default value
+        self.dp = 0                # default value
+        self.ddr = colvect(0, 0)   # default value
+        self.ddp = 0               # default value
+        self._A = np.eye(2)
+        self._irc = 0
+        self._irv = 0
+        self._ira = 0
+        self._invm = 1
+        self._invJ = 1
+        self._wgt = colvect(0, 0)
+        self._f = colvect(0, 0)
+        self._n = 0
+        self._pts = []
     
-    # new values will be automatically defined as column vector
+    # new values will be automatically treated as column vectors, 
+    # even if the user defines them as row vectors or lists!
     r = as_column_property("r")
-    r_d = as_column_property("r_d")
-    r_dd = as_column_property("r_dd")
+    dr = as_column_property("dr")
+    ddr = as_column_property("ddr")
     
 class Point(Base): 
     """
@@ -166,17 +152,20 @@ class Point(Base):
         Body index to which the point belong.
     sPlocal (NDArray)
         Point coordinates with respect to the local reference frame.
-    sP (NDArray)
+    
+    Notes
+    -----
+    _sP (NDArray)
         `x` and `y` components of the vector `s`.
-    sP_r (NDArray)            
+    _sPr (NDArray)            
         `x` and `y` components of the vector `s` rotated.
-    rP (NDArray)
+    _rP (NDArray)
         `x` and `y` coordinates of the point. 
-    dsP (NDArray)
+    _dsP (NDArray)
         First time derivative of the vector `s`. 
-    drP (NDArray)
+    _drP (NDArray)
         `x` and `y` first time derivative of the vector `r`. 
-    ddrP (NDArray)
+    _ddrP (NDArray)
         `x` and `y` second time derivative of the vector `r`.         
     """
 
@@ -184,21 +173,22 @@ class Point(Base):
         super().__init__()  # call to the Base class constructor
         self.Bindex = 0
         self.sPlocal = colvect(0, 0)
-        self.sP = colvect(0, 0)
-        self.sP_r = colvect(0, 0)
-        self.rP = colvect(0, 0)
-        self.dsP = colvect(0, 0)
-        self.drP = colvect(0, 0)
-        self.ddrP = colvect(0, 0)
+        self._sP = colvect(0, 0)
+        self._sPr = colvect(0, 0)
+        self._rP = colvect(0, 0)
+        self._dsP = colvect(0, 0)
+        self._drP = colvect(0, 0)
+        self._ddrP = colvect(0, 0)
 
-    # new values will be automatically defined as column vector
+    # new values will be automatically treated as column vectors, 
+    # even if the user defines them as row vectors or lists!
     sPlocal = as_column_property("sPlocal")
-    sP = as_column_property("sP")
-    sP_r = as_column_property("sP_r")
-    rP = as_column_property("rP")
-    dsP = as_column_property("dsP")
-    drP = as_column_property("drP")
-    ddrP = as_column_property("ddrP")
+    _sP = as_column_property("_sP")
+    _sPr = as_column_property("_sPr")
+    _rP = as_column_property("_rP")
+    _dsP = as_column_property("_dsP")
+    _drP = as_column_property("_drP")
+    _ddrP = as_column_property("_ddrP")
     
 class uVector(Base): 
     """
@@ -210,27 +200,31 @@ class uVector(Base):
         Body index to which the vector belong.
     ulocal (NDArray)
         `xi` and `eta` components of the vector in the local reference frame.
-    u (NDArray)
+
+    Notes
+    -----
+    _u (NDArray)
         `x` and `y` componenets of the vector in the global reference frame.
-    u_r (NDArray)
+    _ur (NDArray)
         Components of the vector `u`, rotated. 
-    u_d (NDArray)
+    _du (NDArray)
         First time derivative of the vector `u`.
     """
 
     def __init__(self):
         super().__init__()  # call to the Base class constructor
         self.Bindex = 0
-        self.ulocal = colvect(1, 0)
-        self.u = colvect(0, 0)
-        self.u_r = colvect(0, 0)
-        self.u_d = colvect(0, 0)
+        self.ulocal = colvect(1, 0) # default value
+        self._u = colvect(0, 0)
+        self._ur = colvect(0, 0)
+        self._du = colvect(0, 0)
     
-    # new values will be automatically defined as column vector
+    # new values will be automatically treated as column vectors, 
+    # even if the user defines them as row vectors or lists!
     ulocal = as_column_property("ulocal")
-    u = as_column_property("u")
-    u_r = as_column_property("u_r")
-    u_d = as_column_property("u_d")
+    _u = as_column_property("_u")
+    _ur = as_column_property("_ur")
+    _du = as_column_property("_du")
 
 class Force(Base):
     """
@@ -247,7 +241,7 @@ class Force(Base):
     iBindex (int)
         Index of the head (arrow) body.
     jBindex (int)
-        Index of the tail body. 
+        Index of the tail body.
     k (float)
         Spring stiffness.
     L0 (float)
@@ -257,21 +251,24 @@ class Force(Base):
     dc (float)
         Damping coefficient.
     f_a (float)
-        Constant actuator force. 
+        Constant actuator force.
     T_a (float)
         Constant actuator torque.
-    gravity (float)
-        Gravitational constant.
-    wgt (NDArray)
-        Gravitational direction (default `-y`)
     flocal (NDArray)
         Constant force in the local reference frame.
-    f (NDArray)
+
+    Notes
+    -----        
+    _gravity (float)
+        Gravitational constant.
+    _wgt (NDArray)
+        Gravitational direction (default `-y`).
+    _f (NDArray)
         Constant force in the `x-y` reference frame.
-    T (float)
+    _T (float)
         Constant torque in the `x-y` refernce frame.
-    iFunct (int)
-        Analytical function index. 
+    _iFunct (int)
+        Analytical function index.
     """
 
     # class-level constants
@@ -291,17 +288,17 @@ class Force(Base):
         self.dc = 0
         self.f_a = 0
         self.T_a = 0
-        self.gravity = Force.DEFAULT_GRAVITY  
-        self.wgt = Force.DEFAULT_GRAVITY_VECTOR 
         self.flocal = colvect([0, 0])
-        self.f = colvect([0, 0])
-        self.T = 0
-        self.iFunct = 0
+        self._gravity = Force.DEFAULT_GRAVITY  
+        self._wgt = Force.DEFAULT_GRAVITY_VECTOR 
+        self._f = colvect([0, 0])
+        self._T = 0
+        self._iFunct = 0
     
     # new values will be automatically defined as column vector
     wgt = as_column_property("wgt")
     flocal = as_column_property("flocal")
-    f = as_column_property("f")
+    _f = as_column_property("f")
 
 class Joint(Base):
     """
@@ -332,29 +329,29 @@ class Joint(Base):
         Constant radius.
     x0 (float)
         Initial condition `x`, for disc.
-    p0 (float)
-        Initial condition `phi` for a disc (or rigid).
     d0 (NDArray)
         Initial condition for `d` (rigid). 
     fix (int)
         Fix relative dof (if = 1, rev or tran). 
-    nbody (int)
+    _p0 (float)
+        Initial condition `phi` for a disc (or rigid).
+    _nbody (int)
         Number of moving bodies involved.
-    mrows (int)
+    _mrows (int)
         Number of rows (constraints).
-    rows (int)
+    _rows (int)
         Row index start.
-    rowe (int)
+    _rowe (int)
         Row index end.
-    colis (int)
+    _colis (int)
         Comlumn index for body i-start. 
-    colie (int)
+    _colie (int)
         Column index for body j-start. 
-    coljs (int)
+    _coljs (int)
         Column index for body j-start.
-    colje (int)
+    _colje (int)
         Column index for body i-start. 
-    lagrange (NDArray)
+    _lagrange (NDArray)
         Lagrange multipliers.
     """
 
@@ -371,18 +368,18 @@ class Joint(Base):
         self.L = 0
         self.R = 1
         self.x0 = 0
-        self.p0 = 0
         self.d0 = []
         self.fix = 0
-        self.nbody = 2
-        self.mrows = 2
-        self.rows = 0
-        self.rowe = 0
-        self.colis = 0
-        self.colie = 0
-        self.coljs = 0
-        self.colje = 0
-        self.lagrange = np.zeros([3,1])
+        self._p0 = 0
+        self._nbody = 2
+        self._mrows = 2
+        self._rows = 0
+        self._rowe = 0
+        self._colis = 0
+        self._colie = 0
+        self._coljs = 0
+        self._colje = 0
+        self._lagrange = np.zeros([3,1])
     
 class Function(Base):
     """
