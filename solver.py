@@ -12,7 +12,7 @@ import os
 import numpy as np
 import scipy as sc
 import numpy.linalg as lng
-from pmd_functions import *
+from functions import *
 from scipy.integrate import solve_ivp
 
 # for debugging porpouse

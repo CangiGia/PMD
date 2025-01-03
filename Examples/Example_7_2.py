@@ -1,7 +1,7 @@
 # continue of example 7.1
 import numpy as np
 from scipy.optimize import fsolve
-from PMD.pmd_functions import * 
+from functions import * 
 
 
 #* Data

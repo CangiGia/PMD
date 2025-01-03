@@ -10,7 +10,7 @@ Author: - Giacomo Cangi, PhD student @ UniPG -
 
 import numpy as np
 from numpy.typing import *
-from pmd_functions import *
+from functions import *
 
 
 class Base:
