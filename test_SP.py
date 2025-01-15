@@ -68,17 +68,17 @@ j2.iPindex = 1
 j2.jPindex = 2
 
 # some checks ... 
-body_count = Body.get_count()
-point_count = Point.get_count()
-uvector_count = uVector.get_count()
-force_count = Force.get_count()
-joint_count = Joint.get_count()
+# body_count = Body.get_count()
+# point_count = Point.get_count()
+# uvector_count = uVector.get_count()
+# force_count = Force.get_count()
+# joint_count = Joint.get_count()
 
-print(f"Number of Body instances: {body_count}")
-print(f"Number of Point instances: {point_count}")
-print(f"Number of uVector instances: {uvector_count}")
-print(f"Number of Force instances: {force_count}")
-print(f"Number of Joint instances: {joint_count}")
+# print(f"Number of Body instances: {body_count}")
+# print(f"Number of Point instances: {point_count}")
+# print(f"Number of uVector instances: {uvector_count}")
+# print(f"Number of Force instances: {force_count}")
+# print(f"Number of Joint instances: {joint_count}")
 
 my_dynamic_model = PlanarDynamicModel()
 time, solution = my_dynamic_model.solve()

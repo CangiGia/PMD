@@ -15,7 +15,7 @@ import numpy.linalg as lng
 from functions import *
 from scipy.integrate import solve_ivp
 
-# for debugging porpouse
+# for debugging purpose
 import pdb 
 
 
@@ -641,7 +641,7 @@ class PlanarDynamicModel:
                 # self.Bodies[Bi].n += force.T
                 pass
             elif force.type == 'user':      # call a user-defined force function
-                # self.user_force()
+                __user_force(self)
                 pass
 
         nB3 = 3 * len(self.Bodies)
@@ -708,15 +708,6 @@ class PlanarDynamicModel:
             coords[Bi, :] = np.hstack((self.Bodies[Bi].r.T, np.array(self.Bodies[Bi].p).reshape(-1, 1)))
             vels[Bi, :] = np.hstack((self.Bodies[Bi].dr.T, np.array(self.Bodies[Bi].dp).reshape(-1, 1)))
 
-        # print("\nCorrected coordinates")
-        # print(" x           y           phi")
-        # print(coords)
-        # print("Corrected velocities")
-        # print(" x-dot       y-dot       phi-dot")
-        # print(vels)
-        # print()
-
-        #! orded print of the correction
         print("\nCorrected coordinates")
         print(" x           y           phi")
         for row in coords:

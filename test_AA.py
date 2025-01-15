@@ -8,37 +8,25 @@ import matplotlib.pyplot as plt
 
 #* Multi-Body model creation - Bodies, Joints, Forces
 #%% bodies
-b1 = Body()
-b1.m = 2
-b1.J = 0.5
-b1.r = np.array([0.4398, 0.2512])
-b1.p = -0.0367
+B1 = Body()
+B1.m = 2
+B1.J = 0.5
+B1.r = np.array([0.4398, 0.2512])
+B1.p = -0.0367
 
-b2 = Body()
-b2.m = 30
-b2.J = 2.5 
-b2.r = np.array([0.6817, 0.3498])
-b2.p = 0.0783
+B2 = Body()
+B2.m = 30
+B2.J = 2.5 
+B2.r = np.array([0.6817, 0.3498])
+B2.p = 0.0783
 
-b3 = Body()
-b3.m = 1
-b3.J = 0.5 
-b3.r = np.array([0.4463, 0.4308])
-b3.p = 6.5222
+B3 = Body()
+B3.m = 1
+B3.J = 0.5 
+B3.r = np.array([0.4463, 0.4308])
+B3.p = 6.5222
 
 #%% points
-f0 = Point()
-f0.Bindex = 0
-f0.sPlocal = np.array([0.38, 0.43])
-
-o0 = Point()
-o0.Bindex = 0
-o0.sPlocal = np.array([0.32, 0.40])
-
-q0 = Point()
-q0.Bindex = 0
-q0.sPlocal = np.array([0.20, 0.26])
-
 q1 = Point()
 q1.Bindex = 1
 q1.sPlocal = np.array([-0.24, 0.0])
@@ -46,10 +34,6 @@ q1.sPlocal = np.array([-0.24, 0.0])
 a1 = Point()
 a1.Bindex = 1
 a1.sPlocal = np.array([0.18, 0.0])
-
-e1 = Point()
-e1.Bindex = 1
-e1.sPlocal = np.array([0.0, 0.0])
 
 a2 = Point()
 a2.Bindex = 2
@@ -67,25 +51,71 @@ o3 = Point()
 o3.Bindex = 3
 o3.sPlocal = np.array([-0.13, 0.0])
 
+o0 = Point()
+o0.Bindex = 0
+o0.sPlocal = np.array([0.32, 0.40])
+
+q0 = Point()
+q0.Bindex = 0
+q0.sPlocal = np.array([0.20, 0.26])
+
+e1 = Point()
+e1.Bindex = 1
+e1.sPlocal = np.array([0.0, 0.0])
+
+f0 = Point()
+f0.Bindex = 0
+f0.sPlocal = np.array([0.38, 0.43])
+
 #%% joints
 j1 = Joint() #! Revolute joint in Q 
 j1.type = 'rev'
-j1.iPindex = 1
-j1.jPindex = 8
+j1.iPindex = 0
+j1.jPindex = 7
 
 j2 = Joint() #! Revolute joint in A 
 j2.type = 'rev'
-j2.iPindex = 2
-j2.jPindex = 3
+j2.iPindex = 1
+j2.jPindex = 2
 
 j3 = Joint() #! Revolute joint in B 
 j3.type = 'rev'
-j3.iPindex = 4
-j3.jPindex = 5
+j3.iPindex = 3
+j3.jPindex = 4
 
 j4 = Joint() #! Revolute joint in O 
 j4.type = 'rev'
-j4.iPindex = 6
-j4.jPindex = 7
+j4.iPindex = 5
+j4.jPindex = 6
+
+#%% forces
+s1 = Force()
+s1.type = 'ptp'
+s1.iPindex = 8
+s1.jPindex = 9
+s1.k = 90000
+s1.L0 = 0.23
+s1.dc = 1100
+
+s2 = Force()
+s2.type = 'user'
+s2.k = 50000
+s2.L0 = 0.35
+s2.dc = 1000
+
+s3 = Force()
+s3.type = 'weight'
+s3.gravity = 9.81
+s3.wgt = np.array([0, -1])
+
+ecchime = 1
+
+#%% solution
+my_dynamic_model = PlanarDynamicModel()
+time, solution = my_dynamic_model.solve()
+
+plt.figure()
+plt.plot(time, solution[:,5])
+plt.show()
 
 ecchime = 1
