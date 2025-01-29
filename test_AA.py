@@ -8,19 +8,22 @@ import matplotlib.pyplot as plt
 
 #* Multi-Body model creation - Bodies, Joints, Forces
 #%% bodies
-B1 = Body()
+B1 = Body() # lower suspension arm
+B1.ID = 1
 B1.m = 2
 B1.J = 0.5
 B1.r = np.array([0.4398, 0.2512])
 B1.p = -0.0367
 
-B2 = Body()
+B2 = Body() # wheel assembly
+B1.ID = 2
 B2.m = 30
 B2.J = 2.5 
 B2.r = np.array([0.6817, 0.3498])
 B2.p = 0.0783
 
-B3 = Body()
+B3 = Body() # upper suspension arm
+B1.ID = 3
 B3.m = 1
 B3.J = 0.5 
 B3.r = np.array([0.4463, 0.4308])
@@ -88,7 +91,7 @@ j4.type = 'rev'
 j4.iPindex = 5
 j4.jPindex = 6
 
-#%% forces
+#%% forces - custom forces
 s1 = Force()
 s1.type = 'ptp'
 s1.iPindex = 8
@@ -97,15 +100,39 @@ s1.k = 90000
 s1.L0 = 0.23
 s1.dc = 1100
 
+# custom mathematical model
+# def my_force(body, force):
+#     """Custom force used to define the wheel contact condition."""
+
+#     # unilateral spring-damper in the y-direction
+#     dely = body.r[1] - force.L0
+#     if dely < 0:
+#         fy = (force.k * dely + force.dc * body.dr[1]).item()
+#         fsd = np.array([0, -fy])
+
+#     return fsd
+
+# custom mathematical model
+def my_force(B2, s2):
+    """Custom force used to define the wheel contact condition."""
+
+    # unilateral spring-damper in the y-direction
+    dely = B2.r[1] - s2.L0
+    if dely < 0:
+        fy = (s2.k * dely + s2.dc * B2.dr[1]).item()
+        fsd = np.array([0, -fy])
+
+    return fsd
+
 s2 = Force()
 s2.type = 'user'
 s2.k = 50000
 s2.L0 = 0.35
 s2.dc = 1000
+s2.callback = my_force
 
 s3 = Force()
 s3.type = 'weight'
-s3.gravity = 9.81
 s3.wgt = np.array([0, -1])
 
 ecchime = 1

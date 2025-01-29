@@ -90,6 +90,8 @@ class Body(Base):
         Second derivative of position (x, y).
     ddp (float) 
         Second time derivative of the orientation angle (phi).
+    f (NDArray) 
+        Sum of forces acting on the body.
 
     Notes
     -----
@@ -107,8 +109,6 @@ class Body(Base):
         Inverse of the moment of inertia.
     _wgt (NDArray) 
         Weight of the body as a force vector.
-    _f (NDArray) 
-        Sum of forces acting on the body.
     _n (float) 
         Sum of moments acting on the body.
     _pts (list) 
@@ -125,6 +125,7 @@ class Body(Base):
         self.dp = 0                # default value
         self.ddr = colvect(0, 0)   # default value
         self.ddp = 0               # default value
+        self.ID = None             # default value
         self._A = np.eye(2)
         self._irc = 0
         self._irv = 0
@@ -141,7 +142,7 @@ class Body(Base):
     r = as_column_property("r")
     dr = as_column_property("dr")
     ddr = as_column_property("ddr")
-    
+
 class Point(Base): 
     """
     Create a body-fixed `point` in a planar multi-body dynamic simulation.
@@ -189,7 +190,7 @@ class Point(Base):
     _dsP = as_column_property("_dsP")
     _drP = as_column_property("_drP")
     _ddrP = as_column_property("_ddrP")
-    
+
 class uVector(Base): 
     """
     Crate a body-fixed `unit vector` in a planar multi-body dynamic simulation.
@@ -256,6 +257,10 @@ class Force(Base):
         Constant actuator torque.
     flocal (NDArray)
         Constant force in the local reference frame.
+    f (NDArray)
+       Constant force in the `x-y` reference frame.
+    T (float)
+        Constant torque in the `x-y` refernce frame.
 
     Notes
     -----        
@@ -263,10 +268,6 @@ class Force(Base):
         Gravitational constant.
     _wgt (NDArray)
         Gravitational direction (default `-y`).
-    _f (NDArray)
-        Constant force in the `x-y` reference frame.
-    _T (float)
-        Constant torque in the `x-y` refernce frame.
     _iFunct (int)
         Analytical function index.
     """
@@ -289,16 +290,17 @@ class Force(Base):
         self.f_a = 0
         self.T_a = 0
         self.flocal = colvect([0, 0])
+        self.f = colvect([0, 0])
+        self.T = 0
+        self.callback = None
         self._gravity = Force.DEFAULT_GRAVITY  
-        self._wgt = Force.DEFAULT_GRAVITY_VECTOR 
-        self._f = colvect([0, 0])
-        self._T = 0
+        self._wgt = Force.DEFAULT_GRAVITY_VECTOR
         self._iFunct = 0
-    
+
     # new values will be automatically defined as column vector
     wgt = as_column_property("wgt")
     flocal = as_column_property("flocal")
-    _f = as_column_property("f")
+    f = as_column_property("f")
 
 class Joint(Base):
     """
@@ -380,7 +382,7 @@ class Joint(Base):
         self._coljs = 0
         self._colje = 0
         self._lagrange = np.zeros([3,1])
-    
+
 class Function(Base):
     """
     Create a user defined function in a planar multi-body dynamic simulation.

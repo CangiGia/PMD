@@ -12,6 +12,7 @@ import os
 import numpy as np
 import scipy as sc
 import numpy.linalg as lng
+import inspect
 from functions import *
 from scipy.integrate import solve_ivp
 
@@ -61,7 +62,6 @@ class PlanarDynamicModel:
             self.invM_array[is_:ie_] = np.array([[self.Bodies[Bi]._invm], [self.Bodies[Bi]._invm], [self.Bodies[Bi]._invJ]])
 
         #! points
-        #! CHECK CON MATLAB - Probabile problema di indicizzazione
         nPtot = len(self.Points)
         for Pi in range(nPtot):
             point = self.Points[Pi]
@@ -71,7 +71,7 @@ class PlanarDynamicModel:
                 point._rP = point._sP
 
             for Bi in range(nB):
-                if point.Bindex == (Bi+1): #! aggiunto il +1 per correggere l'assegnazione dei punti, check con MATLAB
+                if point.Bindex == (Bi+1):
                     self.Bodies[Bi]._pts.append(Pi)  # append point index to the body's points
 
         #! unit vectors
@@ -589,8 +589,6 @@ class PlanarDynamicModel:
         """
         Compute and return the array of forces acting on the system at time t.
         """
-        #! !!! THIS PART OF CODE NEED TO BE COMPELTED !!!
-        #! is it necessary ??
         for body in self.Bodies:
             body._f = colvect([0.0, 0.0]) # initialize body force vectors
             body._n = 0.0                 # initialize body torque (moment) scalar
@@ -640,9 +638,17 @@ class PlanarDynamicModel:
                 # Bi = force.iBindex
                 # self.Bodies[Bi].n += force.T
                 pass
-            elif force.type == 'user':      # call a user-defined force function
-                __user_force(self)
-                pass
+            elif force.type == 'user' and callable(force.callback):
+                # get the arguments of the callback function
+                global_vars = get_globals()
+                user_args_names = list(inspect.signature(force.callback).parameters.keys())
+                args = []
+                for name in user_args_names:
+                    if name in global_vars:
+                        args.append(global_vars[name])
+                        
+                # pass the arguments to the callback function
+                force.callback(*args)
 
         nB3 = 3 * len(self.Bodies)
         g = np.zeros([nB3, 1])
