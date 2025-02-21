@@ -90,8 +90,6 @@ class Body(Base):
         Second derivative of position (x, y).
     ddp (float) 
         Second time derivative of the orientation angle (phi).
-    f (NDArray) 
-        Sum of forces acting on the body.
 
     Notes
     -----
@@ -109,6 +107,8 @@ class Body(Base):
         Inverse of the moment of inertia.
     _wgt (NDArray) 
         Weight of the body as a force vector.
+    _f (NDArray) 
+        Sum of forces acting on the body.
     _n (float) 
         Sum of moments acting on the body.
     _pts (list) 
@@ -142,6 +142,7 @@ class Body(Base):
     r = as_column_property("r")
     dr = as_column_property("dr")
     ddr = as_column_property("ddr")
+    _f = as_column_property("_f")  #! TO FIX, I DON'T LIKE 
 
 class Point(Base): 
     """

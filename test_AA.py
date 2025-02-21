@@ -101,18 +101,6 @@ s1.L0 = 0.23
 s1.dc = 1100
 
 # custom mathematical model
-# def my_force(body, force):
-#     """Custom force used to define the wheel contact condition."""
-
-#     # unilateral spring-damper in the y-direction
-#     dely = body.r[1] - force.L0
-#     if dely < 0:
-#         fy = (force.k * dely + force.dc * body.dr[1]).item()
-#         fsd = np.array([0, -fy])
-
-#     return fsd
-
-# custom mathematical model
 def my_force(B2, s2):
     """Custom force used to define the wheel contact condition."""
 
@@ -121,8 +109,7 @@ def my_force(B2, s2):
     if dely < 0:
         fy = (s2.k * dely + s2.dc * B2.dr[1]).item()
         fsd = np.array([0, -fy])
-
-    return fsd
+        B2._f = B2._f + fsd.reshape(2,1)
 
 s2 = Force()
 s2.type = 'user'
@@ -142,7 +129,10 @@ my_dynamic_model = PlanarDynamicModel()
 time, solution = my_dynamic_model.solve()
 
 plt.figure()
-plt.plot(time, solution[:,5])
+plt.plot(time, solution[:,4])
 plt.show()
+
+np.savetxt('py_solution.txt', solution)
+np.savetxt('py_time.txt', time)
 
 ecchime = 1
