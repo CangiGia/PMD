@@ -1,5 +1,5 @@
 """
-- Planar Multi-body Dynamics simulation maker - 
+Planar Multi-body Dynamics simulation maker module.
 == 
 
 This Python module encompasses all the essential components for constructing a 
@@ -10,8 +10,7 @@ Author: - Giacomo Cangi, PhD student @ UniPG -
 
 import numpy as np
 from numpy.typing import *
-from functions import *
-
+from PMD.functions import *
 
 class Base:
     """
@@ -115,34 +114,34 @@ class Body(Base):
         List of point indexes associated with this body.
     """
 
-    def __init__(self):
+    def __init__(self, m=1, J=1, r=None, p=0, dr=None, dp=0, ddr=None, ddp=0):
         super().__init__()  # call to the Base class constructor
-        self.m = 1
-        self.J = 1
-        self.r = colvect(0, 0)
-        self.p = 0
-        self.dr = colvect(0, 0)    # default value
-        self.dp = 0                # default value
-        self.ddr = colvect(0, 0)   # default value
-        self.ddp = 0               # default value
-        self.ID = None             # default value
+        if m == 0:
+            raise ValueError(" ----- Mass (m) cannot be zero. ----- ")
+        self.m = m
+        self.J = J
+        self.r = r if r is not None else colvect(0, 0)
+        self.p = p
+        self.dr = dr if dr is not None else colvect(0, 0)
+        self.dp = dp
+        self.ddr = ddr if ddr is not None else colvect(0, 0)
+        self.ddp = ddp
         self._A = np.eye(2)
         self._irc = 0
         self._irv = 0
         self._ira = 0
-        self._invm = 1
-        self._invJ = 1
+        self._invm = 1 / m if m != 0 else float('inf')
+        self._invJ = 1 / J if J != 0 else float('inf')
         self._wgt = colvect(0, 0)
         self._f = colvect(0, 0)
         self._n = 0
         self._pts = []
-    
+
     # new values will be automatically treated as column vectors, 
     # even if the user defines them as row vectors or lists!
     r = as_column_property("r")
     dr = as_column_property("dr")
     ddr = as_column_property("ddr")
-    _f = as_column_property("_f")  #! TO FIX, I DON'T LIKE 
 
 class Point(Base): 
     """
@@ -171,10 +170,10 @@ class Point(Base):
         `x` and `y` second time derivative of the vector `r`.         
     """
 
-    def __init__(self):
+    def __init__(self, Bindex=0, sPlocal=None):
         super().__init__()  # call to the Base class constructor
-        self.Bindex = 0
-        self.sPlocal = colvect(0, 0)
+        self.Bindex = Bindex
+        self.sPlocal = sPlocal if sPlocal is not None else colvect(0, 0)
         self._sP = colvect(0, 0)
         self._sPr = colvect(0, 0)
         self._rP = colvect(0, 0)
@@ -213,10 +212,10 @@ class uVector(Base):
         First time derivative of the vector `u`.
     """
 
-    def __init__(self):
+    def __init__(self, Bindex=0, ulocal=None):
         super().__init__()  # call to the Base class constructor
-        self.Bindex = 0
-        self.ulocal = colvect(1, 0) # default value
+        self.Bindex = Bindex
+        self.ulocal = ulocal if ulocal is not None else colvect(1, 0) # default value
         self._u = colvect(0, 0)
         self._ur = colvect(0, 0)
         self._du = colvect(0, 0)
@@ -277,23 +276,22 @@ class Force(Base):
     DEFAULT_GRAVITY = 9.81
     DEFAULT_GRAVITY_VECTOR = colvect([0, -1])  # default gravitational force vector
 
-    def __init__(self):
+    def __init__(self, type='ptp', iPindex=0, jPindex=0, iBindex=0, jBindex=0, k=0, L0=0, theta0=0, dc=0, f_a=0, T_a=0, flocal=None, f=None, T=0):
         super().__init__()  # call to the Base class constructor
-        self.type = 'ptp'
-        self.iPindex = 0
-        self.jPindex = 0
-        self.iBindex = 0
-        self.jBindex = 0
-        self.k = 0
-        self.L0 = 0
-        self.theta0 = 0
-        self.dc = 0
-        self.f_a = 0
-        self.T_a = 0
-        self.flocal = colvect([0, 0])
-        self.f = colvect([0, 0])
-        self.T = 0
-        self.callback = None
+        self.type = type
+        self.iPindex = iPindex
+        self.jPindex = jPindex
+        self.iBindex = iBindex
+        self.jBindex = jBindex
+        self.k = k
+        self.L0 = L0
+        self.theta0 = theta0
+        self.dc = dc
+        self.f_a = f_a
+        self.T_a = T_a
+        self.flocal = flocal if flocal is not None else colvect([0, 0])
+        self.f = f if f is not None else colvect([0, 0])
+        self.T = T
         self._gravity = Force.DEFAULT_GRAVITY  
         self._wgt = Force.DEFAULT_GRAVITY_VECTOR
         self._iFunct = 0
@@ -358,21 +356,21 @@ class Joint(Base):
         Lagrange multipliers.
     """
 
-    def __init__(self):
+    def __init__(self, type='rev', iBindex=0, jBindex=0, iPindex=0, jPindex=0, iUindex=0, jUindex=0, iFunct=0, L=0, R=1, x0=0, d0=None, fix=0):
         super().__init__()  # call to the Base class constructor
-        self.type = 'rev'
-        self.iBindex = 0
-        self.jBindex = 0 
-        self.iPindex = 0
-        self.jPindex = 0
-        self.iUindex = 0
-        self.jUindex = 0
-        self.iFunct = 0
-        self.L = 0
-        self.R = 1
-        self.x0 = 0
-        self.d0 = []
-        self.fix = 0
+        self.type = type
+        self.iBindex = iBindex
+        self.jBindex = jBindex 
+        self.iPindex = iPindex
+        self.jPindex = jPindex
+        self.iUindex = iUindex
+        self.jUindex = jUindex
+        self.iFunct = iFunct
+        self.L = L
+        self.R = R
+        self.x0 = x0
+        self.d0 = d0 if d0 is not None else []
+        self.fix = fix
         self._p0 = 0
         self._nbody = 2
         self._mrows = 2
@@ -413,13 +411,13 @@ class Function(Base):
         Coefficient required only for function type `a`.
     """
 
-    def __init__(self):
+    def __init__(self, type='a', t_start=0, f_start=0, t_end=1, f_end=1, dfdt_end=1, ncoeff=4, coeff=None):
         super().__init__()  # call to the Base class constructor
-        self.type = 'a'
-        self.t_start = 0
-        self.f_start = 0 
-        self.t_end = 1
-        self.f_end = 1
-        self.dfdt_end = 1
-        self.ncoeff = 4
-        self.coeff = []
+        self.type = type
+        self.t_start = t_start
+        self.f_start = f_start 
+        self.t_end = t_end
+        self.f_end = f_end
+        self.dfdt_end = dfdt_end
+        self.ncoeff = ncoeff
+        self.coeff = coeff if coeff is not None else []

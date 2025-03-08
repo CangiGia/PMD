@@ -1,8 +1,8 @@
 import numpy as np
 import scipy as sc
-from maker import *
-from solver import *
-from functions import *
+from PMD.maker import *
+from PMD.solver import *
+from PMD.functions import *
 import matplotlib.pyplot as plt
 
 
@@ -67,24 +67,29 @@ j2.type = "rev"
 j2.iPindex = 1
 j2.jPindex = 2
 
-# some checks ... 
-# body_count = Body.get_count()
-# point_count = Point.get_count()
-# uvector_count = uVector.get_count()
-# force_count = Force.get_count()
-# joint_count = Joint.get_count()
+# // ... some controls ... 
+body_count    = Body.get_count()
+point_count   = Point.get_count()
+uvector_count = uVector.get_count()
+force_count   = Force.get_count()
+joint_count   = Joint.get_count()
 
-# print(f"Number of Body instances: {body_count}")
-# print(f"Number of Point instances: {point_count}")
-# print(f"Number of uVector instances: {uvector_count}")
-# print(f"Number of Force instances: {force_count}")
-# print(f"Number of Joint instances: {joint_count}")
+print(f" ")
+print(f"\t ... some controls ...")
+print(f"\t ... number of Body instances:    {body_count}    ...")
+print(f"\t ... number of Point instances:   {point_count}   ...")
+print(f"\t ... number of uVector instances: {uvector_count} ...")
+print(f"\t ... number of Force instances:   {force_count}   ...")
+print(f"\t ... number of Joint instances:   {joint_count}   ...")
 
-my_dynamic_model = PlanarDynamicModel()
+my_dynamic_model = PlanarDynamicModel(_verbose=True)
 time, solution = my_dynamic_model.solve()
 
 plt.figure()
 plt.plot(time, solution[:,5])
 plt.show() 
+
+np.savetxt('uT_python.txt', solution)
+np.savetxt('T_python.txt', time)
 
 ecchime = 1

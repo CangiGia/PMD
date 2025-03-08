@@ -1,5 +1,5 @@
 """
-- Planar Multi-body Dynamics simulation solver - 
+Planar Multi-body Dynamics simulation solver module.
 == 
 
 This Python module provides the necessary algorithms and functions to 
@@ -13,7 +13,7 @@ import numpy as np
 import scipy as sc
 import numpy.linalg as lng
 import inspect
-from functions import *
+from PMD.functions import *
 from scipy.integrate import solve_ivp
 
 # for debugging purpose
@@ -21,7 +21,8 @@ import pdb
 
 
 class PlanarDynamicModel:
-    def __init__(self):
+    def __init__(self, _verbose = False):
+        self._verbose = _verbose
         grouped_calsses = group_classes()
         self.Bodies = grouped_calsses.get("Body", [])
         self.Points = grouped_calsses.get("Point", [])
@@ -209,6 +210,120 @@ class PlanarDynamicModel:
             if Bj != 0:
                 joint._coljs = 3 * (Bj - 1) + 1
                 joint._colje = 3 * Bj
+
+        # // ---
+        # // ... some check ...
+        # // ---
+        if self._verbose:
+            print("\n")
+            print("\t... model has been created and initialized correctly ...")
+            print("\n")
+            
+            print(f"-----")
+            print(f"bodies ")
+            print(f"-----")
+            for i, body in enumerate(self.Bodies, start=1):
+                print(f"\t... body: {i}")
+                print(f"\t... mass: {body.m}")
+                print(f"\t... moment of inertia: {body.J}")
+                print(f"\t... position: {', '.join(map(str, body.r.flatten()))}")
+                print(f"\t... orientation: {body.p}")
+                print(f"\t... velocity: {', '.join(map(str, body.dr.flatten()))}")
+                print(f"\t... angular velocity: {body.dp}")
+                print(f"\t... acceleration: {', '.join(map(str, body.ddr.flatten()))}")
+                print(f"\t... angular acceleration: {body.ddp}")
+                print(f"\t... rotational matrix: {', '.join(map(str, body._A.flatten()))}")
+                print(f"\t... inverse mass: {body._invm}")
+                print(f"\t... inverse moment of inertia: {body._invJ}")
+                print(f"\t... weight: {', '.join(map(str, body._wgt.flatten()))}")
+                print(f"\t... force: {', '.join(map(str, body._f.flatten()))}")
+                print(f"\t... torque: {body._n}")
+                print(f"\t... points: {', '.join(map(str, body._pts))}")
+                print(f"\t... irc: {body._irc}")
+                print(f"\t... irv: {body._irv}")
+                print(f"\t... ira: {body._ira}")
+                print("\n")
+            
+            print(f"-----")
+            print(f"points ")
+            print(f"-----")
+            for i, point in enumerate(self.Points):
+                print(f"\t... point: {i}")
+                print(f"\t... body index: {point.Bindex}")
+                print(f"\t... local coordinates: {', '.join(map(str, point.sPlocal.flatten()))}")
+                print(f"\t... global coordinates: {', '.join(map(str, point._rP.flatten()))}")
+                print(f"\t... sP: {', '.join(map(str, point._sP.flatten()))}")
+                print(f"\t... sPr: {', '.join(map(str, point._sPr.flatten()))}")
+                print(f"\t... dsP: {', '.join(map(str, point._dsP.flatten()))}")
+                print(f"\t... drP: {', '.join(map(str, point._drP.flatten()))}")
+                print(f"\t... ddrP: {', '.join(map(str, point._ddrP.flatten()))}")
+                print("\n")
+            
+            print(f"-----")
+            print(f"vectors ")
+            print(f"-----")
+            for i, uvector in enumerate(self.uVectors, start=1):
+                print(f"\t... uVector: {i}")
+                print(f"\t... body index: {uvector.Bindex}")
+                print(f"\t... local vector: {', '.join(map(str, uvector.ulocal.flatten()))}")
+                print(f"\t... global vector: {', '.join(map(str, uvector._u.flatten()))}")
+                print(f"\t... ur: {', '.join(map(str, uvector._ur.flatten()))}")
+                print(f"\t... du: {', '.join(map(str, uvector._du.flatten()))}")
+                print("\n")
+            
+            print(f"-----")
+            print(f"forces ")
+            print(f"-----")
+            for i, force in enumerate(self.Forces, start=1):
+                print(f"\t... force: {i}")
+                print(f"\t... type: {force.type}")
+                print(f"\t... head point index: {force.iPindex}")
+                print(f"\t... tail point index: {force.jPindex}")
+                print(f"\t... head body index: {force.iBindex}")
+                print(f"\t... tail body index: {force.jBindex}")
+                print(f"\t... spring stiffness: {force.k}")
+                print(f"\t... undeformed spring length: {force.L0}")
+                print(f"\t... undeformed torsional spring angle: {force.theta0}")
+                print(f"\t... damping coefficient: {force.dc}")
+                print(f"\t... constant actuator force: {force.f_a}")
+                print(f"\t... constant actuator torque: {force.T_a}")
+                print(f"\t... local force: {', '.join(map(str, force.flocal.flatten()))}")
+                print(f"\t... global force: {', '.join(map(str, force.f.flatten()))}")
+                print(f"\t... torque: {force.T}")
+                print(f"\t... gravity: {force._gravity}")
+                print(f"\t... weight: {', '.join(map(str, force._wgt.flatten()))}")
+                print(f"\t... function index: {force._iFunct}")
+                print("\n")
+            
+            print(f"-----")
+            print(f"joints ")
+            print(f"-----")
+            for i, joint in enumerate(self.Joints, start=1):
+                print(f"\t... joint: {i}")
+                print(f"\t... type: {joint.type}")
+                print(f"\t... body i index: {joint.iBindex}")
+                print(f"\t... body j index: {joint.jBindex}")
+                print(f"\t... point i index: {joint.iPindex}")
+                print(f"\t... point j index: {joint.jPindex}")
+                print(f"\t... unit vector i index: {joint.iUindex}")
+                print(f"\t... unit vector j index: {joint.jUindex}")
+                print(f"\t... function index: {joint.iFunct}")
+                print(f"\t... length: {joint.L}")
+                print(f"\t... radius: {joint.R}")
+                print(f"\t... initial condition x: {joint.x0}")
+                print(f"\t... initial condition d: {', '.join(map(str, joint.d0))}")
+                print(f"\t... fix: {joint.fix}")
+                print(f"\t... initial condition phi: {joint._p0}")
+                print(f"\t... number of bodies: {joint._nbody}")
+                print(f"\t... number of rows: {joint._mrows}")
+                print(f"\t... row start: {joint._rows}")
+                print(f"\t... row end: {joint._rowe}")
+                print(f"\t... column i start: {joint._colis}")
+                print(f"\t... column i end: {joint._colie}")
+                print(f"\t... column j start: {joint._coljs}")
+                print(f"\t... column j end: {joint._colje}")
+                print(f"\t... lagrange multipliers: {', '.join(map(str, joint._lagrange.flatten()))}")
+                print("\n")
 
     def __update_position(self):
         """
@@ -884,10 +999,6 @@ class PlanarDynamicModel:
             uT.append(u_current)
             vdely[i,0] = self.Bodies[1].r[1] - self.Forces[1].L0
             B2f[i,0] = self.Bodies[1]._f[1]
-
-            if i == 400: 
-                print("Debugging break point : step n. {i} \n")
-                print("dely = ", self.Bodies[1].r[1] - self.Forces[1].L0)
 
         num_evals = self._PlanarDynamicModel__num
         print(f"Number of function evaluations = {num_evals}")
