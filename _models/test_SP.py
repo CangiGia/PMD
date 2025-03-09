@@ -76,20 +76,20 @@ joint_count   = Joint.get_count()
 
 print(f" ")
 print(f"\t ... some controls ...")
-print(f"\t ... number of Body instances:    {body_count}    ...")
-print(f"\t ... number of Point instances:   {point_count}   ...")
-print(f"\t ... number of uVector instances: {uvector_count} ...")
-print(f"\t ... number of Force instances:   {force_count}   ...")
-print(f"\t ... number of Joint instances:   {joint_count}   ...")
+print(f"\t ... number of Body instances:    {body_count}   ")
+print(f"\t ... number of Point instances:   {point_count}  ")
+print(f"\t ... number of uVector instances: {uvector_count}")
+print(f"\t ... number of Force instances:   {force_count}  ")
+print(f"\t ... number of Joint instances:   {joint_count}  ")
 
 my_dynamic_model = PlanarDynamicModel(_verbose=True)
-time, solution = my_dynamic_model.solve()
+time, solution = my_dynamic_model.solve(method='LSODA')
 
 plt.figure()
 plt.plot(time, solution[:,5])
-plt.show() 
+plt.show()
 
-np.savetxt('uT_python.txt', solution)
-np.savetxt('T_python.txt', time)
+np.savetxt('uT_python_RK45.txt', solution)
+np.savetxt('T_python_RK45.txt', time)
 
 ecchime = 1

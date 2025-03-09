@@ -44,7 +44,7 @@ class PlanarDynamicModel:
         nB3 = 3 * nB
         nB6 = 6 * nB
 
-        #! bodies
+        #// bodies
         for Bi in range(nB):
             body = self.Bodies[Bi]
             body._irc = 3 * Bi + 1
@@ -62,7 +62,7 @@ class PlanarDynamicModel:
             self.M_array[is_:ie_] = np.array([[self.Bodies[Bi].m], [self.Bodies[Bi].m], [self.Bodies[Bi].J]])
             self.invM_array[is_:ie_] = np.array([[self.Bodies[Bi]._invm], [self.Bodies[Bi]._invm], [self.Bodies[Bi]._invJ]])
 
-        #! points
+        #// points
         nPtot = len(self.Points)
         for Pi in range(nPtot):
             point = self.Points[Pi]
@@ -75,7 +75,7 @@ class PlanarDynamicModel:
                 if point.Bindex == (Bi+1):
                     self.Bodies[Bi]._pts.append(Pi)  # append point index to the body's points
 
-        #! unit vectors
+        #// unit vectors
         nU = len(self.uVectors)
         for Vi in range(nU):
             unit_vector = self.uVectors[Vi]
@@ -83,7 +83,7 @@ class PlanarDynamicModel:
                 unit_vector._u = unit_vector.ulocal
                 unit_vector._ur = s_rot(unit_vector._u)
 
-        #! force elements
+        #// force elements
         nF = len(self.Forces)
         for Fi in range(nF):
             force = self.Forces[Fi]
@@ -97,7 +97,7 @@ class PlanarDynamicModel:
                 force.iBindex = self.Points[Pi].Bindex
                 force.jBindex = self.Points[Pj].Bindex
 
-        #! joints
+        #// joints
         nJ = len(self.Joints)
         cfriction = 0
 
@@ -187,7 +187,7 @@ class PlanarDynamicModel:
             else:
                 raise ValueError("Joint type doesn't supported!")
 
-        #! functions
+        #// functions
         if self.Functs:
             nFc = len(self.Functs)
             for Ci in range(nFc):
@@ -212,7 +212,7 @@ class PlanarDynamicModel:
                 joint._colje = 3 * Bj
 
         # // ---
-        # // ... some check ...
+        # // ... some check if required ...
         # // ---
         if self._verbose:
             print("\n")
@@ -719,7 +719,7 @@ class PlanarDynamicModel:
                 Bi, Bj = force.iBindex, force.jBindex
                 d = self.Points[Pi]._rP - self.Points[Pj]._rP
                 dd = self.Points[Pi]._drP - self.Points[Pj]._drP
-                L = np.sqrt(d.T@d)
+                L = np.linalg.norm(d)
                 dL = d.T@dd/L
                 delta = L - self.Forces[Fi].L0
                 u = d/L
@@ -826,14 +826,15 @@ class PlanarDynamicModel:
             coords[Bi, :] = np.hstack((self.Bodies[Bi].r.T, np.array(self.Bodies[Bi].p).reshape(-1, 1)))
             vels[Bi, :] = np.hstack((self.Bodies[Bi].dr.T, np.array(self.Bodies[Bi].dp).reshape(-1, 1)))
 
-        print("\nCorrected coordinates")
-        print(" x           y           phi")
+        print("\n\t Corrected coordinates")
+        print("\t", f"{'x':^12}{'y':^12}{'phi':^12}")
         for row in coords:
-            print(f"{row[0]:<12.5f}{row[1]:<12.5f}{row[2]:<12.5f}")
-        print("\nCorrected velocities")
-        print(" x-dot       y-dot       phi-dot")
+            print(f"\t {row[0]:^12.5f}{row[1]:^12.5f}{row[2]:^12.5f}")
+
+        print("\n\t Corrected velocities")
+        print("\t", f"{'x-dot':^12}{'y-dot':^12}{'phi-dot':^12}")
         for row in vels:
-            print(f"{row[0]:<12.5f}{row[1]:<12.5f}{row[2]:<12.5f}")
+            print(f"\t {row[0]:^12.5f}{row[1]:^12.5f}{row[2]:^12.5f}")
 
     def __analysis(self, t, u):
         """
@@ -843,13 +844,13 @@ class PlanarDynamicModel:
         #* for debugging purpose - uncomment the below row
         # pdb.set_trace()
         
-        self.__num += 1                     # increment the number of function evaluations
+        self.__num += 1                 # increment the number of function evaluations
         nB3 = 3 * len(self.Bodies)
         nConst = self.Joints[-1]._rowe
-        self.__u2bodies(u)  # unpack u into coordinate and velocity sub-arrays
+        self.__u2bodies(u)              # unpack u into coordinate and velocity sub-arrays
         self.__update_position()
         self.__update_velocity()
-        h_a = self.__compute_force()  # array of applied forces
+        h_a = self.__compute_force()    # array of applied forces
 
         if nConst == 0:
             ddc = self.invM_array * h_a # solve for accelerations
@@ -886,66 +887,15 @@ class PlanarDynamicModel:
             body.ddp = ddc[i3]
 
         ud = self.__bodies2ud()             # pack velocities and accelerations into ud
-        return ud
+        return ud.flatten()
 
-    # def solve(self):
-    #     """
-    #     Solve the EQMs of the planar multi-body system.
-    #     """
-    #     # initial conditions and Jacobian matrix definition
-    #     nConst = self.Joints[-1]._rowe
-    #     nB = len(self.Bodies)
-    #     nB6 = 6 * nB
-    #     ans = input("Do you want to correct the initial conditions? [(y)es/(n)o] ").lower()
-
-    #     if nConst != 0:
-    #         if ans == 'y':
-    #             self.__ic_correct()
-    #         D = self.__compute_jacobian()
-    #         redund = np.linalg.matrix_rank(D) # check the rank of D for redundancy
-    #         if redund < nConst:
-    #             print("Redundancy in the constraints")
-
-    #     # pack coordinates and velocities ito u array
-    #     u = self.__bodies2u()
-        
-    #     #* check on u array
-    #     if np.any(np.isnan(u)) or np.any(np.isinf(u)):
-    #         raise ValueError("Initial conditions contain NaN or Inf values.")
-
-    #     t_initial = 0
-    #     t_final = float(input("Final time = ? "))
-
-    #     # utils to check the convergence
-    #     self.__showtime = 1
-    #     self.__num = 0
-    #     self.__t10 = 0
-
-    #     if t_final == 0:
-    #         self.__analysis(0, u)
-    #         T = 0
-    #         uT = u.T
-    #     else:
-    #         dt = float(input("Reporting time-step = ? "))
-    #         Tspan = np.arange(t_initial, t_final, dt)
-    #         u0 = u.flatten()
-    #         options = {'rtol': 1e-6, 'atol': 1e-9, 'max_step': (Tspan[1] - Tspan[0])}
-    #         sol = solve_ivp(self.__analysis, [t_initial, t_final], u0, t_eval=Tspan, method='LSODA', **options)
-    #         T = sol.t
-    #         uT = sol.y.T
-
-    #     num_evals = self._PlanarDynamicModel__num
-    #     print(f"Number of function evaluations = {num_evals}")
-    #     print(f"Simulation completed!")
-        
-    #     return T, uT
-
-    #! Debugging purpose
-    def solve(self):
+    def solve(self, method = "LSODA", deubug_mode = False):
         """
-        Solve the EQMs of the planar multi-body system with step-by-step debugging
-        using a for loop.
+        Solve the EQMs of the planar multi-body system.
         """
+        self.method = method
+        self.debug_mode = deubug_mode
+
         nConst = self.Joints[-1]._rowe
         nB = len(self.Bodies)
         nB6 = 6 * nB
@@ -955,53 +905,79 @@ class PlanarDynamicModel:
             if ans == 'y':
                 self.__ic_correct()
             D = self.__compute_jacobian()
-            redund = np.linalg.matrix_rank(D)  
+            redund = np.linalg.matrix_rank(D) # check the rank of D for redundancy
             if redund < nConst:
                 print("Redundancy in the constraints")
 
+        # pack coordinates and velocities ito u array
         u = self.__bodies2u()
-
+        if self._verbose: 
+            header = "... initial u vector ..."
+            print(f"\n\t{header}")
+            header_width = len(header)
+            formatted_u = [f"{float(element):.2f}" for element in u]
+            for element in formatted_u:
+                print(f"\t{element:^{header_width}}")  # Centra ogni valore rispetto all'intestazione
         if np.any(np.isnan(u)) or np.any(np.isinf(u)):
-            raise ValueError("Initial conditions contain NaN or Inf values.")
+            raise ValueError("\t ... check initial conditions, ""u"" vector contains NaN or Inf values.")
 
         t_initial = 0
         t_final = float(input("Final time = ? "))
-        dt = float(input("Reporting time-step = ? "))
 
+        # utils to check the convergence
         self.__showtime = 1
         self.__num = 0
         self.__t10 = 0
 
-        n_steps = int(np.ceil((t_final - t_initial) / dt))
+        if self.debug_mode == False:
+            if t_final == 0:
+                self.__analysis(0, u)
+                T = 0
+                uT = u.T
+            else:
+                dt = float(input("Reporting time-step = ? "))
+                Tspan = np.arange(t_initial, t_final, dt)
+                u0 = u.flatten()
+                options = {'rtol': 1e-6, 'atol': 1e-9, 'max_step': (Tspan[1] - Tspan[0])}
+                sol = solve_ivp(
+                    self.__analysis, 
+                    [t_initial, t_final], 
+                    u0, t_eval=Tspan, 
+                    method=self.method, 
+                    **options)
+                T = sol.t
+                uT = sol.y.T
+
+            num_evals = self._PlanarDynamicModel__num
+            print(f"Number of function evaluations = {num_evals}")
+            print(f"Simulation completed!")
+
+        else:
+            dt = float(input("Reporting time-step = ? "))
+            n_steps = int(np.ceil((t_final - t_initial) / dt))
+            T = [t_initial]
+            uT = [u.flatten()]
+            u_current = u.flatten()
+
+            for i in range(n_steps):
+                t_current = T[-1]
+                t_next = min(t_current + dt, t_final)
+                
+                sol = solve_ivp(
+                    self.__analysis, 
+                    [t_current, t_next], 
+                    u_current, 
+                    method=self.method, 
+                    rtol=1e-6, 
+                    atol=1e-9
+                )
+                
+                u_current = sol.y[:, -1]
+                T.append(t_next)
+                uT.append(u_current)
+
+            num_evals = self._PlanarDynamicModel__num
+            print(f"Number of function evaluations = {num_evals}")
+            print("Simulation completed!")
         
-        T = [t_initial]
-        uT = [u.flatten()]
-        u_current = u.flatten()
-
-        vdely = np.zeros([n_steps,1])
-        B2f = np.zeros([n_steps,1])
-
-        for i in range(n_steps):
-            t_current = T[-1]
-            t_next = min(t_current + dt, t_final)
-            
-            sol = solve_ivp(
-                self.__analysis, 
-                [t_current, t_next], 
-                u_current, 
-                method='LSODA', 
-                rtol=1e-6, 
-                atol=1e-9
-            )
-            
-            u_current = sol.y[:, -1]
-            T.append(t_next)
-            uT.append(u_current)
-            vdely[i,0] = self.Bodies[1].r[1] - self.Forces[1].L0
-            B2f[i,0] = self.Bodies[1]._f[1]
-
-        num_evals = self._PlanarDynamicModel__num
-        print(f"Number of function evaluations = {num_evals}")
-        print("Simulation completed!")
-        
-        return np.array(T), np.array(uT)
+        return T, uT
