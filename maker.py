@@ -17,9 +17,7 @@ class Base:
     Base class for all multi-body simulation objects.
 
     This class provides a foundation for objects in the multi-body dynamic 
-    simulation framework. It includes functionality for instance counting 
-    and type retrieval, supporting introspection and organized tracking 
-    of different object types.
+    simulation framework.
     """
     COUNT = 0  # class variable to track the number of instances
 

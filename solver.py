@@ -692,7 +692,7 @@ class PlanarDynamicModel:
         for Bi in range(nB): 
             ir = self.Bodies[Bi]._irc - 1
             ird = self. Bodies[Bi]._irv - 1
-            self.Bodies[Bi].r  = u[ir:ir+2] #! attention to the index
+            self.Bodies[Bi].r  = u[ir:ir+2]
             self.Bodies[Bi].p  = u[ir+2][0]
             self.Bodies[Bi].dr = u[ird:ird+2]
             self.Bodies[Bi].dp = u[ird+2][0]
@@ -899,7 +899,7 @@ class PlanarDynamicModel:
         nConst = self.Joints[-1]._rowe
         nB = len(self.Bodies)
         nB6 = 6 * nB
-        ans = input("Do you want to correct the initial conditions? [(y)es/(n)o] ").lower()
+        ans = input("\n\t ...Do you want to correct the initial conditions? [(y)es/(n)o] ").lower()
 
         if nConst != 0:
             if ans == 'y':
