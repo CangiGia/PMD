@@ -1,6 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+# // evitare l'uso di indirizzi completi che si rifericono a diversi computer o cartelle ... 
+# // meglio usare indirizzi relativi ...
+
 uT_python = np.loadtxt(r"C:\Users\Giacomo\anaconda3\envs\GiacoEnv\PMD\uT_python.txt")
 T_python = np.loadtxt(r"C:\Users\Giacomo\anaconda3\envs\GiacoEnv\PMD\T_python.txt")
 
