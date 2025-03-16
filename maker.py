@@ -332,6 +332,9 @@ class Joint(Base):
         Initial condition for `d` (rigid). 
     fix (int)
         Fix relative dof (if = 1, rev or tran). 
+
+    Notes
+    -----    
     _p0 (float)
         Initial condition `phi` for a disc (or rigid).
     _nbody (int)

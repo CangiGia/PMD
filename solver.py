@@ -16,21 +16,25 @@ import inspect
 from PMD.functions import *
 from scipy.integrate import solve_ivp
 
-# for debugging purpose
-import pdb 
 
+@staticmethod
+def detect_update(): #// - To be completed -
+    """
+    Detect if the model has been updated by the user.
+    """
+    pass
 
 class PlanarDynamicModel:
-    def __init__(self, _verbose = False):
-        self._verbose = _verbose
+    def __init__(self, verbose = False):
         grouped_calsses = group_classes()
+        self.verbose = verbose
         self.Bodies = grouped_calsses.get("Body", [])
         self.Points = grouped_calsses.get("Point", [])
         self.uVectors = grouped_calsses.get("uVector", [])
         self.Forces = grouped_calsses.get("Force", [])
         self.Joints = grouped_calsses.get("Joint", [])
         self.Functs = grouped_calsses.get("Function", []) if "Function" in grouped_calsses else []
-
+        
         # initialize the model for simulation automatically
         self.__initialize()
 
@@ -214,11 +218,12 @@ class PlanarDynamicModel:
         # // ---
         # // ... some check if required ...
         # // ---
-        if self._verbose:
+        if self.verbose:
             print("\n")
             print("\t... model has been created and initialized correctly ...")
             print("\n")
             
+            print("\t... values after initializzation ...")
             print(f"-----")
             print(f"bodies ")
             print(f"-----")
@@ -371,46 +376,46 @@ class PlanarDynamicModel:
             if Bi != 0:
                 uvector._du = uvector._ur * self.Bodies[Bi-1].dp
             
-    def __compute_constraints(self): #! - To be completed for all joint type -
+    def __compute_constraints(self): #// - To be completed for all joint type -
         nConst = self.Joints[-1]._rowe
         phi = np.zeros([nConst, 1])
 
-        for joint_data in self.Joints:
-            joint_type = joint_data.type
+        for joint in self.Joints:
+            joint_type = joint.type
 
             if joint_type == 'rev':
-                Pi = joint_data.iPindex
-                Pj = joint_data.jPindex
-                iBindex = joint_data.iBindex
-                jBindex = joint_data.jBindex
+                Pi = joint.iPindex
+                Pj = joint.jPindex
+                iBindex = joint.iBindex
+                jBindex = joint.jBindex
                 
                 # compute relative positions of the points
                 rPi = self.Points[Pi]._rP
                 rPj = self.Points[Pj]._rP
                 f = rPi - rPj
 
-                if joint_data.fix == 1:
+                if joint.fix == 1:
                     if iBindex == 0:  # body i is ground (fixed)
-                        f = np.append(f, (-self.Bodies[jBindex].p - joint_data._p0))
+                        f = np.append(f, (-self.Bodies[jBindex].p - joint._p0))
                     elif jBindex == 0:  # body j is ground (fixed)
-                        f = np.append(f, (self.Bodies[iBindex].p - joint_data._p0))
+                        f = np.append(f, (self.Bodies[iBindex].p - joint._p0))
                     else:
-                        f = np.append(f, (self.Bodies[iBindex].p - self.Bodies[jBindex].p - joint_data._p0))
+                        f = np.append(f, (self.Bodies[iBindex].p - self.Bodies[jBindex].p - joint._p0))
 
             elif joint_type == 'tran':
-                Pi = joint_data.iPindex
-                Pj = joint_data.jPindex
+                Pi = joint.iPindex
+                Pj = joint.jPindex
 
-                ujr = self.uVectors[joint_data.jUindex]._ur
-                ui = self.uVectors[joint_data.iUindex]._u
+                ujr = self.uVectors[joint.jUindex]._ur
+                ui = self.uVectors[joint.iUindex]._u
                 d = self.Points[Pi]._rP - self.Points[Pj]._rP
 
                 # compute constraint equations
                 f = np.array([ujr.T @ d, ujr.T @ ui]).reshape(2,1)
 
                 # additional constraint if fixed
-                if joint_data.fix == 1:
-                    f = np.append(f, (ui.T @ d - joint_data._p0) / 2).reshape(3,1)
+                if joint.fix == 1:
+                    f = np.append(f, (ui.T @ d - joint._p0) / 2).reshape(3,1)
 
             elif joint_type == 'rev-rev':
                 pass
@@ -427,13 +432,13 @@ class PlanarDynamicModel:
             else:
                 raise ValueError(f"Joint type '{joint_type}' is not supported.")
 
-            rs = joint_data._rows - 1
-            re = joint_data._rowe
+            rs = joint._rows - 1
+            re = joint._rowe
             phi[rs:re] = f
             
         return phi
 
-    def __compute_jacobian(self): #! - To be completed for all joint type -
+    def __compute_jacobian(self): #// - To be completed for all joint type -
         """
         Calculate the Jacobian matrix D for the system constraints.
 
@@ -532,7 +537,6 @@ class PlanarDynamicModel:
 
         return D
 
-    #! ?? utilizzato solo in casi particolari di vincoli ??
     def __rhs_velocity(self):
         """
         Calculate the right-hand side velocity vector for the system 
@@ -684,7 +688,7 @@ class PlanarDynamicModel:
         """
         Unpack u into coordinate and velocity sub-arrays.
         """ 
-        # check on "u" shape, avoid errors during the simulation
+        # check on "u" shape to avoid errors during the simulation
         if u.ndim != 2:
             u = u.reshape(-1, 1)
             
@@ -710,57 +714,58 @@ class PlanarDynamicModel:
         #! the specific type of force -> code easier and more readable.
         # loop over all forces and apply them to the appropriate bodies
         for Fi, force in enumerate(self.Forces):
-            if force.type == 'weight':      # apply weight to each body
-                for body in self.Bodies: 
-                    body._f += body._wgt
+            match force.type:
+                case 'weight':
+                    for body in self.Bodies:
+                        body._f += body._wgt
 
-            elif force.type == 'ptp':       # call method or function for point-to-point force
-                Pi, Pj = force.iPindex, force.jPindex
-                Bi, Bj = force.iBindex, force.jBindex
-                d = self.Points[Pi]._rP - self.Points[Pj]._rP
-                dd = self.Points[Pi]._drP - self.Points[Pj]._drP
-                L = np.linalg.norm(d)
-                dL = d.T@dd/L
-                delta = L - self.Forces[Fi].L0
-                u = d/L
+                case 'ptp':
+                    Pi, Pj = force.iPindex, force.jPindex
+                    Bi, Bj = force.iBindex, force.jBindex
+                    d = self.Points[Pi]._rP - self.Points[Pj]._rP
+                    dd = self.Points[Pi]._drP - self.Points[Pj]._drP
+                    L = np.linalg.norm(d)
+                    dL = d.T @ dd / L
+                    delta = L - self.Forces[Fi].L0
+                    u = d / L
 
-                f = self.Forces[Fi].k*delta + self.Forces[Fi].dc*dL + self.Forces[Fi].f_a
-                fi = f*u
+                    f = self.Forces[Fi].k * delta + self.Forces[Fi].dc * dL + self.Forces[Fi].f_a
+                    fi = f * u
 
-                if Bi != 0:
-                    self.Bodies[Bi-1]._f = self.Bodies[Bi-1]._f - fi
-                    self.Bodies[Bi-1]._n = self.Bodies[Bi-1]._n - ((self.Points[Pi]._sPr).T@fi).item() # extracting the single value
-                
-                if Bj != 0: 
-                    self.Bodies[Bj-1]._f = self.Bodies[Bj-1]._f + fi
-                    self.Bodies[Bj-1]._n = self.Bodies[Bj-1]._n + ((self.Points[Pj]._sPr).T@fi).item() # extracting the single value
+                    if Bi != 0:
+                        self.Bodies[Bi-1]._f -= fi
+                        self.Bodies[Bi-1]._n -= (self.Points[Pi]._sPr.T @ fi).item()
+                    
+                    if Bj != 0:
+                        self.Bodies[Bj-1]._f += fi
+                        self.Bodies[Bj-1]._n += (self.Points[Pj]._sPr.T @ fi).item()
 
-            elif force.type == 'rot-sda':   # call method or function for rotational SDA force
-                # self.SDA_rot()
-                pass
-            elif force.type == 'flocal':    # apply local force to the specified body
-                # Bi = force.iBindex
-                # self.Bodies[Bi].f += self.Bodies[Bi]._A @ force.flocal
-                pass
-            elif force.type == 'f':         # apply a global force to the specified body
-                # Bi = force.iBindex
-                # self.Bodies[Bi].f += force.f
-                pass
-            elif force.type == 'T':         # apply a torque to the specified body
-                # Bi = force.iBindex
-                # self.Bodies[Bi].n += force.T
-                pass
-            elif force.type == 'user' and callable(force.callback):
-                # get the arguments of the callback function
-                global_vars = get_globals()
-                user_args_names = list(inspect.signature(force.callback).parameters.keys())
-                args = []
-                for name in user_args_names:
-                    if name in global_vars:
-                        args.append(global_vars[name])
-                        
-                # pass the arguments to the callback function
-                force.callback(*args)
+                case 'rot-sda':
+                    pass  # Placeholder for SDA_rot()
+
+                case 'flocal':
+                    # Bi = force.iBindex
+                    # self.Bodies[Bi].f += self.Bodies[Bi]._A @ force.flocal
+                    pass
+
+                case 'f':
+                    # Bi = force.iBindex
+                    # self.Bodies[Bi].f += force.f
+                    pass
+
+                case 'T':
+                    # Bi = force.iBindex
+                    # self.Bodies[Bi].n += force.T
+                    pass
+
+                case 'user' if callable(force.callback):
+                    global_vars = globals()
+                    user_args_names = list(inspect.signature(force.callback).parameters.keys())
+                    args = [global_vars[name] for name in user_args_names if name in global_vars]
+                    force.callback(*args)
+
+                case _:
+                    raise ValueError(f"Unsupported force type: '{force.type}'. Please check your input.")
 
         nB3 = 3 * len(self.Bodies)
         g = np.zeros([nB3, 1])
@@ -826,24 +831,132 @@ class PlanarDynamicModel:
             coords[Bi, :] = np.hstack((self.Bodies[Bi].r.T, np.array(self.Bodies[Bi].p).reshape(-1, 1)))
             vels[Bi, :] = np.hstack((self.Bodies[Bi].dr.T, np.array(self.Bodies[Bi].dp).reshape(-1, 1)))
 
-        print("\n\t Corrected coordinates")
-        print("\t", f"{'x':^12}{'y':^12}{'phi':^12}")
-        for row in coords:
-            print(f"\t {row[0]:^12.5f}{row[1]:^12.5f}{row[2]:^12.5f}")
+        # // ---
+        # // ... some check if required ...
+        # // ---
+        if self.verbose:
+            print("\t... initial conditions corrected ...")
+            print(f"-----")
+            print(f"bodies ")
+            print(f"-----")
+            for i, body in enumerate(self.Bodies, start=1):
+                print(f"\t... body: {i}")
+                print(f"\t... mass: {body.m}")
+                print(f"\t... moment of inertia: {body.J}")
+                print(f"\t... position: {', '.join(map(str, body.r.flatten()))} # [UPDATED]")
+                print(f"\t... orientation: {body.p} # [UPDATED]")
+                print(f"\t... velocity: {', '.join(map(str, body.dr.flatten()))} # [UPDATED]")
+                print(f"\t... angular velocity: {body.dp} # [UPDATED]")
+                print(f"\t... acceleration: {', '.join(map(str, body.ddr.flatten()))}")
+                print(f"\t... angular acceleration: {body.ddp}")
+                print(f"\t... rotational matrix: {', '.join(map(str, body._A.flatten()))}")
+                print(f"\t... inverse mass: {body._invm}")
+                print(f"\t... inverse moment of inertia: {body._invJ}")
+                print(f"\t... weight: {', '.join(map(str, body._wgt.flatten()))}")
+                print(f"\t... force: {', '.join(map(str, body._f.flatten()))}")
+                print(f"\t... torque: {body._n}")
+                print(f"\t... points: {', '.join(map(str, body._pts))}")
+                print(f"\t... irc: {body._irc}")
+                print(f"\t... irv: {body._irv}")
+                print(f"\t... ira: {body._ira}")
+                print("\n")
+            
+            print(f"-----")
+            print(f"points ")
+            print(f"-----")
+            for i, point in enumerate(self.Points):
+                print(f"\t... point: {i}")
+                print(f"\t... body index: {point.Bindex}")
+                print(f"\t... local coordinates: {', '.join(map(str, point.sPlocal.flatten()))}")
+                print(f"\t... global coordinates: {', '.join(map(str, point._rP.flatten()))}")
+                print(f"\t... sP: {', '.join(map(str, point._sP.flatten()))}")
+                print(f"\t... sPr: {', '.join(map(str, point._sPr.flatten()))}")
+                print(f"\t... dsP: {', '.join(map(str, point._dsP.flatten()))}")
+                print(f"\t... drP: {', '.join(map(str, point._drP.flatten()))}")
+                print(f"\t... ddrP: {', '.join(map(str, point._ddrP.flatten()))}")
+                print("\n")
+            
+            print(f"-----")
+            print(f"vectors ")
+            print(f"-----")
+            for i, uvector in enumerate(self.uVectors, start=1):
+                print(f"\t... uVector: {i}")
+                print(f"\t... body index: {uvector.Bindex}")
+                print(f"\t... local vector: {', '.join(map(str, uvector.ulocal.flatten()))}")
+                print(f"\t... global vector: {', '.join(map(str, uvector._u.flatten()))}")
+                print(f"\t... ur: {', '.join(map(str, uvector._ur.flatten()))}")
+                print(f"\t... du: {', '.join(map(str, uvector._du.flatten()))}")
+                print("\n")
+            
+            print(f"-----")
+            print(f"forces ")
+            print(f"-----")
+            for i, force in enumerate(self.Forces, start=1):
+                print(f"\t... force: {i}")
+                print(f"\t... type: {force.type}")
+                print(f"\t... head point index: {force.iPindex}")
+                print(f"\t... tail point index: {force.jPindex}")
+                print(f"\t... head body index: {force.iBindex}")
+                print(f"\t... tail body index: {force.jBindex}")
+                print(f"\t... spring stiffness: {force.k}")
+                print(f"\t... undeformed spring length: {force.L0}")
+                print(f"\t... undeformed torsional spring angle: {force.theta0}")
+                print(f"\t... damping coefficient: {force.dc}")
+                print(f"\t... constant actuator force: {force.f_a}")
+                print(f"\t... constant actuator torque: {force.T_a}")
+                print(f"\t... local force: {', '.join(map(str, force.flocal.flatten()))}")
+                print(f"\t... global force: {', '.join(map(str, force.f.flatten()))}")
+                print(f"\t... torque: {force.T}")
+                print(f"\t... gravity: {force._gravity}")
+                print(f"\t... weight: {', '.join(map(str, force._wgt.flatten()))}")
+                print(f"\t... function index: {force._iFunct}")
+                print("\n")
+            
+            print(f"-----")
+            print(f"joints ")
+            print(f"-----")
+            for i, joint in enumerate(self.Joints, start=1):
+                print(f"\t... joint: {i}")
+                print(f"\t... type: {joint.type}")
+                print(f"\t... body i index: {joint.iBindex}")
+                print(f"\t... body j index: {joint.jBindex}")
+                print(f"\t... point i index: {joint.iPindex}")
+                print(f"\t... point j index: {joint.jPindex}")
+                print(f"\t... unit vector i index: {joint.iUindex}")
+                print(f"\t... unit vector j index: {joint.jUindex}")
+                print(f"\t... function index: {joint.iFunct}")
+                print(f"\t... length: {joint.L}")
+                print(f"\t... radius: {joint.R}")
+                print(f"\t... initial condition x: {joint.x0}")
+                print(f"\t... initial condition d: {', '.join(map(str, joint.d0))}")
+                print(f"\t... fix: {joint.fix}")
+                print(f"\t... initial condition phi: {joint._p0}")
+                print(f"\t... number of bodies: {joint._nbody}")
+                print(f"\t... number of rows: {joint._mrows}")
+                print(f"\t... row start: {joint._rows}")
+                print(f"\t... row end: {joint._rowe}")
+                print(f"\t... column i start: {joint._colis}")
+                print(f"\t... column i end: {joint._colie}")
+                print(f"\t... column j start: {joint._coljs}")
+                print(f"\t... column j end: {joint._colje}")
+                print(f"\t... lagrange multipliers: {', '.join(map(str, joint._lagrange.flatten()))}")
+                print("\n")
+        else:
+            print("\n\t Corrected coordinates")
+            print("\t", f"{'x':^12}{'y':^12}{'phi':^12}")
+            for row in coords:
+                print(f"\t {row[0]:^12.5f}{row[1]:^12.5f}{row[2]:^12.5f}")
 
-        print("\n\t Corrected velocities")
-        print("\t", f"{'x-dot':^12}{'y-dot':^12}{'phi-dot':^12}")
-        for row in vels:
-            print(f"\t {row[0]:^12.5f}{row[1]:^12.5f}{row[2]:^12.5f}")
+            print("\n\t Corrected velocities")
+            print("\t", f"{'x-dot':^12}{'y-dot':^12}{'phi-dot':^12}")
+            for row in vels:
+                print(f"\t {row[0]:^12.5f}{row[1]:^12.5f}{row[2]:^12.5f}")
 
     def __analysis(self, t, u):
         """
         Solve the constrained equations of motion at time t with the standard
         Lagrange multiplier method.
-        """
-        #* for debugging purpose - uncomment the below row
-        # pdb.set_trace()
-        
+        """        
         self.__num += 1                 # increment the number of function evaluations
         nB3 = 3 * len(self.Bodies)
         nConst = self.Joints[-1]._rowe
@@ -884,22 +997,22 @@ class PlanarDynamicModel:
             i2 = ir + 2
             i3 = i2
             body.ddr = ddc[ir:i2]
-            body.ddp = ddc[i3]
+            body.ddp = ddc[i3][0]
 
         ud = self.__bodies2ud()             # pack velocities and accelerations into ud
         return ud.flatten()
 
-    def solve(self, method = "LSODA", deubug_mode = False):
+    def solve(self, method = "LSODA"):
         """
         Solve the EQMs of the planar multi-body system.
         """
         self.method = method
-        self.debug_mode = deubug_mode
 
         nConst = self.Joints[-1]._rowe
         nB = len(self.Bodies)
         nB6 = 6 * nB
-        ans = input("\n\t ...Do you want to correct the initial conditions? [(y)es/(n)o] ").lower()
+        print("\n")
+        ans = input("\t... Do you want to correct the initial conditions? [(y)es/(n)o] ").lower()
 
         if nConst != 0:
             if ans == 'y':
@@ -911,7 +1024,7 @@ class PlanarDynamicModel:
 
         # pack coordinates and velocities ito u array
         u = self.__bodies2u()
-        if self._verbose: 
+        if self.verbose: 
             header = "... initial u vector ..."
             print(f"\n\t{header}")
             header_width = len(header)
@@ -929,55 +1042,26 @@ class PlanarDynamicModel:
         self.__num = 0
         self.__t10 = 0
 
-        if self.debug_mode == False:
-            if t_final == 0:
-                self.__analysis(0, u)
-                T = 0
-                uT = u.T
-            else:
-                dt = float(input("Reporting time-step = ? "))
-                Tspan = np.arange(t_initial, t_final, dt)
-                u0 = u.flatten()
-                options = {'rtol': 1e-6, 'atol': 1e-9, 'max_step': (Tspan[1] - Tspan[0])}
-                sol = solve_ivp(
-                    self.__analysis, 
-                    [t_initial, t_final], 
-                    u0, t_eval=Tspan, 
-                    method=self.method, 
-                    **options)
-                T = sol.t
-                uT = sol.y.T
-
-            num_evals = self._PlanarDynamicModel__num
-            print(f"Number of function evaluations = {num_evals}")
-            print(f"Simulation completed!")
-
+        if t_final == 0:
+            self.__analysis(0, u)
+            T = 0
+            uT = u.T
         else:
             dt = float(input("Reporting time-step = ? "))
-            n_steps = int(np.ceil((t_final - t_initial) / dt))
-            T = [t_initial]
-            uT = [u.flatten()]
-            u_current = u.flatten()
+            Tspan = np.arange(t_initial, t_final, dt)
+            u0 = u.flatten()
+            options = {'rtol': 1e-6, 'atol': 1e-9, 'max_step': (Tspan[1] - Tspan[0])}
+            sol = solve_ivp(
+                self.__analysis, 
+                [t_initial, t_final], 
+                u0, 
+                t_eval=Tspan, 
+                method=self.method, 
+                **options)
+            T = sol.t
+            uT = sol.y.T
 
-            for i in range(n_steps):
-                t_current = T[-1]
-                t_next = min(t_current + dt, t_final)
-                
-                sol = solve_ivp(
-                    self.__analysis, 
-                    [t_current, t_next], 
-                    u_current, 
-                    method=self.method, 
-                    rtol=1e-6, 
-                    atol=1e-9
-                )
-                
-                u_current = sol.y[:, -1]
-                T.append(t_next)
-                uT.append(u_current)
-
-            num_evals = self._PlanarDynamicModel__num
-            print(f"Number of function evaluations = {num_evals}")
-            print("Simulation completed!")
-        
+        num_evals = self._PlanarDynamicModel__num
+        print(f"Number of function evaluations = {num_evals}")
+        print(f"Simulation completed!")
         return T, uT
