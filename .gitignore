@@ -1,2 +1,5 @@
 # igore "build" folder
 /build/
+
+# igore _pycache's files
+*.pyc
