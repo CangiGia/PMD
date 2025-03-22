@@ -17,13 +17,6 @@ from PMD.functions import *
 from scipy.integrate import solve_ivp
 
 
-@staticmethod
-def detect_update(): #// - To be completed -
-    """
-    Detect if the model has been updated by the user.
-    """
-    pass
-
 class PlanarDynamicModel:
     def __init__(self, verbose = False):
         grouped_calsses = group_classes()
@@ -591,7 +584,7 @@ class PlanarDynamicModel:
                         -s_rot(self.Points[Pi]._dsP) * self.Bodies[Bi - 1].dp \
                         + s_rot(self.Points[Pj]._dsP) * self.Bodies[Bj - 1].dp
                     )
-                    
+
                 if joint.fix == 1:
                     f = np.vstack([f, [0]])
             
