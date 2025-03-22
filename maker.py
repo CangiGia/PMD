@@ -317,9 +317,9 @@ class Joint(Base):
     jPindex (int)
         Index of point `Pj`.
     iUindex (int)
-        Index of unit vector `u_i`.
+        Index of unit vector `ui`.
     jUindex (int)
-        Index of unit vector `u_i`.
+        Index of unit vector `uj`.
     iFunct (int)
         Analytical function index. 
     L (float)

@@ -340,7 +340,7 @@ class PlanarDynamicModel:
             body = self.Bodies[Bi]
             body._A = A_matrix(body.p)
 
-        # compute _sP = _A * sP_prime; _rP = r + _sP
+        # compute sP = A * sP_prime; rP = r + sP
         nP = len(self.Points)
         for Pi in range(nP):
             point = self.Points[Pi]
@@ -368,8 +368,8 @@ class PlanarDynamicModel:
         for Pi, point in enumerate(self.Points):
             Bi = point.Bindex
             if Bi != 0:
-                point._dsp = point._sPr * self.Bodies[Bi-1].dp
-                point._drP = self.Bodies[Bi-1].dr + point._dsp
+                point._dsP = point._sPr * self.Bodies[Bi-1].dp
+                point._drP = self.Bodies[Bi-1].dr + point._dsP
 
         for Vi, uvector in enumerate(self.uVectors):
             Bi = uvector.Bindex
@@ -451,9 +451,7 @@ class PlanarDynamicModel:
         nB3 = 3 * len(self.Bodies)
         D = np.zeros((nConst, nB3))
         
-        for Ji in range(len(self.Joints)):
-            joint = self.Joints[Ji]
-
+        for Ji, joint in enumerate(self.Joints):
             if joint.type == 'rev':
                 Pi = joint.iPindex
                 Pj = joint.jPindex
@@ -589,9 +587,11 @@ class PlanarDynamicModel:
                 elif Bj == 0:
                     f = -s_rot(self.Points[Pi]._dsP) * self.Bodies[Bi - 1].dp
                 else:
-                    f = -s_rot(self.Points[Pi]._dsP) * self.Bodies[Bi - 1].dp 
-                    + s_rot(self.Points[Pj]._dsP) * self.Bodies[Bj - 1].dp
-
+                    f = (
+                        -s_rot(self.Points[Pi]._dsP) * self.Bodies[Bi - 1].dp \
+                        + s_rot(self.Points[Pj]._dsP) * self.Bodies[Bj - 1].dp
+                    )
+                    
                 if joint.fix == 1:
                     f = np.vstack([f, [0]])
             
@@ -622,12 +622,12 @@ class PlanarDynamicModel:
                     f3 = -du.T @ dd
 
                     if Bi == 0:
-                        f3 += u.T @ (s_rot(self.Points[Pj]._dSp) * self.Bodies[Bj].dp)
+                        f3 += u.T @ (s_rot(self.Points[Pj]._dsP) * self.Bodies[Bj].dp)
                     elif Bj == 0:
-                        f3 -= u.T @ (s_rot(self.Points[Pi]._dSp) * self.Bodies[Bi].dp)
+                        f3 -= u.T @ (s_rot(self.Points[Pi]._dsP) * self.Bodies[Bi].dp)
                     else:
-                        term1 = self.Points[Pi]._dSp * self.Bodies[Bi].dp
-                        term2 = self.Points[Pj]._dSp * self.Bodies[Bj].dp
+                        term1 = self.Points[Pi]._dsP * self.Bodies[Bi].dp
+                        term2 = self.Points[Pj]._dsP * self.Bodies[Bj].dp
                         f3 -= u.T @ s_rot(term1 - term2)
 
                     f = np.vstack([f, [f3]])
@@ -646,7 +646,7 @@ class PlanarDynamicModel:
                 pass
         
             #! The value -1 should be fixed during the constraint definition 
-            #! to avoid the continuous management of indexes for 
+            #! to avoid the continous management of indexes for 
             #! slicing operations.
             rs = joint._rows - 1 
             re = rs + 2 
@@ -695,7 +695,7 @@ class PlanarDynamicModel:
         nB = len(self.Bodies)
         for Bi in range(nB): 
             ir = self.Bodies[Bi]._irc - 1
-            ird = self. Bodies[Bi]._irv - 1
+            ird = self.Bodies[Bi]._irv - 1
             self.Bodies[Bi].r  = u[ir:ir+2]
             self.Bodies[Bi].p  = u[ir+2][0]
             self.Bodies[Bi].dr = u[ird:ird+2]
@@ -1061,7 +1061,7 @@ class PlanarDynamicModel:
             T = sol.t
             uT = sol.y.T
 
-        num_evals = self._PlanarDynamicModel__num
+        num_evals = self.__num
         print(f"Number of function evaluations = {num_evals}")
         print(f"Simulation completed!")
         return T, uT

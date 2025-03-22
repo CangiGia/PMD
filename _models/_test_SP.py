@@ -85,7 +85,7 @@ my_dynamic_model = PlanarDynamicModel(verbose=True)
 time, solution = my_dynamic_model.solve(method='RK45')
 
 plt.figure()
-plt.plot(time, solution[:,5])
+plt.plot(time, solution[:,4])
 plt.show()
 
 np.savetxt('uT_python_RK45.txt', solution)
