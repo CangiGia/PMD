@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from PMD.maker import uVector
+from src.maker import uVector
 
 def colvect(x, y):
     return np.array([[x], [y]])

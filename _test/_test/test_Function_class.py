@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from PMD.maker import Function
+from src.maker import Function
 
 def test_function_initialization_default():
     # test default initialization of the Function class

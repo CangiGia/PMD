@@ -15,3 +15,5 @@ PMD Documentation
    :caption: Contents:
 
    maker
+   solver
+   functions

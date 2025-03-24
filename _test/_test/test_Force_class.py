@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from PMD.maker import Force
+from src.maker import Force
 
 def colvect(x, y):
     return np.array([[x], [y]])

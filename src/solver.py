@@ -13,8 +13,8 @@ import numpy as np
 import scipy as sc
 import numpy.linalg as lng
 import inspect
-from PMD.functions import *
-from PMD.maker import *
+from src.functions import *
+from src.maker import *
 from scipy.integrate import solve_ivp
 
 

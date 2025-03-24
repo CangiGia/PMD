@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+
+<html lang="sphinx-quickstart" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Functions module &#8212; PMD: Planar Multi-Body Dynamics Open Source Simulation Software  documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="_static/classic.css?v=2bf1fcf8" />
+    
+    <script src="_static/documentation_options.js?v=ddce4df2"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Solver module" href="solver.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="Related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="solver.html" title="Solver module"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">PMD: Planar Multi-Body Dynamics Open Source Simulation Software  documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Functions module</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="module-functions">
+<span id="functions-module"></span><h1>Functions module<a class="headerlink" href="#module-functions" title="Link to this heading">¶</a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="functions.A_matrix">
+<span class="sig-prename descclassname"><span class="pre">functions.</span></span><span class="sig-name descname"><span class="pre">A_matrix</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">phi</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#functions.A_matrix" title="Link to this definition">¶</a></dt>
+<dd><p>Computes the 2D rotation matrix for a given angle.</p>
+<p>The rotation matrix is used to rotate a vector in 2D space
+by an angle <cite>phi</cite> (in radians).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>(</strong><strong>float</strong><strong>)</strong> (<em>phi</em>) -- Angle of rotation in radians.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A 2x2 rotation matrix.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A (NDArray)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="functions.as_column_property">
+<span class="sig-prename descclassname"><span class="pre">functions.</span></span><span class="sig-name descname"><span class="pre">as_column_property</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#functions.as_column_property" title="Link to this definition">¶</a></dt>
+<dd><p>Creates a property that ensures the assigned value is always stored
+as a column numpy array.</p>
+<p>This function converts the assigned value to a column numpy array of
+shape (n, 1), regardless of whether the input is a list, a 1D numpy
+array, or a 2D numpy array.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>(</strong><strong>str</strong><strong>)</strong> (<em>name</em>) -- The name of the property to define. The actual value is stored in a
+private attribute named with an underscore prefix.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A property object that enforces column-vector format on assignment.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>property</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="functions.colvect">
+<span class="sig-prename descclassname"><span class="pre">functions.</span></span><span class="sig-name descname"><span class="pre">colvect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#functions.colvect" title="Link to this definition">¶</a></dt>
+<dd><p>Create a column vector from the provided values.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>*args</strong> (<em>float</em><em> or </em><em>int</em>) -- A variable number of arguments or a list representing the elements
+of the column vector. If a list is provided, it will be used
+to create the column vector.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A column vector with shape (n, 1), where n is the number of provided elements.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>numpy.ndarray</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">colvect</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+<span class="go">array([[1],</span>
+<span class="go">       [2],</span>
+<span class="go">       [3]])</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">colvect</span><span class="p">([</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">])</span>
+<span class="go">array([[4],</span>
+<span class="go">       [5],</span>
+<span class="go">       [6]])</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="functions.friction_A">
+<span class="sig-prename descclassname"><span class="pre">functions.</span></span><span class="sig-name descname"><span class="pre">friction_A</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mu_s</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mu_d</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">v_s</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">p</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k_t</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">v</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fN</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="headerlink" href="#functions.friction_A" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the friction force based on the Anderson et al. model.</p>
+<p>This function computes the friction force using a model where the
+viscous friction is not included. The formula takes into account the
+transition from static to dynamic friction, with an exponential decay
+controlled by the slip velocity <cite>v</cite> relative to a reference slip
+velocity <cite>v_s</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>(</strong><strong>float</strong><strong>)</strong> (<em>fN</em>) -- The coefficient of static friction. Represents the friction
+when the body is at rest.</p></li>
+<li><p><strong>(</strong><strong>float</strong><strong>)</strong> -- The coefficient of dynamic friction. Represents the friction
+when the body is in motion.</p></li>
+<li><p><strong>(</strong><strong>float</strong><strong>)</strong> -- The reference slip velocity where the transition between static
+and dynamic friction occurs.</p></li>
+<li><p><strong>(</strong><strong>float</strong><strong>)</strong> -- The exponent parameter that controls the rate of exponential
+decay in the friction model.</p></li>
+<li><p><strong>(</strong><strong>float</strong><strong>)</strong> -- A parameter that scales the hyperbolic tangent function, affecting
+how sharply the friction changes with velocity.</p></li>
+<li><p><strong>(</strong><strong>float</strong><strong>)</strong> -- The relative slip velocity between the contacting surfaces.</p></li>
+<li><p><strong>(</strong><strong>float</strong><strong>)</strong> -- The normal force, representing the force perpendicular to the
+contact surface.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The computed friction force.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>friction_force (float)</p>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Typical values for the <cite>v_s</cite>, <cite>p</cite> and <cite>k_t</cite> are: <cite>0.001</cite> (m/s), <cite>2</cite> and
+<cite>10</cite> respectively.</p>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="functions.friction_B">
+<span class="sig-prename descclassname"><span class="pre">functions.</span></span><span class="sig-name descname"><span class="pre">friction_B</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mu_s</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mu_d</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mu_v</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">v_t</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fnt</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">v</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fN</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span></span></span><a class="headerlink" href="#functions.friction_B" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the friction force based on the Brown-McPhee model.</p>
+<p>This function computes the friction force using the Brown-McPhee model,
+which includes the effects of viscous friction. The formula accounts for
+both the transition from static to dynamic friction as well as the
+influence of relative slip velocity and normal force.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>(</strong><strong>float</strong><strong>)</strong> (<em>fN</em>) -- The coefficient of static friction. Represents the friction
+when the body is at rest.</p></li>
+<li><p><strong>(</strong><strong>float</strong><strong>)</strong> -- The coefficient of dynamic friction. Represents the friction
+when the body is in motion.</p></li>
+<li><p><strong>(</strong><strong>float</strong><strong>)</strong> -- The coefficient of viscous friction, representing the friction
+that is proportional to velocity.</p></li>
+<li><p><strong>(</strong><strong>float</strong><strong>)</strong> -- A reference velocity that scales the transition between static
+and dynamic friction.</p></li>
+<li><p><strong>(</strong><strong>float</strong><strong>)</strong> -- A threshold normal force that affects the transition between
+different friction regimes.</p></li>
+<li><p><strong>(</strong><strong>float</strong><strong>)</strong> -- The relative slip velocity between the contacting surfaces.</p></li>
+<li><p><strong>(</strong><strong>float</strong><strong>)</strong> -- The normal force, representing the force perpendicular to the
+contact surface.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The computed friction force.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>friction_force (float)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="functions.functData">
+<span class="sig-prename descclassname"><span class="pre">functions.</span></span><span class="sig-name descname"><span class="pre">functData</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">Ci</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Functs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#functions.functData" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="functions.get_globals">
+<span class="sig-prename descclassname"><span class="pre">functions.</span></span><span class="sig-name descname"><span class="pre">get_globals</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#functions.get_globals" title="Link to this definition">¶</a></dt>
+<dd><p>Retrieve the global variables of the calling module.</p>
+<p>This method uses the inspect module to access the stack and
+fetch the global variables from the caller's context.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A dictionary of the caller's global variables.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="functions.group_classes">
+<span class="sig-prename descclassname"><span class="pre">functions.</span></span><span class="sig-name descname"><span class="pre">group_classes</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#functions.group_classes" title="Link to this definition">¶</a></dt>
+<dd><p>Looping through all the global variables this method returns a
+dictionary, in which, all the defined instances are contained.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A dictionary where each key is a class name (string) and the corresponding
+value is a list of instances of that class type.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="functions.my_r_Point">
+<span class="sig-prename descclassname"><span class="pre">functions.</span></span><span class="sig-name descname"><span class="pre">my_r_Point</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">r</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s_P_local</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">A</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s_P</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#functions.my_r_Point" title="Link to this definition">¶</a></dt>
+<dd><p>Computes the coordinates of point <cite>P</cite> relative to a global reference
+frame.</p>
+<p>This function calculates the global position of a point <cite>P</cite> that
+belongs to a body, using the fundamental principles of kinematics.
+If the position of point <cite>P</cite> relative to the local reference frame
+is already known in global coordinates as the vector <cite>s_P</cite>, the
+global position can be determined by simply adding <cite>s_P</cite> to the
+position vector <cite>r</cite>.
+If the position of point <cite>P</cite> is known only relative to the local
+reference frame (i.e., as <cite>s_P_local</cite>, and <cite>s_P</cite> is not directly known),
+it must first be transformed into global coordinates using the rotation
+matrix <cite>A</cite>, and then added to the vector <cite>r</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>(</strong><strong>NDArray</strong><strong>)</strong> (<em>A</em>) -- A vector representing the position of the body's reference point
+(e.g., the origin of the local reference frame) in the global
+coordinate system. This defines where the local reference frame is
+situated in global coordinates.</p></li>
+<li><p><strong>(</strong><strong>NDArray</strong><strong>)</strong> -- A vector representing the position of point <cite>P</cite> relative to the
+body's reference point, expressed in the local reference frame.
+This defines the position of <cite>P</cite> within the local frame before
+any transformation.</p></li>
+<li><p><strong>(</strong><strong>NDArray</strong><strong>)</strong> -- The rotation matrix that transforms vectors from the local reference
+frame to the global reference frame. It is used to express <cite>s_P_local</cite>
+in global coordinates.</p></li>
+<li><p><strong>(</strong><strong>NDArray</strong> (<em>s_P</em>) -- A vector representing the position of point <cite>P</cite>, already expressed
+in the global reference frame. If this is provided, it is used directly
+to compute the global position of <cite>P</cite> without the need for transformation.</p></li>
+<li><p><strong>optional</strong><strong>)</strong> -- A vector representing the position of point <cite>P</cite>, already expressed
+in the global reference frame. If this is provided, it is used directly
+to compute the global position of <cite>P</cite> without the need for transformation.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A vector representing the global coordinates of point <cite>P</cite> with
+respect to the global reference frame.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>r_P (NDArray)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="functions.my_r_Point_d">
+<span class="sig-prename descclassname"><span class="pre">functions.</span></span><span class="sig-name descname"><span class="pre">my_r_Point_d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">r_d</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s_P_local</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">A</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">phi_d</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s_P</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#functions.my_r_Point_d" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the velocity of a point belonging to a rigid body using
+kinematic relations.</p>
+<p>Given a rigid body in motion, the velocity of a point <cite>P</cite> on the body
+can be expressed as the sum of the velocity of a reference point
+(which could be the origin of the body’s local reference frame or
+its center of mass) and the velocity due to the rotational motion
+of the body around this reference point. The latter term is
+calculated as the cross product of the body's angular velocity vector
+and the relative position vector of point <cite>P</cite> with respect to the
+reference point.</p>
+<p>This relationship is given by the equation:</p>
+<blockquote>
+<div><p>v_P = v_O + ω × r_{P/O}</p>
+</div></blockquote>
+<p>where:
+- <cite>v_P</cite>: velocity of point <cite>P</cite> in global coordinates
+- <cite>v_O</cite>: velocity of the reference point <cite>O</cite> in global coordinates
+- <cite>ω</cite>: angular velocity of the body (expressed in radians per second)
+- <cite>r_{P/O}</cite>: position vector of <cite>P</cite> relative to <cite>O</cite> in global coordinates.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>(</strong><strong>NDArray</strong><strong>)</strong> (<em>A</em>) -- The velocity vector of the reference point (e.g., the center of
+mass or the origin of the local reference frame) of the body,
+expressed in global coordinates.</p></li>
+<li><p><strong>(</strong><strong>NDArray</strong><strong>)</strong> -- A vector representing the position of point <cite>P</cite> expressed in the
+local reference frame. This defines the position of <cite>P</cite> within
+the local frame.</p></li>
+<li><p><strong>(</strong><strong>NDArray</strong><strong>)</strong> -- The rotation matrix that transforms vectors from the local reference
+frame to the global reference frame. It is used to express <cite>s_P_local</cite>
+in global coordinates.</p></li>
+<li><p><strong>(</strong><strong>float</strong><strong>)</strong> (<em>phi_d</em>) -- The angular velocity of the body around the axis of rotation,
+expressed in radians per second.</p></li>
+<li><p><strong>(</strong><strong>NDArray</strong> (<em>s_P</em>) -- A vector representing the position of point <cite>P</cite> in global coordinates.
+If this is provided, the function uses this value directly to
+compute the velocity of <cite>P</cite>. If <cite>None</cite>, <cite>s_P</cite> will be calculated
+using the rotation matrix <cite>A</cite> and the local position <cite>s_P_local</cite>.</p></li>
+<li><p><strong>optional</strong><strong>)</strong> -- A vector representing the position of point <cite>P</cite> in global coordinates.
+If this is provided, the function uses this value directly to
+compute the velocity of <cite>P</cite>. If <cite>None</cite>, <cite>s_P</cite> will be calculated
+using the rotation matrix <cite>A</cite> and the local position <cite>s_P_local</cite>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The velocity vector of point <cite>P</cite>, expressed in global coordinates.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>r_P_d (NDArray)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="functions.my_r_Point_dd">
+<span class="sig-prename descclassname"><span class="pre">functions.</span></span><span class="sig-name descname"><span class="pre">my_r_Point_dd</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">r_dd</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s_P_local</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">A</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">phi_d</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">phi_dd</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s_P</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#functions.my_r_Point_dd" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the acceleration of a point belonging to a rigid body using
+kinematic relations.</p>
+<p>Given a rigid body in motion, the acceleration of a point <cite>P</cite> on the
+body can be expressed as a function of the acceleration of a reference
+point (e.g., the origin of the local reference frame or center of mass)
+of the body, the angular acceleration of the body, and the relative
+position of point <cite>P</cite> with respect to the reference point.</p>
+<p>The acceleration is computed using the following equation:</p>
+<blockquote>
+<div><p>a_P = a_O + α × r_{P/O} + ω × (ω × r_{P/O})</p>
+</div></blockquote>
+<p>where:
+- <cite>a_P</cite>: acceleration of point <cite>P</cite> in global coordinates
+- <cite>a_O</cite>: acceleration of the reference point <cite>O</cite> in global coordinates
+- <cite>α</cite>: angular acceleration of the body
+- <cite>r_{P/O}</cite>: position vector of <cite>P</cite> relative to <cite>O</cite>, expressed in
+global coordinates.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>(</strong><strong>NDArray</strong><strong>)</strong> (<em>A</em>) -- The acceleration vector of the reference point (e.g., the center
+of mass or the local reference frame's origin) of the body,
+expressed in global coordinates.</p></li>
+<li><p><strong>(</strong><strong>NDArray</strong><strong>)</strong> -- The position vector of point <cite>P</cite> relative to the reference point,
+expressed in the local reference frame. This defines the position
+of <cite>P</cite> within the local frame.</p></li>
+<li><p><strong>(</strong><strong>NDArray</strong><strong>)</strong> -- The rotation matrix that transforms vectors from the local
+reference frame to the global reference frame. It is used to
+express <cite>s_P_local</cite> in global coordinates.</p></li>
+<li><p><strong>(</strong><strong>float</strong><strong>)</strong> (<em>phi_dd</em>) -- The angular velocity of the body around the axis of rotation,
+expressed in radians per second.</p></li>
+<li><p><strong>(</strong><strong>float</strong><strong>)</strong> -- The angular acceleration of the body around the axis of rotation,
+expressed in radians per second squared.</p></li>
+<li><p><strong>(</strong><strong>NDArray</strong> (<em>s_P</em>) -- The position vector of point <cite>P</cite> relative to the reference point,
+expressed in global coordinates. If not provided, it will be computed
+from the local reference frame.</p></li>
+<li><p><strong>optional</strong><strong>)</strong> -- The position vector of point <cite>P</cite> relative to the reference point,
+expressed in global coordinates. If not provided, it will be computed
+from the local reference frame.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The acceleration vector of point <cite>P</cite>, expressed in global
+coordinates.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>r_P_dd (NDArray)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="functions.pp_s">
+<span class="sig-prename descclassname"><span class="pre">functions.</span></span><span class="sig-name descname"><span class="pre">pp_s</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">d</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">L0</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#functions.pp_s" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the force generated by a spring element in a planar
+multibody system.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>(</strong><strong>ndarray</strong><strong>)</strong> (<em>d</em>) -- Displacement vector between two points in the system.
+It represents the relative position of the endpoints of the spring.</p></li>
+<li><p><strong>(</strong><strong>float</strong><strong>)</strong> (<em>L0</em>) -- Stiffness coefficient of the spring, representing its resistance
+to deformation (N/m).</p></li>
+<li><p><strong>(</strong><strong>float</strong><strong>)</strong> -- Rest length of the spring when no force is applied (m).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Force vector applied by the spring element, oriented along the
+direction of displacement and with a magnitude proportional
+to the deformation from the rest length (N).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>f_s (ndarray)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="functions.pp_sd">
+<span class="sig-prename descclassname"><span class="pre">functions.</span></span><span class="sig-name descname"><span class="pre">pp_sd</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">d</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">d_d</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">L0</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span></span></span><a class="headerlink" href="#functions.pp_sd" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the force generated by a spring-damper element in a planar
+multibody system.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>(</strong><strong>ndarray</strong><strong>)</strong> (<em>d_d</em>) -- Displacement vector between two points in the system.
+It represents the relative position of the endpoints of the element.</p></li>
+<li><p><strong>(</strong><strong>ndarray</strong><strong>)</strong> -- Relative velocity vector between the two points, representing
+the rate of change of the displacement (m/s).</p></li>
+<li><p><strong>(</strong><strong>float</strong><strong>)</strong> (<em>dc</em>) -- Stiffness coefficient of the spring (N/m).</p></li>
+<li><p><strong>(</strong><strong>float</strong><strong>)</strong> -- Rest length of the spring when no force is applied (m).</p></li>
+<li><p><strong>(</strong><strong>float</strong><strong>)</strong> -- Damping coefficient, representing the resistance to relative
+velocity between the two points (Ns/m).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Force vector applied by the spring-damper element, combining
+both spring force and damping force (N).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>f_sd (ndarray)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="functions.pp_sda">
+<span class="sig-prename descclassname"><span class="pre">functions.</span></span><span class="sig-name descname"><span class="pre">pp_sda</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">d</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">d_d</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">L0</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fa</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#functions.pp_sda" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the force generated by a spring-damper-actuator element in
+a planar multibody system.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>(</strong><strong>ndarray</strong><strong>)</strong> (<em>d_d</em>) -- Displacement vector between two points in the system.
+It represents the relative position of the endpoints of the element.</p></li>
+<li><p><strong>(</strong><strong>ndarray</strong><strong>)</strong> -- Relative velocity vector between the two points, representing
+the rate of change of the displacement (m/s).</p></li>
+<li><p><strong>(</strong><strong>float</strong><strong>)</strong> (<em>fa</em>) -- Stiffness coefficient of the spring (N/m).</p></li>
+<li><p><strong>(</strong><strong>float</strong><strong>)</strong> -- Rest length of the spring when no force is applied (m).</p></li>
+<li><p><strong>(</strong><strong>float</strong><strong>)</strong> -- Damping coefficient, representing the resistance to relative
+velocity between the two points (Ns/m).</p></li>
+<li><p><strong>(</strong><strong>float</strong><strong>)</strong> -- Actuator force, representing an externally applied force that
+modifies the behavior of the spring-damper system (N).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Force vector applied by the spring-damper-actuator element,
+combining spring force, damping force, and actuator force (N).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>f_sda (ndarray)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="functions.r_Point">
+<span class="sig-prename descclassname"><span class="pre">functions.</span></span><span class="sig-name descname"><span class="pre">r_Point</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">r</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s_P</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#functions.r_Point" title="Link to this definition">¶</a></dt>
+<dd><p>Computes the coordinates of point <cite>P</cite> relative to a global reference
+frame.</p>
+<p>This function calculates the global position of a point <cite>P</cite> that
+belongs to a body, using the fundamental principles of kinematics.
+The global position <cite>r_P</cite> is determined by adding the position
+vector <cite>r</cite> (representing the location of the local reference
+frame relative to the global reference frame) to the global
+position vector <cite>s_P</cite> (representing the position of point <cite>P</cite>
+relative to the body's reference point, defined in the local
+coordinate system).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>r</strong> (<em>NDArray</em>) -- A vector representing the position of the body's reference point
+in the global coordinate system.</p></li>
+<li><p><strong>s_P</strong> (<em>NDArray</em>) -- A vector representing the position of point <cite>P</cite> relative to the
+body's reference point, defined in the local coordinate system.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>r_P</strong> -- A vector representing the global coordinates of point <cite>P</cite> in the
+global reference frame.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>NDArray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="functions.r_Point_d">
+<span class="sig-prename descclassname"><span class="pre">functions.</span></span><span class="sig-name descname"><span class="pre">r_Point_d</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">r_d</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s_P</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">phi_d</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#functions.r_Point_d" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the velocity of a point belonging to a rigid body using
+kinematic relations.</p>
+<p>Given a rigid body in motion, the velocity of a point <cite>P</cite> on the body
+can be expressed as the sum of the velocity of a reference point
+(which could be the origin of the body’s local reference frame or
+its center of mass) and the velocity due to the rotational motion
+of the body around this reference point. The latter term is
+calculated as the cross product of the body's angular velocity vector
+and the relative position vector of point <cite>P</cite> with respect to the
+reference point.</p>
+<p>This relationship is given by the equation:</p>
+<blockquote>
+<div><p>v_P = v_O + ω × r_{P/O}</p>
+</div></blockquote>
+<p>where:
+- <cite>v_P</cite>: velocity of point <cite>P</cite> in global coordinates
+- <cite>v_O</cite>: velocity of the reference point <cite>O</cite> in global coordinates
+- <cite>ω</cite>: angular velocity of the body (expressed in radians per second)
+- <cite>r_{P/O}</cite>: position vector of <cite>P</cite> relative to <cite>O</cite>, expressed in</p>
+<blockquote>
+<div><p>the local reference frame and transformed to global coordinates.</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>(</strong><strong>NDArray</strong><strong>)</strong> (<em>s_P</em>) -- The velocity vector of the reference point of the body, expressed
+in global coordinates. This could be the velocity of the origin
+of the body’s local reference frame or its center of mass.</p></li>
+<li><p><strong>(</strong><strong>NDArray</strong><strong>)</strong> -- The position vector of point <cite>P</cite>, expressed in the global reference
+frame. This represents the coordinates of point <cite>P</cite> in global
+terms.</p></li>
+<li><p><strong>(</strong><strong>float</strong><strong>)</strong> (<em>phi_d</em>) -- The angular velocity of the body around the axis of rotation,
+expressed in radians per second.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The velocity vector of point <cite>P</cite>, expressed in global coordinates.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>r_P_d (NDArray)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="functions.r_Point_dd">
+<span class="sig-prename descclassname"><span class="pre">functions.</span></span><span class="sig-name descname"><span class="pre">r_Point_dd</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">r_dd</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">s_P_local</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">A</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">phi_d</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">phi_dd</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#functions.r_Point_dd" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the acceleration of a point belonging to a rigid body using
+kinematic relations.</p>
+<p>Given a rigid body in motion, the acceleration of a point <cite>P</cite> on the
+body can be expressed as a function of the acceleration of a reference
+point (e.g., the origin or center of mass) of the body, the angular
+acceleration of the body, and the relative position of point <cite>P</cite> with
+respect to the reference point.</p>
+<p>The acceleration is computed using the following equation:</p>
+<blockquote>
+<div><p>a_P = a_O + α × r_{P/O} + ω × (ω × r_{P/O})</p>
+</div></blockquote>
+<p>where:
+- <cite>a_P</cite>: acceleration of point <cite>P</cite> in global coordinates
+- <cite>a_O</cite>: acceleration of the reference point <cite>O</cite> in global coordinates
+- <cite>α</cite>: angular acceleration of the body
+- <cite>r_{P/O}</cite>: position vector of <cite>P</cite> relative to <cite>O</cite>, initially expressed</p>
+<blockquote>
+<div><p>in the local reference frame and transformed to global coordinates.</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>r_dd</strong> (<em>NDArray</em>) -- The acceleration vector of the reference point (e.g., the center
+of mass) of the body, expressed in global coordinates.</p></li>
+<li><p><strong>s_P_local</strong> (<em>NDArray</em>) -- The position vector of point <cite>P</cite> relative to the reference point,
+expressed in the local reference frame. This defines the position
+of <cite>P</cite> within the local frame.</p></li>
+<li><p><strong>A</strong> (<em>NDArray</em>) -- The rotation matrix that transforms vectors from the local
+reference frame to the global reference frame. It is used to
+express <cite>s_P_local</cite> in global coordinates.</p></li>
+<li><p><strong>phi_d</strong> (<em>float</em>) -- The angular velocity of the body around the axis of rotation,
+expressed in radians per second.</p></li>
+<li><p><strong>phi_dd</strong> (<em>float</em>) -- The angular acceleration of the body around the axis of rotation,
+expressed in radians per second squared.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>r_P_dd</strong> -- The acceleration vector of point <cite>P</cite>, expressed in global coordinates.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>NDArray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="functions.r_s">
+<span class="sig-prename descclassname"><span class="pre">functions.</span></span><span class="sig-name descname"><span class="pre">r_s</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">theta</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">theta0</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#functions.r_s" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the torque generated by a torsional spring.</p>
+<p>The torque is generated by a torsional spring with stiffness <cite>k</cite> and
+a rest angle <cite>theta0</cite>. It is proportional to the angular displacement
+from the rest angle.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>(</strong><strong>float</strong><strong>)</strong> (<em>theta0</em>) -- Current angle (radians) of the torsional spring.</p></li>
+<li><p><strong>(</strong><strong>float</strong><strong>)</strong> -- Stiffness of the torsional spring (Nm/rad).</p></li>
+<li><p><strong>(</strong><strong>float</strong><strong>)</strong> -- Rest angle of the torsional spring (radians).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The torque <cite>T_s</cite> generated by the torsional spring (Nm).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>T_s (float)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="functions.r_sd">
+<span class="sig-prename descclassname"><span class="pre">functions.</span></span><span class="sig-name descname"><span class="pre">r_sd</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">theta</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">theta_d</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">theta0</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#functions.r_sd" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the torque generated by a torsional spring and a torsional
+damper.</p>
+<p>The total torque is generated by a torsional spring with stiffness <cite>k</cite>
+and rest angle <cite>theta0</cite>, along with a torsional damper with damping
+constant <cite>dc</cite> that resists angular velocity.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>(</strong><strong>float</strong><strong>)</strong> (<em>dc</em>) -- Current angle (radians) of the system.</p></li>
+<li><p><strong>(</strong><strong>float</strong><strong>)</strong> -- Angular velocity (radians/second).</p></li>
+<li><p><strong>(</strong><strong>float</strong><strong>)</strong> -- Stiffness of the torsional spring (Nm/rad).</p></li>
+<li><p><strong>(</strong><strong>float</strong><strong>)</strong> -- Rest angle of the torsional spring (radians).</p></li>
+<li><p><strong>(</strong><strong>float</strong><strong>)</strong> -- Damping coefficient of the torsional damper (Nm·s/rad).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The torque <cite>T_sd</cite> generated by the combined spring and damper (Nm).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>T_sd (float)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="functions.r_sda">
+<span class="sig-prename descclassname"><span class="pre">functions.</span></span><span class="sig-name descname"><span class="pre">r_sda</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">theta</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">theta_d</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">theta0</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">Ta</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#functions.r_sda" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the torque generated by a torsional actuator system.</p>
+<p>The total torque is generated by a system consisting of a torsional
+spring with stiffness <cite>k</cite> and rest angle <cite>theta0</cite>, a torsional damper
+with damping constant <cite>dc</cite>, and an actuator that provides a constant
+torque <cite>Ta</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>(</strong><strong>float</strong><strong>)</strong> (<em>Ta</em>) -- Current angle (radians) of the system.</p></li>
+<li><p><strong>(</strong><strong>float</strong><strong>)</strong> -- Angular velocity (radians/second).</p></li>
+<li><p><strong>(</strong><strong>float</strong><strong>)</strong> -- Stiffness of the torsional spring (Nm/rad).</p></li>
+<li><p><strong>(</strong><strong>float</strong><strong>)</strong> -- Rest angle of the torsional spring (radians).</p></li>
+<li><p><strong>(</strong><strong>float</strong><strong>)</strong> -- Damping coefficient of the torsional damper (Nm·s/rad).</p></li>
+<li><p><strong>(</strong><strong>float</strong><strong>)</strong> -- Constant torque provided by the actuator (Nm).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The torque <cite>T_sda</cite> generated by the combined spring, damper, and
+actuator (Nm).</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>T_sda (float)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="functions.rowvect">
+<span class="sig-prename descclassname"><span class="pre">functions.</span></span><span class="sig-name descname"><span class="pre">rowvect</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#functions.rowvect" title="Link to this definition">¶</a></dt>
+<dd><p>Create a row vector from the provided values.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>*args</strong> (<em>float</em><em> or </em><em>int</em>) -- A variable number of arguments or a list representing the elements
+of the row vector. If a list is provided, it will be used
+to create the row vector.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A row vector with shape (1, n), where n is the number of provided elements.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>numpy.ndarray</p>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">rowvect</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+<span class="go">array([[1, 2, 3]])</span>
+</pre></div>
+</div>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">rowvect</span><span class="p">([</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">])</span>
+<span class="go">array([[4, 5, 6]])</span>
+</pre></div>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="functions.s_rot">
+<span class="sig-prename descclassname"><span class="pre">functions.</span></span><span class="sig-name descname"><span class="pre">s_rot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vect</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#functions.s_rot" title="Link to this definition">¶</a></dt>
+<dd><p>Computes a 90-degree counterclockwise rotation of a 2D vector.</p>
+<p>Given a 2D vector <cite>vect</cite> represented as a NumPy array, returns a new
+vector that is rotated 90 degrees counterclockwise.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>(</strong><strong>ndarray</strong><strong>)</strong> (<em>vect</em>) -- A NumPy array with two elements representing the vector to be
+rotated.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A NumPy array containing the rotated vector.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>s_r (ndarray)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="functions.unit_vector">
+<span class="sig-prename descclassname"><span class="pre">functions.</span></span><span class="sig-name descname"><span class="pre">unit_vector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">u</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#functions.unit_vector" title="Link to this definition">¶</a></dt>
+<dd><p>Create a unit vector along the provided one.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>(</strong><strong>NDArray</strong><strong>)</strong> (<em>u</em>) -- Vector along which create the unit vector.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Unit vector required.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>u_hat (NDArray)</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="functions.validate_shape">
+<span class="sig-prename descclassname"><span class="pre">functions.</span></span><span class="sig-name descname"><span class="pre">validate_shape</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vec</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">dtype</span><span class="p"><span class="pre">[</span></span><span class="pre">_ScalarType_co</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#functions.validate_shape" title="Link to this definition">¶</a></dt>
+<dd><p>Check if the input vector is a column vector with 2 rows.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>(</strong><strong>np.ndarray</strong><strong>)</strong> (<em>vec</em>) -- The input vector to be checked.</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> -- if the input is not a column vector with 2 rows.:</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Functions module</a><ul>
+<li><a class="reference internal" href="#functions.A_matrix"><code class="docutils literal notranslate"><span class="pre">A_matrix()</span></code></a></li>
+<li><a class="reference internal" href="#functions.as_column_property"><code class="docutils literal notranslate"><span class="pre">as_column_property()</span></code></a></li>
+<li><a class="reference internal" href="#functions.colvect"><code class="docutils literal notranslate"><span class="pre">colvect()</span></code></a></li>
+<li><a class="reference internal" href="#functions.friction_A"><code class="docutils literal notranslate"><span class="pre">friction_A()</span></code></a></li>
+<li><a class="reference internal" href="#functions.friction_B"><code class="docutils literal notranslate"><span class="pre">friction_B()</span></code></a></li>
+<li><a class="reference internal" href="#functions.functData"><code class="docutils literal notranslate"><span class="pre">functData()</span></code></a></li>
+<li><a class="reference internal" href="#functions.get_globals"><code class="docutils literal notranslate"><span class="pre">get_globals()</span></code></a></li>
+<li><a class="reference internal" href="#functions.group_classes"><code class="docutils literal notranslate"><span class="pre">group_classes()</span></code></a></li>
+<li><a class="reference internal" href="#functions.my_r_Point"><code class="docutils literal notranslate"><span class="pre">my_r_Point()</span></code></a></li>
+<li><a class="reference internal" href="#functions.my_r_Point_d"><code class="docutils literal notranslate"><span class="pre">my_r_Point_d()</span></code></a></li>
+<li><a class="reference internal" href="#functions.my_r_Point_dd"><code class="docutils literal notranslate"><span class="pre">my_r_Point_dd()</span></code></a></li>
+<li><a class="reference internal" href="#functions.pp_s"><code class="docutils literal notranslate"><span class="pre">pp_s()</span></code></a></li>
+<li><a class="reference internal" href="#functions.pp_sd"><code class="docutils literal notranslate"><span class="pre">pp_sd()</span></code></a></li>
+<li><a class="reference internal" href="#functions.pp_sda"><code class="docutils literal notranslate"><span class="pre">pp_sda()</span></code></a></li>
+<li><a class="reference internal" href="#functions.r_Point"><code class="docutils literal notranslate"><span class="pre">r_Point()</span></code></a></li>
+<li><a class="reference internal" href="#functions.r_Point_d"><code class="docutils literal notranslate"><span class="pre">r_Point_d()</span></code></a></li>
+<li><a class="reference internal" href="#functions.r_Point_dd"><code class="docutils literal notranslate"><span class="pre">r_Point_dd()</span></code></a></li>
+<li><a class="reference internal" href="#functions.r_s"><code class="docutils literal notranslate"><span class="pre">r_s()</span></code></a></li>
+<li><a class="reference internal" href="#functions.r_sd"><code class="docutils literal notranslate"><span class="pre">r_sd()</span></code></a></li>
+<li><a class="reference internal" href="#functions.r_sda"><code class="docutils literal notranslate"><span class="pre">r_sda()</span></code></a></li>
+<li><a class="reference internal" href="#functions.rowvect"><code class="docutils literal notranslate"><span class="pre">rowvect()</span></code></a></li>
+<li><a class="reference internal" href="#functions.s_rot"><code class="docutils literal notranslate"><span class="pre">s_rot()</span></code></a></li>
+<li><a class="reference internal" href="#functions.unit_vector"><code class="docutils literal notranslate"><span class="pre">unit_vector()</span></code></a></li>
+<li><a class="reference internal" href="#functions.validate_shape"><code class="docutils literal notranslate"><span class="pre">validate_shape()</span></code></a></li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="solver.html"
+                          title="previous chapter">Solver module</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/functions.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="Related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="solver.html" title="Solver module"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">PMD: Planar Multi-Body Dynamics Open Source Simulation Software  documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Functions module</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2025, Giacomo Cangi.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+    </div>
+  </body>
+</html>

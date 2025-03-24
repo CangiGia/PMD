@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from PMD.maker import Point
+from src.maker import Point
 
 def colvect(x, y):
     return np.array([[x], [y]])

@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from PMD.maker import Joint
+from src.maker import Joint
 
 def test_joint_initialization_default():
     # test default initialization of the Joint class

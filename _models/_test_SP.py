@@ -1,8 +1,8 @@
 import numpy as np
 import scipy as sc
-from PMD.maker import *
-from PMD.solver import *
-from PMD.functions import *
+from src.maker import *
+from src.solver import *
+from src.functions import *
 import matplotlib.pyplot as plt
 
 

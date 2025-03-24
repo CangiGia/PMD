@@ -1,6 +1,6 @@
 import pytest
 import numpy as np
-from PMD.maker import Base
+from src.maker import Base
 
 def test_instance_creation():
     # create instances of Base
