@@ -88,7 +88,7 @@ plt.figure()
 plt.plot(time, solution[:,4])
 plt.show()
 
-np.savetxt('uT_python_RK45.txt', solution)
-np.savetxt('T_python_RK45.txt', time)
+np.savetxt('uT_python.txt', solution)
+np.savetxt('T_python.txt', time)
 
 ecchime = 1

@@ -14,6 +14,7 @@ import scipy as sc
 import numpy.linalg as lng
 import inspect
 from PMD.functions import *
+from PMD.maker import *
 from scipy.integrate import solve_ivp
 
 
@@ -752,9 +753,9 @@ class PlanarDynamicModel:
                     pass
 
                 case 'user' if callable(force.callback):
-                    global_vars = globals()
-                    user_args_names = list(inspect.signature(force.callback).parameters.keys())
-                    args = [global_vars[name] for name in user_args_names if name in global_vars]
+                    global_vars = get_globals()
+                    params = list(inspect.signature(force.callback).parameters.keys())
+                    args = [global_vars[name] for name in params if name in global_vars]
                     force.callback(*args)
 
                 case _:
