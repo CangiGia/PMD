@@ -1,0 +1,7 @@
+Diocane module
+============
+
+.. automodule:: diocane
+    :members:
+    :undoc-members:
+    :show-inheritance:

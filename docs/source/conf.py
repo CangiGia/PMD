@@ -8,8 +8,10 @@
 
 import os
 import sys
-# sys.path.insert(0, os.path.abspath('./')) 
-sys.path.insert(0, os.path.abspath('../../src'))
+current_file_path = os.path.abspath(__file__)
+current_directory = os.path.dirname(current_file_path)
+target_path = os.path.abspath(os.path.join(current_directory, '../../src'))
+sys.path.insert(0, target_path)
 
 project = 'PMD: Planar Multi-Body Dynamics Open Source Simulation Software'
 copyright = '2025, Giacomo Cangi'

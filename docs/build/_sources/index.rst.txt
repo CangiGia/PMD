@@ -14,6 +14,6 @@ PMD Documentation
    :maxdepth: 2
    :caption: Contents:
 
+   functions
    maker
    solver
-   functions

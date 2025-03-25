@@ -1,8 +1,8 @@
 import numpy as np
 import scipy as sc
-from src.maker import *
-from src.solver import *
-from src.functions import *
+from PMD.src.maker import *
+from PMD.src.functions import *
+from PMD.src.solver import *
 import matplotlib.pyplot as plt
 
 
@@ -88,7 +88,7 @@ plt.figure()
 plt.plot(time, solution[:,4])
 plt.show()
 
-np.savetxt('uT_python.txt', solution)
-np.savetxt('T_python.txt', time)
+# np.savetxt('uT_python.txt', solution)
+# np.savetxt('T_python.txt', time)
 
 ecchime = 1
