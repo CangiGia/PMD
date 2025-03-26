@@ -1,6 +1,6 @@
 import numpy as np
 import scipy as sc
-from src.builder import *
+from PMD.src.builder import *
 from PMD.src.functions import *
 from PMD.src.solver import *
 import matplotlib.pyplot as plt

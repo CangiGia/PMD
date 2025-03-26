@@ -9,6 +9,7 @@
   <title>Builder module &mdash; PMD: Planar Multi-Body Dynamics Open Source Simulation Software  documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
 
   
       <script src="_static/jquery.js?v=5d32c60e"></script>
@@ -16,11 +17,10 @@
       <script src="_static/documentation_options.js?v=5929fcd5"></script>
       <script src="_static/doctools.js?v=9bcbadda"></script>
       <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+      <script src="_static/design-tabs.js?v=f930bc37"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
-    <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Solver module" href="solver.html" />
-    <link rel="prev" title="PMD - Planar Multibody Dynamics Open-Source Software" href="index.html" /> 
+    <link rel="search" title="Search" href="search.html" /> 
 </head>
 
 <body class="wy-body-for-nav"> 
@@ -42,45 +42,43 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
-<ul class="current">
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Builder module</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#src.builder.Base"><code class="docutils literal notranslate"><span class="pre">Base</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#src.builder.Base.COUNT"><code class="docutils literal notranslate"><span class="pre">Base.COUNT</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#src.builder.Base.get_count"><code class="docutils literal notranslate"><span class="pre">Base.get_count()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#src.builder.Base.get_type"><code class="docutils literal notranslate"><span class="pre">Base.get_type()</span></code></a></li>
+              <!-- Local TOC -->
+              <div class="local-toc"><ul>
+<li><a class="reference internal" href="#">Builder module</a><ul>
+<li><a class="reference internal" href="#src.builder.Base"><code class="docutils literal notranslate"><span class="pre">Base</span></code></a><ul>
+<li><a class="reference internal" href="#src.builder.Base.COUNT"><code class="docutils literal notranslate"><span class="pre">Base.COUNT</span></code></a></li>
+<li><a class="reference internal" href="#src.builder.Base.get_count"><code class="docutils literal notranslate"><span class="pre">Base.get_count()</span></code></a></li>
+<li><a class="reference internal" href="#src.builder.Base.get_type"><code class="docutils literal notranslate"><span class="pre">Base.get_type()</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#src.builder.Body"><code class="docutils literal notranslate"><span class="pre">Body</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#src.builder.Body.ddr"><code class="docutils literal notranslate"><span class="pre">Body.ddr</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#src.builder.Body.dr"><code class="docutils literal notranslate"><span class="pre">Body.dr</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#src.builder.Body.r"><code class="docutils literal notranslate"><span class="pre">Body.r</span></code></a></li>
+<li><a class="reference internal" href="#src.builder.Body"><code class="docutils literal notranslate"><span class="pre">Body</span></code></a><ul>
+<li><a class="reference internal" href="#src.builder.Body.ddr"><code class="docutils literal notranslate"><span class="pre">Body.ddr</span></code></a></li>
+<li><a class="reference internal" href="#src.builder.Body.dr"><code class="docutils literal notranslate"><span class="pre">Body.dr</span></code></a></li>
+<li><a class="reference internal" href="#src.builder.Body.r"><code class="docutils literal notranslate"><span class="pre">Body.r</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#src.builder.Force"><code class="docutils literal notranslate"><span class="pre">Force</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#src.builder.Force.DEFAULT_GRAVITY"><code class="docutils literal notranslate"><span class="pre">Force.DEFAULT_GRAVITY</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#src.builder.Force.DEFAULT_GRAVITY_VECTOR"><code class="docutils literal notranslate"><span class="pre">Force.DEFAULT_GRAVITY_VECTOR</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#src.builder.Force.f"><code class="docutils literal notranslate"><span class="pre">Force.f</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#src.builder.Force.flocal"><code class="docutils literal notranslate"><span class="pre">Force.flocal</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="#src.builder.Force.wgt"><code class="docutils literal notranslate"><span class="pre">Force.wgt</span></code></a></li>
+<li><a class="reference internal" href="#src.builder.Force"><code class="docutils literal notranslate"><span class="pre">Force</span></code></a><ul>
+<li><a class="reference internal" href="#src.builder.Force.DEFAULT_GRAVITY"><code class="docutils literal notranslate"><span class="pre">Force.DEFAULT_GRAVITY</span></code></a></li>
+<li><a class="reference internal" href="#src.builder.Force.DEFAULT_GRAVITY_VECTOR"><code class="docutils literal notranslate"><span class="pre">Force.DEFAULT_GRAVITY_VECTOR</span></code></a></li>
+<li><a class="reference internal" href="#src.builder.Force.f"><code class="docutils literal notranslate"><span class="pre">Force.f</span></code></a></li>
+<li><a class="reference internal" href="#src.builder.Force.flocal"><code class="docutils literal notranslate"><span class="pre">Force.flocal</span></code></a></li>
+<li><a class="reference internal" href="#src.builder.Force.wgt"><code class="docutils literal notranslate"><span class="pre">Force.wgt</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#src.builder.Function"><code class="docutils literal notranslate"><span class="pre">Function</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="#src.builder.Joint"><code class="docutils literal notranslate"><span class="pre">Joint</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="#src.builder.Point"><code class="docutils literal notranslate"><span class="pre">Point</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#src.builder.Point.sPlocal"><code class="docutils literal notranslate"><span class="pre">Point.sPlocal</span></code></a></li>
+<li><a class="reference internal" href="#src.builder.Function"><code class="docutils literal notranslate"><span class="pre">Function</span></code></a></li>
+<li><a class="reference internal" href="#src.builder.Joint"><code class="docutils literal notranslate"><span class="pre">Joint</span></code></a></li>
+<li><a class="reference internal" href="#src.builder.Point"><code class="docutils literal notranslate"><span class="pre">Point</span></code></a><ul>
+<li><a class="reference internal" href="#src.builder.Point.sPlocal"><code class="docutils literal notranslate"><span class="pre">Point.sPlocal</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#src.builder.uVector"><code class="docutils literal notranslate"><span class="pre">uVector</span></code></a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#src.builder.uVector.ulocal"><code class="docutils literal notranslate"><span class="pre">uVector.ulocal</span></code></a></li>
+<li><a class="reference internal" href="#src.builder.uVector"><code class="docutils literal notranslate"><span class="pre">uVector</span></code></a><ul>
+<li><a class="reference internal" href="#src.builder.uVector.ulocal"><code class="docutils literal notranslate"><span class="pre">uVector.ulocal</span></code></a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="solver.html">Solver module</a></li>
-<li class="toctree-l1"><a class="reference internal" href="utils.html">Utils module</a></li>
 </ul>
-
+</div>
         </div>
       </div>
     </nav>
@@ -114,7 +112,7 @@ for defining rigid bodies, joints, constraints, and external forces.</p>
 <p>Author: Giacomo Cangi</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="src.builder.Base">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.builder.</span></span><span class="sig-name descname"><span class="pre">Base</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.builder.Base" title="Link to this definition"></a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.builder.</span></span><span class="sig-name descname"><span class="pre">Base</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.builder.Base" title="Link to this definition"></a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>Base class for all multi-body simulation objects.</p>
 <p>This class provides a foundation for objects in the multi-body dynamic
@@ -126,7 +124,7 @@ simulation framework.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="src.builder.Base.get_count">
-<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.builder.Base.get_count" title="Link to this definition"></a></dt>
+<em class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.builder.Base.get_count" title="Link to this definition"></a></dt>
 <dd><p>Retrieve the current count of instances.</p>
 <section id="returns">
 <h2>Returns<a class="headerlink" href="#returns" title="Link to this heading"></a></h2>
@@ -154,7 +152,7 @@ simulation framework.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="src.builder.Body">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.builder.</span></span><span class="sig-name descname"><span class="pre">Body</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.builder.Body" title="Link to this definition"></a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.builder.</span></span><span class="sig-name descname"><span class="pre">Body</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.builder.Body" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#src.builder.Base" title="src.builder.Base"><code class="xref py py-class docutils literal notranslate"><span class="pre">Base</span></code></a></p>
 <p>Create a <cite>rigid body</cite> in a planar multi-body dynamic simulation.</p>
 <section id="attributes">
@@ -204,17 +202,17 @@ simulation framework.</p>
 </dl>
 <dl class="py property">
 <dt class="sig sig-object py" id="src.builder.Body.ddr">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ddr</span></span><a class="headerlink" href="#src.builder.Body.ddr" title="Link to this definition"></a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ddr</span></span><a class="headerlink" href="#src.builder.Body.ddr" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="src.builder.Body.dr">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dr</span></span><a class="headerlink" href="#src.builder.Body.dr" title="Link to this definition"></a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dr</span></span><a class="headerlink" href="#src.builder.Body.dr" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="src.builder.Body.r">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">r</span></span><a class="headerlink" href="#src.builder.Body.r" title="Link to this definition"></a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">r</span></span><a class="headerlink" href="#src.builder.Body.r" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 </section>
@@ -222,7 +220,7 @@ simulation framework.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="src.builder.Force">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.builder.</span></span><span class="sig-name descname"><span class="pre">Force</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.builder.Force" title="Link to this definition"></a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.builder.</span></span><span class="sig-name descname"><span class="pre">Force</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.builder.Force" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#src.builder.Base" title="src.builder.Base"><code class="xref py py-class docutils literal notranslate"><span class="pre">Base</span></code></a></p>
 <p>Crate a force in a planar multi-body dynamic simulation.</p>
 <section id="id2">
@@ -280,17 +278,17 @@ simulation framework.</p>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="src.builder.Force.f">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">f</span></span><a class="headerlink" href="#src.builder.Force.f" title="Link to this definition"></a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">f</span></span><a class="headerlink" href="#src.builder.Force.f" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="src.builder.Force.flocal">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">flocal</span></span><a class="headerlink" href="#src.builder.Force.flocal" title="Link to this definition"></a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">flocal</span></span><a class="headerlink" href="#src.builder.Force.flocal" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 <dl class="py property">
 <dt class="sig sig-object py" id="src.builder.Force.wgt">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">wgt</span></span><a class="headerlink" href="#src.builder.Force.wgt" title="Link to this definition"></a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">wgt</span></span><a class="headerlink" href="#src.builder.Force.wgt" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 </section>
@@ -298,7 +296,7 @@ simulation framework.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="src.builder.Function">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.builder.</span></span><span class="sig-name descname"><span class="pre">Function</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.builder.Function" title="Link to this definition"></a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.builder.</span></span><span class="sig-name descname"><span class="pre">Function</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.builder.Function" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#src.builder.Base" title="src.builder.Base"><code class="xref py py-class docutils literal notranslate"><span class="pre">Base</span></code></a></p>
 <p>Create a user defined function in a planar multi-body dynamic simulation.</p>
 <section id="id4">
@@ -331,7 +329,7 @@ type <cite>c</cite>.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="src.builder.Joint">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.builder.</span></span><span class="sig-name descname"><span class="pre">Joint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.builder.Joint" title="Link to this definition"></a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.builder.</span></span><span class="sig-name descname"><span class="pre">Joint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.builder.Joint" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#src.builder.Base" title="src.builder.Base"><code class="xref py py-class docutils literal notranslate"><span class="pre">Base</span></code></a></p>
 <p>Create a joint in a planar multi-body dynamic simulation.</p>
 <section id="id5">
@@ -395,7 +393,7 @@ type <cite>c</cite>.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="src.builder.Point">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.builder.</span></span><span class="sig-name descname"><span class="pre">Point</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.builder.Point" title="Link to this definition"></a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.builder.</span></span><span class="sig-name descname"><span class="pre">Point</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.builder.Point" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#src.builder.Base" title="src.builder.Base"><code class="xref py py-class docutils literal notranslate"><span class="pre">Base</span></code></a></p>
 <p>Create a body-fixed <cite>point</cite> in a planar multi-body dynamic simulation.</p>
 <section id="id7">
@@ -425,7 +423,7 @@ type <cite>c</cite>.</p>
 </dl>
 <dl class="py property">
 <dt class="sig sig-object py" id="src.builder.Point.sPlocal">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">sPlocal</span></span><a class="headerlink" href="#src.builder.Point.sPlocal" title="Link to this definition"></a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">sPlocal</span></span><a class="headerlink" href="#src.builder.Point.sPlocal" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 </section>
@@ -433,7 +431,7 @@ type <cite>c</cite>.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="src.builder.uVector">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.builder.</span></span><span class="sig-name descname"><span class="pre">uVector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.builder.uVector" title="Link to this definition"></a></dt>
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.builder.</span></span><span class="sig-name descname"><span class="pre">uVector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.builder.uVector" title="Link to this definition"></a></dt>
 <dd><p>Bases: <a class="reference internal" href="#src.builder.Base" title="src.builder.Base"><code class="xref py py-class docutils literal notranslate"><span class="pre">Base</span></code></a></p>
 <p>Crate a body-fixed <cite>unit vector</cite> in a planar multi-body dynamic simulation.</p>
 <section id="id9">
@@ -457,7 +455,7 @@ type <cite>c</cite>.</p>
 </dl>
 <dl class="py property">
 <dt class="sig sig-object py" id="src.builder.uVector.ulocal">
-<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ulocal</span></span><a class="headerlink" href="#src.builder.uVector.ulocal" title="Link to this definition"></a></dt>
+<em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ulocal</span></span><a class="headerlink" href="#src.builder.uVector.ulocal" title="Link to this definition"></a></dt>
 <dd></dd></dl>
 
 </section>
@@ -468,10 +466,7 @@ type <cite>c</cite>.</p>
 
            </div>
           </div>
-          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
-        <a href="index.html" class="btn btn-neutral float-left" title="PMD - Planar Multibody Dynamics Open-Source Software" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="solver.html" class="btn btn-neutral float-right" title="Solver module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
-    </div>
+          <footer>
 
   <hr/>
 
