@@ -1,20 +1,22 @@
 """
-Planar Multi-body Dynamics simulation solver module.
-== 
+Planar Multi-Body Dynamics Simulation Solver
 
-This Python module provides the necessary algorithms and functions to 
-solve any planar multi-body dynamic model.
+This module provides algorithms and numerical methods for solving 
+planar multi-body dynamic models, including rigid bodies, constraints, 
+and external forces. It is designed for academic research and engineering 
+applications.
 
-Author: - Giacomo Cangi, PhD student @ UniPG -
+Author: Giacomo Cangi
 """
+
 
 import os
 import numpy as np
 import scipy as sc
 import numpy.linalg as lng
 import inspect
-from src.functions import *
-from src.maker import *
+from PMD.src.functions import *
+from src.builder import *
 from scipy.integrate import solve_ivp
 
 

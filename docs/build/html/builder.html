@@ -1,0 +1,499 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Builder module &mdash; PMD: Planar Multi-Body Dynamics Open Source Simulation Software  documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=5929fcd5"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Solver module" href="solver.html" />
+    <link rel="prev" title="PMD - Planar Multibody Dynamics Open-Source Software" href="index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            PMD: Planar Multi-Body Dynamics Open Source Simulation Software
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Builder module</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#src.builder.Base"><code class="docutils literal notranslate"><span class="pre">Base</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#src.builder.Base.COUNT"><code class="docutils literal notranslate"><span class="pre">Base.COUNT</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#src.builder.Base.get_count"><code class="docutils literal notranslate"><span class="pre">Base.get_count()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#src.builder.Base.get_type"><code class="docutils literal notranslate"><span class="pre">Base.get_type()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#src.builder.Body"><code class="docutils literal notranslate"><span class="pre">Body</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#src.builder.Body.ddr"><code class="docutils literal notranslate"><span class="pre">Body.ddr</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#src.builder.Body.dr"><code class="docutils literal notranslate"><span class="pre">Body.dr</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#src.builder.Body.r"><code class="docutils literal notranslate"><span class="pre">Body.r</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#src.builder.Force"><code class="docutils literal notranslate"><span class="pre">Force</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#src.builder.Force.DEFAULT_GRAVITY"><code class="docutils literal notranslate"><span class="pre">Force.DEFAULT_GRAVITY</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#src.builder.Force.DEFAULT_GRAVITY_VECTOR"><code class="docutils literal notranslate"><span class="pre">Force.DEFAULT_GRAVITY_VECTOR</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#src.builder.Force.f"><code class="docutils literal notranslate"><span class="pre">Force.f</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#src.builder.Force.flocal"><code class="docutils literal notranslate"><span class="pre">Force.flocal</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#src.builder.Force.wgt"><code class="docutils literal notranslate"><span class="pre">Force.wgt</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#src.builder.Function"><code class="docutils literal notranslate"><span class="pre">Function</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#src.builder.Joint"><code class="docutils literal notranslate"><span class="pre">Joint</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="#src.builder.Point"><code class="docutils literal notranslate"><span class="pre">Point</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#src.builder.Point.sPlocal"><code class="docutils literal notranslate"><span class="pre">Point.sPlocal</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#src.builder.uVector"><code class="docutils literal notranslate"><span class="pre">uVector</span></code></a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#src.builder.uVector.ulocal"><code class="docutils literal notranslate"><span class="pre">uVector.ulocal</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="solver.html">Solver module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="utils.html">Utils module</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">PMD: Planar Multi-Body Dynamics Open Source Simulation Software</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Builder module</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/builder.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-src.builder">
+<span id="builder-module"></span><h1>Builder module<a class="headerlink" href="#module-src.builder" title="Link to this heading"></a></h1>
+<p>Planar Multi-Body Dynamics Model Builder</p>
+<p>This module provides essential tools and algorithms for constructing
+and simulating planar multi-body dynamic systems. It includes support
+for defining rigid bodies, joints, constraints, and external forces.</p>
+<p>Author: Giacomo Cangi</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="src.builder.Base">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.builder.</span></span><span class="sig-name descname"><span class="pre">Base</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.builder.Base" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Base class for all multi-body simulation objects.</p>
+<p>This class provides a foundation for objects in the multi-body dynamic
+simulation framework.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.builder.Base.COUNT">
+<span class="sig-name descname"><span class="pre">COUNT</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0</span></em><a class="headerlink" href="#src.builder.Base.COUNT" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.builder.Base.get_count">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">get_count</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.builder.Base.get_count" title="Link to this definition"></a></dt>
+<dd><p>Retrieve the current count of instances.</p>
+<section id="returns">
+<h2>Returns<a class="headerlink" href="#returns" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>int</dt><dd><p>The total count of instances derived from <cite>Base</cite>.</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="src.builder.Base.get_type">
+<span class="sig-name descname"><span class="pre">get_type</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#src.builder.Base.get_type" title="Link to this definition"></a></dt>
+<dd><p>Get the name of the class of the instance.</p>
+<section id="id1">
+<h2>Returns<a class="headerlink" href="#id1" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>str</dt><dd><p>The class name of the instance.</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="src.builder.Body">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.builder.</span></span><span class="sig-name descname"><span class="pre">Body</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.builder.Body" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#src.builder.Base" title="src.builder.Base"><code class="xref py py-class docutils literal notranslate"><span class="pre">Base</span></code></a></p>
+<p>Create a <cite>rigid body</cite> in a planar multi-body dynamic simulation.</p>
+<section id="attributes">
+<h2>Attributes<a class="headerlink" href="#attributes" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>m (float)</dt><dd><p>Mass of the body.</p>
+</dd>
+<dt>J (float)</dt><dd><p>Moment of inertia of the body.</p>
+</dd>
+<dt>r (NDArray)</dt><dd><p>Position vector (x, y) of the body.</p>
+</dd>
+<dt>p (float)</dt><dd><p>Orientation angle (phi) of the body.</p>
+</dd>
+<dt>dr (NDArray)</dt><dd><p>Time derivative of position (x, y).</p>
+</dd>
+<dt>dp (float)</dt><dd><p>Time derivative of the orientation angle (phi).</p>
+</dd>
+<dt>ddr (NDArray)</dt><dd><p>Second derivative of position (x, y).</p>
+</dd>
+<dt>ddp (float)</dt><dd><p>Second time derivative of the orientation angle (phi).</p>
+</dd>
+</dl>
+</section>
+<section id="notes">
+<h2>Notes<a class="headerlink" href="#notes" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>_A (NDArray)</dt><dd><p>Rotational transformation matrix.</p>
+</dd>
+<dt>_irc (int)</dt><dd><p>Index of the first element of r in u.</p>
+</dd>
+<dt>_irv (int)</dt><dd><p>Index of the first element of r_dot in u.</p>
+</dd>
+<dt>_ira (int)</dt><dd><p>Index of the first element of r_dot2 in v.</p>
+</dd>
+<dt>_invm (float)</dt><dd><p>Inverse of the mass.</p>
+</dd>
+<dt>_invJ (float)</dt><dd><p>Inverse of the moment of inertia.</p>
+</dd>
+<dt>_wgt (NDArray)</dt><dd><p>Weight of the body as a force vector.</p>
+</dd>
+<dt>_f (NDArray)</dt><dd><p>Sum of forces acting on the body.</p>
+</dd>
+<dt>_n (float)</dt><dd><p>Sum of moments acting on the body.</p>
+</dd>
+<dt>_pts (list)</dt><dd><p>List of point indexes associated with this body.</p>
+</dd>
+</dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="src.builder.Body.ddr">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ddr</span></span><a class="headerlink" href="#src.builder.Body.ddr" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="src.builder.Body.dr">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dr</span></span><a class="headerlink" href="#src.builder.Body.dr" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="src.builder.Body.r">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">r</span></span><a class="headerlink" href="#src.builder.Body.r" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</section>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="src.builder.Force">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.builder.</span></span><span class="sig-name descname"><span class="pre">Force</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.builder.Force" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#src.builder.Base" title="src.builder.Base"><code class="xref py py-class docutils literal notranslate"><span class="pre">Base</span></code></a></p>
+<p>Crate a force in a planar multi-body dynamic simulation.</p>
+<section id="id2">
+<h2>Attributes<a class="headerlink" href="#id2" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>type (str)</dt><dd><p>Element type: ptp, rot_sda, weight, fp, f, T.</p>
+</dd>
+<dt>iPindex (int)</dt><dd><p>Index of the head (arrow) point.</p>
+</dd>
+<dt>jPindex (int)</dt><dd><p>Index of the tail point.</p>
+</dd>
+<dt>iBindex (int)</dt><dd><p>Index of the head (arrow) body.</p>
+</dd>
+<dt>jBindex (int)</dt><dd><p>Index of the tail body.</p>
+</dd>
+<dt>k (float)</dt><dd><p>Spring stiffness.</p>
+</dd>
+<dt>L0 (float)</dt><dd><p>Undeformed spring length.</p>
+</dd>
+<dt>theta0 (float)</dt><dd><p>Undeformed torsional spring angle.</p>
+</dd>
+<dt>dc (float)</dt><dd><p>Damping coefficient.</p>
+</dd>
+<dt>f_a (float)</dt><dd><p>Constant actuator force.</p>
+</dd>
+<dt>T_a (float)</dt><dd><p>Constant actuator torque.</p>
+</dd>
+<dt>flocal (NDArray)</dt><dd><p>Constant force in the local reference frame.</p>
+</dd>
+<dt>f (NDArray)</dt><dd><p>Constant force in the <cite>x-y</cite> reference frame.</p>
+</dd>
+<dt>T (float)</dt><dd><p>Constant torque in the <cite>x-y</cite> refernce frame.</p>
+</dd>
+</dl>
+</section>
+<section id="id3">
+<h2>Notes<a class="headerlink" href="#id3" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>_gravity (float)</dt><dd><p>Gravitational constant.</p>
+</dd>
+<dt>_wgt (NDArray)</dt><dd><p>Gravitational direction (default <cite>-y</cite>).</p>
+</dd>
+<dt>_iFunct (int)</dt><dd><p>Analytical function index.</p>
+</dd>
+</dl>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.builder.Force.DEFAULT_GRAVITY">
+<span class="sig-name descname"><span class="pre">DEFAULT_GRAVITY</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">9.81</span></em><a class="headerlink" href="#src.builder.Force.DEFAULT_GRAVITY" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="src.builder.Force.DEFAULT_GRAVITY_VECTOR">
+<span class="sig-name descname"><span class="pre">DEFAULT_GRAVITY_VECTOR</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">array([[</span> <span class="pre">0],</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">[-1]])</span></em><a class="headerlink" href="#src.builder.Force.DEFAULT_GRAVITY_VECTOR" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="src.builder.Force.f">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">f</span></span><a class="headerlink" href="#src.builder.Force.f" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="src.builder.Force.flocal">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">flocal</span></span><a class="headerlink" href="#src.builder.Force.flocal" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="src.builder.Force.wgt">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">wgt</span></span><a class="headerlink" href="#src.builder.Force.wgt" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</section>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="src.builder.Function">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.builder.</span></span><span class="sig-name descname"><span class="pre">Function</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.builder.Function" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#src.builder.Base" title="src.builder.Base"><code class="xref py py-class docutils literal notranslate"><span class="pre">Base</span></code></a></p>
+<p>Create a user defined function in a planar multi-body dynamic simulation.</p>
+<section id="id4">
+<h2>Attributes<a class="headerlink" href="#id4" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>type (str)</dt><dd><p>Function type <cite>a</cite>, <cite>b</cite> or <cite>c</cite>.</p>
+</dd>
+<dt>t_start (float)</dt><dd><p>Initial value for the time vector, i.e. the x axis of the function.
+Required for funtction type <cite>b</cite> and <cite>c</cite>.</p>
+</dd>
+<dt>f_start (float)</dt><dd><p>Initial value for the function, i.e. initial value of the y axis.
+Required for funtction type <cite>b</cite> and <cite>c</cite>.</p>
+</dd>
+<dt>t_end (float)</dt><dd><p>Final value for the time vector, i.e. the x axis of the function.
+Required for funtction type <cite>b</cite> and <cite>c</cite>.</p>
+</dd>
+<dt>f_end (float)</dt><dd><p>Final value for the function, i.e. initial value of the y axis.
+Required for funtction type <cite>b</cite> and <cite>c</cite>.</p>
+</dd>
+<dt>dfdt_end (float)</dt><dd><p>Max value for the first time derivative function. Required for function
+type <cite>c</cite>.</p>
+</dd>
+<dt>ncoeff (int)</dt><dd><p>Number of coefficients.</p>
+</dd>
+<dt>coeff (NDArray)</dt><dd><p>Coefficient required only for function type <cite>a</cite>.</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="src.builder.Joint">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.builder.</span></span><span class="sig-name descname"><span class="pre">Joint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.builder.Joint" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#src.builder.Base" title="src.builder.Base"><code class="xref py py-class docutils literal notranslate"><span class="pre">Base</span></code></a></p>
+<p>Create a joint in a planar multi-body dynamic simulation.</p>
+<section id="id5">
+<h2>Attributes<a class="headerlink" href="#id5" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>type (str)</dt><dd><p>Joint type: <cite>rev</cite>, <cite>tran</cite>, <cite>rev-rev</cite>, <cite>rev-tran</cite>, <cite>rigid</cite>, <cite>disc</cite>,
+<cite>rel-rot</cite>, <cite>rel-tran</cite>.</p>
+</dd>
+<dt>iBindex (int)</dt><dd><p>Index of body <cite>i</cite>.</p>
+</dd>
+<dt>jBindex (int)</dt><dd><p>Index of body <cite>j</cite>.</p>
+</dd>
+<dt>iPindex (int)</dt><dd><p>Index of point <cite>Pi</cite>.</p>
+</dd>
+<dt>jPindex (int)</dt><dd><p>Index of point <cite>Pj</cite>.</p>
+</dd>
+<dt>iUindex (int)</dt><dd><p>Index of unit vector <cite>ui</cite>.</p>
+</dd>
+<dt>jUindex (int)</dt><dd><p>Index of unit vector <cite>uj</cite>.</p>
+</dd>
+<dt>iFunct (int)</dt><dd><p>Analytical function index.</p>
+</dd>
+<dt>L (float)</dt><dd><p>Constant length.</p>
+</dd>
+<dt>R (float)</dt><dd><p>Constant radius.</p>
+</dd>
+<dt>x0 (float)</dt><dd><p>Initial condition <cite>x</cite>, for disc.</p>
+</dd>
+<dt>d0 (NDArray)</dt><dd><p>Initial condition for <cite>d</cite> (rigid).</p>
+</dd>
+<dt>fix (int)</dt><dd><p>Fix relative dof (if = 1, rev or tran).</p>
+</dd>
+</dl>
+</section>
+<section id="id6">
+<h2>Notes<a class="headerlink" href="#id6" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>_p0 (float)</dt><dd><p>Initial condition <cite>phi</cite> for a disc (or rigid).</p>
+</dd>
+<dt>_nbody (int)</dt><dd><p>Number of moving bodies involved.</p>
+</dd>
+<dt>_mrows (int)</dt><dd><p>Number of rows (constraints).</p>
+</dd>
+<dt>_rows (int)</dt><dd><p>Row index start.</p>
+</dd>
+<dt>_rowe (int)</dt><dd><p>Row index end.</p>
+</dd>
+<dt>_colis (int)</dt><dd><p>Comlumn index for body i-start.</p>
+</dd>
+<dt>_colie (int)</dt><dd><p>Column index for body j-start.</p>
+</dd>
+<dt>_coljs (int)</dt><dd><p>Column index for body j-start.</p>
+</dd>
+<dt>_colje (int)</dt><dd><p>Column index for body i-start.</p>
+</dd>
+<dt>_lagrange (NDArray)</dt><dd><p>Lagrange multipliers.</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="src.builder.Point">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.builder.</span></span><span class="sig-name descname"><span class="pre">Point</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.builder.Point" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#src.builder.Base" title="src.builder.Base"><code class="xref py py-class docutils literal notranslate"><span class="pre">Base</span></code></a></p>
+<p>Create a body-fixed <cite>point</cite> in a planar multi-body dynamic simulation.</p>
+<section id="id7">
+<h2>Attributes<a class="headerlink" href="#id7" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>Bindex (int)</dt><dd><p>Body index to which the point belong.</p>
+</dd>
+<dt>sPlocal (NDArray)</dt><dd><p>Point coordinates with respect to the local reference frame.</p>
+</dd>
+</dl>
+</section>
+<section id="id8">
+<h2>Notes<a class="headerlink" href="#id8" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>_sP (NDArray)</dt><dd><p><cite>x</cite> and <cite>y</cite> components of the vector <cite>s</cite>.</p>
+</dd>
+<dt>_sPr (NDArray)</dt><dd><p><cite>x</cite> and <cite>y</cite> components of the vector <cite>s</cite> rotated.</p>
+</dd>
+<dt>_rP (NDArray)</dt><dd><p><cite>x</cite> and <cite>y</cite> coordinates of the point.</p>
+</dd>
+<dt>_dsP (NDArray)</dt><dd><p>First time derivative of the vector <cite>s</cite>.</p>
+</dd>
+<dt>_drP (NDArray)</dt><dd><p><cite>x</cite> and <cite>y</cite> first time derivative of the vector <cite>r</cite>.</p>
+</dd>
+<dt>_ddrP (NDArray)</dt><dd><p><cite>x</cite> and <cite>y</cite> second time derivative of the vector <cite>r</cite>.</p>
+</dd>
+</dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="src.builder.Point.sPlocal">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">sPlocal</span></span><a class="headerlink" href="#src.builder.Point.sPlocal" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</section>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="src.builder.uVector">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">src.builder.</span></span><span class="sig-name descname"><span class="pre">uVector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#src.builder.uVector" title="Link to this definition"></a></dt>
+<dd><p>Bases: <a class="reference internal" href="#src.builder.Base" title="src.builder.Base"><code class="xref py py-class docutils literal notranslate"><span class="pre">Base</span></code></a></p>
+<p>Crate a body-fixed <cite>unit vector</cite> in a planar multi-body dynamic simulation.</p>
+<section id="id9">
+<h2>Attributes<a class="headerlink" href="#id9" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>Bindex (int)</dt><dd><p>Body index to which the vector belong.</p>
+</dd>
+<dt>ulocal (NDArray)</dt><dd><p><cite>xi</cite> and <cite>eta</cite> components of the vector in the local reference frame.</p>
+</dd>
+</dl>
+</section>
+<section id="id10">
+<h2>Notes<a class="headerlink" href="#id10" title="Link to this heading"></a></h2>
+<dl class="simple">
+<dt>_u (NDArray)</dt><dd><p><cite>x</cite> and <cite>y</cite> componenets of the vector in the global reference frame.</p>
+</dd>
+<dt>_ur (NDArray)</dt><dd><p>Components of the vector <cite>u</cite>, rotated.</p>
+</dd>
+<dt>_du (NDArray)</dt><dd><p>First time derivative of the vector <cite>u</cite>.</p>
+</dd>
+</dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="src.builder.uVector.ulocal">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ulocal</span></span><a class="headerlink" href="#src.builder.uVector.ulocal" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</section>
+</dd></dl>
+
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="index.html" class="btn btn-neutral float-left" title="PMD - Planar Multibody Dynamics Open-Source Software" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="solver.html" class="btn btn-neutral float-right" title="Solver module" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Giacomo Cangi.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

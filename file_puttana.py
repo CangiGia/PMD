@@ -1,7 +1,5 @@
 import os
 import numpy as np
-import plotly.graph_objects as go
-import plotly.io as pio
 import matplotlib.pyplot as plt
 
 current_directory = os.path.dirname(os.path.abspath(__file__))

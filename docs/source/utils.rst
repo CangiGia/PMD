@@ -1,7 +1,7 @@
-Solver module
-=============
+Utils module
+============
 
-.. automodule:: src.solver
+.. automodule:: src.utils
     :members:
     :undoc-members:
     :show-inheritance:

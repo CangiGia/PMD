@@ -20,7 +20,7 @@ from PyFlow import CreateRawPin
 from PyFlow.Core.Common import *
 
 #* my
-from src.maker import Body
+from src.builder import Body
 
 class makeBody(NodeBase):
     def __init__(self, name):
