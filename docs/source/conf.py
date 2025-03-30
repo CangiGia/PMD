@@ -17,7 +17,7 @@ current_file_path = os.path.abspath(__file__)
 target_directory = os.path.abspath(os.path.join(os.path.dirname(current_file_path), '..', '..'))
 sys.path.insert(0, target_directory)
 
-project = 'PMD: Planar Multi-Body Dynamics Open Source Simulation Software'
+project = 'PMD: Planar Multi-Body Dynamics Open Source Software'
 copyright = '2025, Giacomo Cangi'
 author = 'Giacomo Cangi'
 
@@ -25,6 +25,7 @@ author = 'Giacomo Cangi'
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.napoleon', 'myst_parser', 'sphinx_design']
+myst_enable_extensions = ["colon_fence"]
 templates_path = ['_templates']
 exclude_patterns = []
 source_suffix = {
@@ -40,13 +41,11 @@ napoleon_include_special_with_doc = False           # include the docstring of s
 napoleon_use_admonition_for_examples = False        # Use `Example` instead of `.. code-block:: python`
 napoleon_use_rtype = False                          # include the return type in the docstring
 
-source_suffix = {
-    '.rst': 'restructuredtext',
-    '.md': 'markdown',
-}
-
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'sphinx_rtd_theme'
+# html_theme = 'sphinx_rtd_theme'
+html_theme = 'sphinx_book_theme'
+# html_theme = 'pydata_sphinx_theme'
 html_static_path = ['_static']
+html_css_files = ['custom.css']

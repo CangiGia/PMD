@@ -1,8 +1,8 @@
 import numpy as np
 import scipy as sc
-from src.builder import *
-from src.solver import *
-from src.functions import *
+from PMD.src.builder import *
+from PMD.src.solver import *
+from PMD.src.functions import *
 import matplotlib.pyplot as plt
 
 
@@ -12,7 +12,7 @@ B1 = Body() # lower suspension arm
 B1.m = 2
 B1.J = 0.5
 B1.r = np.array([0.4398, 0.2512])
-B1.p = -0.0367
+B1.p = 6.2465
 
 B2 = Body() # wheel assembly
 B2.m = 30
@@ -129,7 +129,7 @@ plt.figure()
 plt.plot(time, solution[:,4])
 plt.show()
 
-np.savetxt('uT_python.txt', solution)
-np.savetxt('T_python.txt', time)
+# np.savetxt('uT_python.txt', solution)
+# np.savetxt('T_python.txt', time)
 
 ecchime = 1
