@@ -1,7 +1,7 @@
 
 
 
-A.  .plot_1.curve_1.TIME (sec)
+A.  .MODEL_1.Last_Run.TIME (sec)
 
        A         
  0.000000E+00   

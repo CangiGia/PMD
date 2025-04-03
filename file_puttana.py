@@ -4,6 +4,10 @@ import matplotlib.pyplot as plt
 
 current_directory = os.path.dirname(os.path.abspath(__file__))
 
+time_ADAMS = np.loadtxt(os.path.join(current_directory, "time_ADAMS.txt"), skiprows=6)
+x1_ADAMS = np.loadtxt(os.path.join(current_directory, "x1_ADAMS.txt"), skiprows=6)
+x2_ADAMS = np.loadtxt(os.path.join(current_directory, "x2_ADAMS.txt"), skiprows=6)
+
 uT_python = np.loadtxt(os.path.join(current_directory, "uT_python.txt"))
 T_python = np.loadtxt(os.path.join(current_directory, "T_python.txt"))
 
@@ -18,10 +22,11 @@ T_matlab = np.loadtxt(os.path.join(current_directory, "T_matlab.txt"))
 # -----------------------------
 
 fig, ax = plt.subplots(figsize=(15, 4.5))
-ax.plot(T_python, uT_python[:, 3], label="python")
-ax.plot(T_matlab, uT_matlab[:, 3], label="matlab")
+ax.plot(time_ADAMS, x1_ADAMS, label="adams")
+ax.plot(T_matlab, uT_matlab[:, 0], label="matlab")
+ax.plot(T_python, uT_python[:, 0], label="python")
 ax.set_xlabel("Time [s]")
 ax.set_ylabel("Dispacement")
-ax.set_title("Comparison between Python and Matlab")
+ax.set_title("Comparison between Adams, Python and Matlab")
 ax.legend()
 plt.show()
