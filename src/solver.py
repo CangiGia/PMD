@@ -779,7 +779,7 @@ class PlanarDynamicModel:
         flag = False
 
         # position correction
-        for _ in range(20): #! 20 is an arbitrary value ... could be a parameter!
+        for _ in range(50): #! 20 is an arbitrary value ... could be a parameter!
             self.__update_position()            # update position entities
             Phi = self.__compute_constraints()  # evaluate constraints
             D = self.__compute_jacobian()       # evaluate Jacobian
