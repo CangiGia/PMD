@@ -372,7 +372,7 @@ class PlanarDynamicModel:
             if Bi != 0:
                 uvector._du = uvector._ur * self.Bodies[Bi-1].dp
             
-    def __compute_constraints(self): #// - To be completed for all joint type -
+    def __compute_constraints(self): #// - Check required on rel-tran and rel-rot joints -
         nConst = self.Joints[-1]._rowe
         phi = np.zeros([nConst, 1])
 
@@ -414,17 +414,73 @@ class PlanarDynamicModel:
                     f = np.append(f, (ui.T @ d - joint._p0) / 2).reshape(3,1)
 
             elif joint_type == 'rev-rev':
-                pass
+                Pi = joint.iPindex
+                Pj = joint.jPindex
+
+                d = self.Points[Pi]._rP - self.Points[Pj]._rP
+                L = joint.L
+                u = d/L
+
+                # compute constraint equations
+                f = (u.T @ d - L)/2
+
             elif joint_type == 'rev-tran':
-                pass
+                Pi = joint.iPindex
+                Pj = joint.jPindex
+
+                uir = self.uVectors[joint.iUindex]._ur
+                d = self.Points[Pi]._rP - self.Points[Pj]._rP
+
+                # compute constraint equations
+                f = (uir.T @ d - joint.L)
+
             elif joint_type == 'rigid':
-                pass
+                Bi = joint.iBindex
+                Bj = joint.jBindex
+                
+                if Bi == 0:
+                    f = np.vstack([
+                        -(self.Bodies[Bj].r + self.Bodies[Bj]._A @ joint.d0),
+                        -self.Bodies[Bj].p - joint._p0
+                    ])
+                elif Bj == 0:
+                    f = np.vstack([
+                        self.Bodies[Bi].r - joint.d0,
+                        self.Bodies[Bi].p - joint._p0
+                    ])
+                else:
+                    f = np.vstack([
+                        self.Bodies[Bi].r - (self.Bodies[Bj].r + self.Bodies[Bj]._A @ joint.d0),
+                        self.Bodies[Bi].p - self.Bodies[Bj].p - joint._p0
+                    ])
+
             elif joint_type == 'disc':
-                pass
-            elif joint_type == 'rel-rot':
-                pass
-            elif joint_type == 'rel-tran':
-                pass
+                Bi = joint.iBindex
+                f = np.vstack([
+                    self.Bodies[Bi].r[1] - joint.R,
+                    (self.Bodies[Bi].r[0] - joint.x0) + joint.R * (self.Bodies[Bi].p - joint._p0)
+                ])
+                
+            elif joint_type == 'rel-rot': # // to check
+                fun, fun_d, fun_dd = self.Functs(joint.iFunct, self.t)
+                Bi = joint.iBindex
+                Bj = joint.jBindex
+                
+                if Bi == 0:
+                    f = -self.Bodies[Bj].p - fun
+                elif Bj == 0:
+                    f = self.Bodies[Bi].p - fun
+                else:
+                    f = self.Bodies[Bi].p - self.Bodies[Bj].p - fun
+
+            elif joint_type == 'rel-tran': # // to check
+                Pi = joint.iPindex
+                Pj = joint.jPindex
+
+                d = self.Points[Pi]._rP - self.Points[Pj]._rP
+                fun, fun_d, fun_dd = self.Functs(joint.iFunct, self.t)
+
+                f = (d.T @ d - fun**2)/2
             else:
                 raise ValueError(f"Joint type '{joint_type}' is not supported.")
 
