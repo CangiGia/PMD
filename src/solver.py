@@ -103,89 +103,92 @@ class PlanarDynamicModel:
 
         for Ji in range(nJ):
             joint = self.Joints[Ji]
-            if joint.type == 'rev':
-                joint._mrows = 2
-                joint._nbody = 2
-                Pi = joint.iPindex
-                Pj = joint.jPindex
-                joint.iBindex = self.Points[Pi].Bindex
-                joint.jBindex = self.Points[Pj].Bindex
-                if joint.fix == 1:
+            joint_type = joint.type
+
+            match joint_type:
+                case 'rev':
+                    joint._mrows = 2
+                    joint._nbody = 2
+                    Pi = joint.iPindex
+                    Pj = joint.jPindex
+                    joint.iBindex = self.Points[Pi].Bindex
+                    joint.jBindex = self.Points[Pj].Bindex
+                    if joint.fix == 1:
+                        joint._mrows = 3
+                        if joint.iBindex == 0:
+                            joint._p0 = -self.Bodies[joint.jBindex].p
+                        elif joint.jBindex == 0:
+                            joint._p0 = self.Bodies[joint.iBindex].p
+                        else:
+                            joint._p0 = self.Bodies[joint.iBindex].p - self.Bodies[joint.jBindex].p
+
+                case 'tran':
+                    joint._mrows = 2
+                    joint._nbody = 2
+                    Pi = joint.iPindex
+                    Pj = joint.jPindex
+                    joint.iBindex = self.Points[Pi].Bindex
+                    joint.jBindex = self.Points[Pj].Bindex
+                    if joint.fix == 1:
+                        joint._mrows = 3
+                        if joint.iBindex == 0:
+                            joint._p0 = np.linalg.norm(self.Points[Pi]._rP - 
+                                                    self.Bodies[joint.jBindex].r - 
+                                                    self.Bodies[joint.jBindex]._A @ 
+                                                    self.Points[Pj].sPlocal)
+                        elif joint.jBindex == 0:
+                            joint._p0 = np.linalg.norm(self.Bodies[joint.iBindex].r + 
+                                                    self.Bodies[joint.iBindex]._A @ 
+                                                    self.Points[Pi].sPlocal - 
+                                                    self.Points[Pj]._rP)
+                        else:
+                            joint._p0 = np.linalg.norm(self.Bodies[joint.iBindex].r + 
+                                                    self.Bodies[joint.iBindex]._A @ 
+                                                    self.Points[Pi].sPlocal - 
+                                                    self.Bodies[joint.jBindex].r - 
+                                                    self.Bodies[joint.jBindex]._A @ 
+                                                    self.Points[Pj].sPlocal)
+
+                case 'rev-rev':
+                    joint._mrows = 1
+                    joint._nbody = 2
+                    Pi = joint.iPindex
+                    Pj = joint.jPindex
+                    joint.iBindex = self.Points[Pi].Bindex
+                    joint.jBindex = self.Points[Pj].Bindex
+
+                case 'rev-tran':
+                    joint._mrows = 1
+                    joint._nbody = 2
+                    Pi = joint.iPindex
+                    Pj = joint.jPindex
+                    joint.iBindex = self.Points[Pi].Bindex
+                    joint.jBindex = self.Points[Pj].Bindex
+
+                case 'rel-rot' | 'rel-tran':
+                    joint._mrows = 1
+                    joint._nbody = 1
+                case 'disc':
+                    joint._mrows = 2
+                    joint._nbody = 1
+
+                case 'rigid':
                     joint._mrows = 3
-                    if joint.iBindex == 0:
-                        joint._p0 = -self.Bodies[joint.jBindex].p
-                    elif joint.jBindex == 0:
-                        joint._p0 = self.Bodies[joint.iBindex].p
+                    joint._nbody = 2
+                    Bi = joint.iBindex
+                    Bj = joint.jBindex
+                    if Bi == 0:
+                        joint.d0 = -self.Bodies[Bj]._A.T @ self.Bodies[Bj].r
+                        joint._p0 = -self.Bodies[Bj].p
+                    elif Bj == 0:
+                        joint.d0 = self.Bodies[Bi].r
+                        joint._p0 = self.Bodies[Bi].p
                     else:
-                        joint._p0 = self.Bodies[joint.iBindex].p - self.Bodies[joint.jBindex].p
+                        joint.d0 = self.Bodies[Bj]._A.T @ (self.Bodies[Bi].r - self.Bodies[Bj].r)
+                        joint._p0 = self.Bodies[Bi].p - self.Bodies[Bj].p
 
-            elif joint.type == 'tran':
-                joint._mrows = 2
-                joint._nbody = 2
-                Pi = joint.iPindex
-                Pj = joint.jPindex
-                joint.iBindex = self.Points[Pi].Bindex
-                joint.jBindex = self.Points[Pj].Bindex
-                if joint.fix == 1:
-                    joint._mrows = 3
-                    if joint.iBindex == 0:
-                        joint._p0 = np.linalg.norm(self.Points[Pi]._rP - 
-                                                self.Bodies[joint.jBindex].r - 
-                                                self.Bodies[joint.jBindex]._A @ 
-                                                self.Points[Pj].sPlocal)
-                    elif joint.jBindex == 0:
-                        joint._p0 = np.linalg.norm(self.Bodies[joint.iBindex].r + 
-                                                self.Bodies[joint.iBindex]._A @ 
-                                                self.Points[Pi].sPlocal - 
-                                                self.Points[Pj]._rP)
-                    else:
-                        joint._p0 = np.linalg.norm(self.Bodies[joint.iBindex].r + 
-                                                self.Bodies[joint.iBindex]._A @ 
-                                                self.Points[Pi].sPlocal - 
-                                                self.Bodies[joint.jBindex].r - 
-                                                self.Bodies[joint.jBindex]._A @ 
-                                                self.Points[Pj].sPlocal)
-
-            elif joint.type == 'rev-rev':
-                joint._mrows = 1
-                joint._nbody = 2
-                Pi = joint.iPindex
-                Pj = joint.jPindex
-                joint.iBindex = self.Points[Pi].Bindex
-                joint.jBindex = self.Points[Pj].Bindex
-
-            elif joint.type == 'rev-tran':
-                joint._mrows = 1
-                joint._nbody = 2
-                Pi = joint.iPindex
-                Pj = joint.jPindex
-                joint.iBindex = self.Points[Pi].Bindex
-                joint.jBindex = self.Points[Pj].Bindex
-
-            elif joint.type in {'rel-rot', 'rel-tran'}:
-                joint._mrows = 1
-                joint._nbody = 1
-
-            elif joint.type == 'disc':
-                joint._mrows = 2
-                joint._nbody = 1
-
-            elif joint.type == 'rigid':
-                joint._mrows = 3
-                joint._nbody = 2
-                Bi = joint.iBindex
-                Bj = joint.jBindex
-                if Bi == 0:
-                    joint.d0 = -self.Bodies[Bj]._A.T @ self.Bodies[Bj].r
-                    joint._p0 = -self.Bodies[Bj].p
-                elif Bj == 0:
-                    joint.d0 = self.Bodies[Bi].r
-                    joint._p0 = self.Bodies[Bi].p
-                else:
-                    joint.d0 = self.Bodies[Bj]._A.T @ (self.Bodies[Bi].r - self.Bodies[Bj].r)
-                    joint._p0 = self.Bodies[Bi].p - self.Bodies[Bj].p
-            else:
-                raise ValueError("Joint type doesn't supported!")
+                case _:
+                    raise ValueError("Joint type doesn't supported!")
 
         #// functions
         if self.Functs:
@@ -377,112 +380,111 @@ class PlanarDynamicModel:
         phi = np.zeros([nConst, 1])
 
         for joint in self.Joints:
-            joint_type = joint.type
+            match joint.type:
+                case 'rev':
+                    Pi = joint.iPindex
+                    Pj = joint.jPindex
+                    iBindex = joint.iBindex
+                    jBindex = joint.jBindex
+                    
+                    # compute relative positions of the points
+                    rPi = self.Points[Pi]._rP
+                    rPj = self.Points[Pj]._rP
+                    f = rPi - rPj
 
-            if joint_type == 'rev':
-                Pi = joint.iPindex
-                Pj = joint.jPindex
-                iBindex = joint.iBindex
-                jBindex = joint.jBindex
-                
-                # compute relative positions of the points
-                rPi = self.Points[Pi]._rP
-                rPj = self.Points[Pj]._rP
-                f = rPi - rPj
+                    if joint.fix == 1:
+                        if iBindex == 0:  # body i is ground (fixed)
+                            f = np.append(f, (-self.Bodies[jBindex].p - joint._p0))
+                        elif jBindex == 0:  # body j is ground (fixed)
+                            f = np.append(f, (self.Bodies[iBindex].p - joint._p0))
+                        else:
+                            f = np.append(f, (self.Bodies[iBindex].p - self.Bodies[jBindex].p - joint._p0))
 
-                if joint.fix == 1:
-                    if iBindex == 0:  # body i is ground (fixed)
-                        f = np.append(f, (-self.Bodies[jBindex].p - joint._p0))
-                    elif jBindex == 0:  # body j is ground (fixed)
-                        f = np.append(f, (self.Bodies[iBindex].p - joint._p0))
+                case 'tran':
+                    Pi = joint.iPindex
+                    Pj = joint.jPindex
+
+                    ujr = self.uVectors[joint.jUindex]._ur
+                    ui = self.uVectors[joint.iUindex]._u
+                    d = self.Points[Pi]._rP - self.Points[Pj]._rP
+
+                    # compute constraint equations
+                    f = np.array([ujr.T @ d, ujr.T @ ui]).reshape(2,1)
+
+                    # additional constraint if fixed
+                    if joint.fix == 1:
+                        f = np.append(f, (ui.T @ d - joint._p0) / 2).reshape(3,1)
+
+                case 'rev-rev':
+                    Pi = joint.iPindex
+                    Pj = joint.jPindex
+
+                    d = self.Points[Pi]._rP - self.Points[Pj]._rP
+                    L = joint.L
+                    u = d/L
+                    # compute constraint equations
+                    f = (u.T @ d - L)/2
+
+                case 'rev-tran':
+                    Pi = joint.iPindex
+                    Pj = joint.jPindex
+
+                    uir = self.uVectors[joint.iUindex]._ur
+                    d = self.Points[Pi]._rP - self.Points[Pj]._rP
+
+                    # compute constraint equations
+                    f = (uir.T @ d - joint.L)
+
+                case 'rigid':
+                    Bi = joint.iBindex
+                    Bj = joint.jBindex
+                    
+                    if Bi == 0:
+                        f = np.vstack([
+                            -(self.Bodies[Bj].r + self.Bodies[Bj]._A @ joint.d0),
+                            -self.Bodies[Bj].p - joint._p0
+                        ])
+                    elif Bj == 0:
+                        f = np.vstack([
+                            self.Bodies[Bi].r - joint.d0,
+                            self.Bodies[Bi].p - joint._p0
+                        ])
                     else:
-                        f = np.append(f, (self.Bodies[iBindex].p - self.Bodies[jBindex].p - joint._p0))
+                        f = np.vstack([
+                            self.Bodies[Bi].r - (self.Bodies[Bj].r + self.Bodies[Bj]._A @ joint.d0),
+                            self.Bodies[Bi].p - self.Bodies[Bj].p - joint._p0
+                        ])
 
-            elif joint_type == 'tran':
-                Pi = joint.iPindex
-                Pj = joint.jPindex
-
-                ujr = self.uVectors[joint.jUindex]._ur
-                ui = self.uVectors[joint.iUindex]._u
-                d = self.Points[Pi]._rP - self.Points[Pj]._rP
-
-                # compute constraint equations
-                f = np.array([ujr.T @ d, ujr.T @ ui]).reshape(2,1)
-
-                # additional constraint if fixed
-                if joint.fix == 1:
-                    f = np.append(f, (ui.T @ d - joint._p0) / 2).reshape(3,1)
-
-            elif joint_type == 'rev-rev':
-                Pi = joint.iPindex
-                Pj = joint.jPindex
-
-                d = self.Points[Pi]._rP - self.Points[Pj]._rP
-                L = joint.L
-                u = d/L
-
-                # compute constraint equations
-                f = (u.T @ d - L)/2
-
-            elif joint_type == 'rev-tran':
-                Pi = joint.iPindex
-                Pj = joint.jPindex
-
-                uir = self.uVectors[joint.iUindex]._ur
-                d = self.Points[Pi]._rP - self.Points[Pj]._rP
-
-                # compute constraint equations
-                f = (uir.T @ d - joint.L)
-
-            elif joint_type == 'rigid':
-                Bi = joint.iBindex
-                Bj = joint.jBindex
-                
-                if Bi == 0:
+                case 'disc':
+                    Bi = joint.iBindex
                     f = np.vstack([
-                        -(self.Bodies[Bj].r + self.Bodies[Bj]._A @ joint.d0),
-                        -self.Bodies[Bj].p - joint._p0
+                        self.Bodies[Bi].r[1] - joint.R,
+                        (self.Bodies[Bi].r[0] - joint.x0) + joint.R * (self.Bodies[Bi].p - joint._p0)
                     ])
-                elif Bj == 0:
-                    f = np.vstack([
-                        self.Bodies[Bi].r - joint.d0,
-                        self.Bodies[Bi].p - joint._p0
-                    ])
-                else:
-                    f = np.vstack([
-                        self.Bodies[Bi].r - (self.Bodies[Bj].r + self.Bodies[Bj]._A @ joint.d0),
-                        self.Bodies[Bi].p - self.Bodies[Bj].p - joint._p0
-                    ])
+                    
+                case 'rel-rot': # // to check
+                    fun, fun_d, fun_dd = self.Functs(joint.iFunct, self.t)
+                    Bi = joint.iBindex
+                    Bj = joint.jBindex
+                    
+                    if Bi == 0:
+                        f = -self.Bodies[Bj].p - fun
+                    elif Bj == 0:
+                        f = self.Bodies[Bi].p - fun
+                    else:
+                        f = self.Bodies[Bi].p - self.Bodies[Bj].p - fun
 
-            elif joint_type == 'disc':
-                Bi = joint.iBindex
-                f = np.vstack([
-                    self.Bodies[Bi].r[1] - joint.R,
-                    (self.Bodies[Bi].r[0] - joint.x0) + joint.R * (self.Bodies[Bi].p - joint._p0)
-                ])
-                
-            elif joint_type == 'rel-rot': # // to check
-                fun, fun_d, fun_dd = self.Functs(joint.iFunct, self.t)
-                Bi = joint.iBindex
-                Bj = joint.jBindex
-                
-                if Bi == 0:
-                    f = -self.Bodies[Bj].p - fun
-                elif Bj == 0:
-                    f = self.Bodies[Bi].p - fun
-                else:
-                    f = self.Bodies[Bi].p - self.Bodies[Bj].p - fun
+                case 'rel-tran': # // to check
+                    Pi = joint.iPindex
+                    Pj = joint.jPindex
 
-            elif joint_type == 'rel-tran': # // to check
-                Pi = joint.iPindex
-                Pj = joint.jPindex
+                    d = self.Points[Pi]._rP - self.Points[Pj]._rP
+                    fun, fun_d, fun_dd = self.Functs(joint.iFunct, self.t)
 
-                d = self.Points[Pi]._rP - self.Points[Pj]._rP
-                fun, fun_d, fun_dd = self.Functs(joint.iFunct, self.t)
+                    f = (d.T @ d - fun**2)/2
 
-                f = (d.T @ d - fun**2)/2
-            else:
-                raise ValueError(f"Joint type '{joint_type}' is not supported.")
+                case _:
+                    raise ValueError(f"Joint type '{joint.type}' is not supported.")
 
             rs = joint._rows - 1
             re = joint._rowe
@@ -504,123 +506,124 @@ class PlanarDynamicModel:
         D = np.zeros((nConst, nB3))
         
         for Ji, joint in enumerate(self.Joints):
-            if joint.type == 'rev':
-                Pi = joint.iPindex
-                Pj = joint.jPindex
+            match joint.type:
+                case 'rev':
+                    Pi = joint.iPindex
+                    Pj = joint.jPindex
 
-                Di = np.block([
-                    [np.eye(2), self.Points[Pi]._sPr.reshape(2, 1)]
-                ])
-                Dj = np.block([
-                    [-np.eye(2), -self.Points[Pj]._sPr.reshape(2, 1)]
-                ])
-
-                if joint.fix == 1:
-                    Di = np.vstack([
-                        Di,
-                        [0, 0, 1]
+                    Di = np.block([
+                        [np.eye(2), self.Points[Pi]._sPr.reshape(2, 1)]
                     ])
-                    Dj = np.vstack([
-                        Dj,
-                        [0, 0, -1]
-                    ])
-
-            elif joint.type == 'tran':
-                Pi = joint.iPindex
-                Pj = joint.jPindex
-
-                uj = self.uVectors[joint.jUindex]._u
-                ujr = self.uVectors[joint.jUindex]._ur
-                d = self.Points[Pi]._rP - self.Points[Pj]._rP
-
-                Di = np.block([
-                    [ujr.T, (uj.T @ self.Points[Pi]._sP).reshape(1, 1)],
-                    [np.array([0, 0, 1])]
-                ])
-                Dj = np.block([
-                    [-ujr.T, -(uj.T @ (self.Points[Pj]._sP + d)).reshape(1, 1)],
-                    [np.array([0, 0, -1])]
-                ])
-
-                if joint.fix == 1:
-                    Di = np.vstack([
-                        Di,
-                        [uj.T, (uj.T @ self.Points[Pi]._sPr).reshape(1)]
-                    ])
-                    Dj = np.vstack([
-                        Dj,
-                        [-uj.T, -(uj.T @ self.Points[Pj]._sPr).reshape(1)]
-                    ])
-
-            elif joint.type == 'rev-rev':
-                Pi = joint.iPindex
-                Pj = joint.jPindex
-
-                d = self.Points[Pi]._rP - self.Points[Pj]._rP
-                L = joint.L
-                u = d/L
-
-                Di = np.block([
-                    u.T, (u.T @ self.Points[Pi]._sPr).reshape(1, 1)
-                    ])
-                Dj = np.block([
-                    -u.T, -(u.T @ self.Points[Pj]._sPr).reshape(1, 1)
-                    ])
-                
-            elif joint.type == 'rev-tran':
-                Pi = joint.iPindex
-                Pj = joint.jPindex
-
-                ui = self.uVectors[joint.iUindex]._u
-                ui_r = self.uVectors[joint.iUindex]._ur
-                d = self.Points[Pi]._rP - self.Points[Pj]._rP
-
-                Di = np.block([
-                    ui_r.T, (ui.T @ (self.Points[Pi]._sP - d)).reshape(1, 1)
-                    ])
-                Dj = np.block([
-                    -ui_r.T, -(ui.T @ self.Points[Pj]._sP).reshape(1, 1)
-                    ])
-
-            elif joint.type == 'rigid':
-                Bj = joint.jBindex
-
-                Di = np.eye(3)
-                if Bj != 0:
                     Dj = np.block([
-                        [-np.eye(2), -s_rot(self.Bodies[Bj]._A @ joint.d0)],
+                        [-np.eye(2), -self.Points[Pj]._sPr.reshape(2, 1)]
+                    ])
+
+                    if joint.fix == 1:
+                        Di = np.vstack([
+                            Di,
+                            [0, 0, 1]
+                        ])
+                        Dj = np.vstack([
+                            Dj,
+                            [0, 0, -1]
+                        ])
+
+                case 'tran':
+                    Pi = joint.iPindex
+                    Pj = joint.jPindex
+
+                    uj = self.uVectors[joint.jUindex]._u
+                    ujr = self.uVectors[joint.jUindex]._ur
+                    d = self.Points[Pi]._rP - self.Points[Pj]._rP
+
+                    Di = np.block([
+                        [ujr.T, (uj.T @ self.Points[Pi]._sP).reshape(1, 1)],
+                        [np.array([0, 0, 1])]
+                    ])
+                    Dj = np.block([
+                        [-ujr.T, -(uj.T @ (self.Points[Pj]._sP + d)).reshape(1, 1)],
                         [np.array([0, 0, -1])]
                     ])
+
+                    if joint.fix == 1:
+                        Di = np.vstack([
+                            Di,
+                            [uj.T, (uj.T @ self.Points[Pi]._sPr).reshape(1)]
+                        ])
+                        Dj = np.vstack([
+                            Dj,
+                            [-uj.T, -(uj.T @ self.Points[Pj]._sPr).reshape(1)]
+                        ])
+
+                case 'rev-rev':
+                    Pi = joint.iPindex
+                    Pj = joint.jPindex
+
+                    d = self.Points[Pi]._rP - self.Points[Pj]._rP
+                    L = joint.L
+                    u = d/L
+
+                    Di = np.block([
+                        u.T, (u.T @ self.Points[Pi]._sPr).reshape(1, 1)
+                        ])
+                    Dj = np.block([
+                        -u.T, -(u.T @ self.Points[Pj]._sPr).reshape(1, 1)
+                        ])
                     
-            elif joint.type == 'disc':
-                Di = np.array([
-                    [0, 1, 0],
-                    [1, 0, joint.R]
-                ])
+                case 'rev-tran':
+                    Pi = joint.iPindex
+                    Pj = joint.jPindex
+
+                    ui = self.uVectors[joint.iUindex]._u
+                    ui_r = self.uVectors[joint.iUindex]._ur
+                    d = self.Points[Pi]._rP - self.Points[Pj]._rP
+
+                    Di = np.block([
+                        ui_r.T, (ui.T @ (self.Points[Pi]._sP - d)).reshape(1, 1)
+                        ])
+                    Dj = np.block([
+                        -ui_r.T, -(ui.T @ self.Points[Pj]._sP).reshape(1, 1)
+                        ])
+
+                case 'rigid':
+                    Bj = joint.jBindex
+
+                    Di = np.eye(3)
+                    if Bj != 0:
+                        Dj = np.block([
+                            [-np.eye(2), -s_rot(self.Bodies[Bj]._A @ joint.d0)],
+                            [np.array([0, 0, -1])]
+                        ])
+                        
+                case 'disc':
+                    Di = np.array([
+                        [0, 1, 0],
+                        [1, 0, joint.R]
+                    ])
+                    
+                case 'rel-rot':
+                    Di = np.array([
+                        [0, 0, 1]
+                        ])
+                    Dj = np.array([
+                        [0, 0, -1]
+                        ])
+
+                case 'rel-tran':
+                    Pi = joint.iPindex
+                    Pj = joint.jPindex
+
+                    d = self.Points[Pi]._rP - self.Points[Pj]._rP
+
+                    Di = np.block([
+                        d.T, (d.T @ self.Points[Pi]._sPr).reshape(1, 1)
+                        ])
+                    Dj = np.block([
+                        -d.T, -(d.T @ self.Points[Pj]._sPr).reshape(1, 1)
+                        ])
                 
-            elif joint.type == 'rel-rot':
-                Di = np.array([
-                    [0, 0, 1]
-                    ])
-                Dj = np.array([
-                    [0, 0, -1]
-                    ])
-
-            elif joint.type == 'rel-tran':
-                Pi = joint.iPindex
-                Pj = joint.jPindex
-
-                d = self.Points[Pi]._rP - self.Points[Pj]._rP
-
-                Di = np.block([
-                    d.T, (d.T @ self.Points[Pi]._sPr).reshape(1, 1)
-                    ])
-                Dj = np.block([
-                    -d.T, -(d.T @ self.Points[Pj]._sPr).reshape(1, 1)
-                    ])
-            
-            else:
-                raise ValueError(f"Joint type '{joint.type}' is not supported.")
+                case _:
+                    raise ValueError(f"Joint type '{joint.type}' is not supported.")
 
             # row indices for the current joint in the Jacobian matrix
             rs = joint._rows - 1
@@ -644,29 +647,33 @@ class PlanarDynamicModel:
 
     def __rhs_velocity(self):
         """
-        Calculate the right-hand side velocity vector for the system 
-        constraints.
-
+        Calculate the right-hand side velocity vector for the system constraints.
+        
         Returns
         -------
-        rhsv (NDArray)
-            A column vector representing the right-hand side of the 
-            velocity equations.
+        rhsv : numpy.ndarray
+            Right-hand side of velocity constraints.
         """
-
         nConst = self.Joints[-1]._rowe
         rhsv = np.zeros((nConst, 1))
 
-        for Ji in range(len(self.Joints)):
-            joint = self.Joints[Ji]
+        for joint in self.Joints:
+            match joint.type:
+                case 'rel-rot':
+                    fun, fun_d, _ = self.Functs(joint.iFunct, self.t)
+                    f = fun_d
 
-            if joint.type == 'rel-rot':
-                f = self.V_rel_rot(joint)
-                rhsv[joint._rows - 1:joint._rowe] = f
-                
-            elif joint.type == 'rel-tran':
-                f = self.V_rel_tran(joint)
-                rhsv[joint._rows - 1:joint._rowe] = f
+                case 'rel-tran':
+                    fun, fun_d, _ = self.Functs(joint.iFunct, self.t)
+                    d = self.Points[joint.iPindex]._rP - self.Points[joint.jPindex]._rP
+                    f = fun * fun_d
+
+                case _:
+                    continue
+
+            rs = joint._rows - 1
+            re = joint._rowe
+            rhsv[rs:re] = f
 
         return rhsv
 
@@ -683,144 +690,147 @@ class PlanarDynamicModel:
         rhsa = np.zeros([nConst, 1])
         
         for Ji, joint in enumerate(self.Joints):
-            if joint.type == "rev":
-                Pi, Pj = joint.iPindex, joint.jPindex
-                Bi, Bj = self.Points[Pi].Bindex, self.Points[Pj].Bindex
+            joint_type = joint.type
 
-                if Bi == 0:
-                    f = s_rot(self.Points[Pj]._dsP) * self.Bodies[Bj - 1].dp
-                elif Bj == 0:
-                    f = -s_rot(self.Points[Pi]._dsP) * self.Bodies[Bi - 1].dp
-                else:
-                    f = (
-                        -s_rot(self.Points[Pi]._dsP) * self.Bodies[Bi - 1].dp \
-                        + s_rot(self.Points[Pj]._dsP) * self.Bodies[Bj - 1].dp
-                    )
-
-                if joint.fix == 1:
-                    f = np.vstack([f, [0]])
-            
-            elif joint.type == "tran":
-                Bi, Bj = joint.iBindex, joint.jBindex
-                Pi, Pj = joint.iPindex, joint.jPindex
-                ujd = self.uVectors[joint.jUindex]._du
-                ujdr = s_rot(ujd)
-
-                if Bi == 0:
-                    f2 = 0
-                elif Bj == 0:
-                    f2 = 0
-                else:
-                    diffr = self.Bodies[Bi].r - self.Bodies[Bj].r
-                    dp_product = (ujd.T @ diffr) * self.Bodies[Bi].dp
-                    diffdr = self.Bodies[Bi].dr - self.Bodies[Bj].dr
-                    f2 = dp_product - (2 * (ujdr.T @ diffdr))
-
-                f = np.array([[f2], [0]])
-
-                if joint.fix == 1:
-                    d = self.Points[Pi]._rP - self.Points[Pj]._rP
-                    dd = self.Points[Pi]._drP - self.Points[Pj]._drP
-                    L = joint._p0 
-                    u = d / L
-                    du = dd / L
-                    f3 = -du.T @ dd
+            match joint_type:
+                case "rev":
+                    Pi, Pj = joint.iPindex, joint.jPindex
+                    Bi, Bj = self.Points[Pi].Bindex, self.Points[Pj].Bindex
 
                     if Bi == 0:
-                        f3 += u.T @ (s_rot(self.Points[Pj]._dsP) * self.Bodies[Bj].dp)
+                        f = s_rot(self.Points[Pj]._dsP) * self.Bodies[Bj - 1].dp
                     elif Bj == 0:
-                        f3 -= u.T @ (s_rot(self.Points[Pi]._dsP) * self.Bodies[Bi].dp)
+                        f = -s_rot(self.Points[Pi]._dsP) * self.Bodies[Bi - 1].dp
                     else:
-                        term1 = self.Points[Pi]._dsP * self.Bodies[Bi].dp
-                        term2 = self.Points[Pj]._dsP * self.Bodies[Bj].dp
-                        f3 -= u.T @ s_rot(term1 - term2)
+                        f = (
+                            -s_rot(self.Points[Pi]._dsP) * self.Bodies[Bi - 1].dp
+                            + s_rot(self.Points[Pj]._dsP) * self.Bodies[Bj - 1].dp
+                        )
 
-                    f = np.vstack([f, [f3]])
+                    if joint.fix == 1:
+                        f = np.vstack([f, [0]])
                 
-            elif joint.type == "rev-rev":
-                Pi = joint.iPindex
-                Pj = joint.jPindex
-                Bi = joint.iBindex
-                Bj = joint.jBindex
-                
-                d = self.Points[Pi]._rP - self.Points[Pj]._rP
-                dd = self.Points[Pi]._drP - self.Points[Pj]._drP
-                
-                L = joint.L
-                u = d/L
-                ud = dd/L
-                
-                f = -ud.T @ dd
-                
-                if Bi == 0:
-                    f = f + u.T @ s_rot(self.Points[Pj]._dsP) @ self.Bodies[Bj].dp
-                elif Bj == 0:
-                    f = f - u.T @ s_rot(self.Points[Pi]._dsP) @ self.Bodies[Bi].dp
-                else:
-                    f = f - u.T @ s_rot(
-                        self.Points[Pi]._dsP @ self.Bodies[Bi].dp - 
-                        self.Points[Pj]._dsP @ self.Bodies[Bj].dp
-                )
+                case "tran":
+                    Bi, Bj = joint.iBindex, joint.jBindex
+                    Pi, Pj = joint.iPindex, joint.jPindex
+                    ujd = self.uVectors[joint.jUindex]._du
+                    ujdr = s_rot(ujd)
 
-            elif joint.type == "rev-tran":
-                Pi = joint.iPindex
-                Pj = joint.jPindex
-                Bi = joint.iBindex
-                Bj = joint.jBindex
+                    if Bi == 0:
+                        f2 = 0
+                    elif Bj == 0:
+                        f2 = 0
+                    else:
+                        diffr = self.Bodies[Bi].r - self.Bodies[Bj].r
+                        dp_product = (ujd.T @ diffr) * self.Bodies[Bi].dp
+                        diffdr = self.Bodies[Bi].dr - self.Bodies[Bj].dr
+                        f2 = dp_product - (2 * (ujdr.T @ diffdr))
 
-                ui = self.uVectors[joint.iUindex]._u
-                ui_d = self.uVectors[joint.iUindex]._du
-                d = self.Points[Pi]._rP - self.Points[Pj]._rP
-                dd = self.Points[Pi]._drP - self.Points[Pj]._drP
+                    f = np.array([[f2], [0]])
 
-                if Bi == 0:
-                    f = ui.T @ self.Points[Pj]._dsP @ self.Bodies[Bj].dp
-                elif Bj == 0:
-                    f = ui_d.T @ (d * self.Bodies[Bi].dp + 2 * s_rot(dd)) - \
-                        ui.T @ self.Points[Pi]._dsP @ self.Bodies[Bi].dp
-                else:
-                    f = ui_d.T @ (d * self.Bodies[Bi].dp + 2 * s_rot(dd)) - \
-                        ui.T @ (self.Points[Pi]._dsP @ self.Bodies[Bi].dp - \
-                               self.Points[Pj]._dsP @ self.Bodies[Bj].dp)
+                    if joint.fix == 1:
+                        d = self.Points[Pi]._rP - self.Points[Pj]._rP
+                        dd = self.Points[Pi]._drP - self.Points[Pj]._drP
+                        L = joint._p0 
+                        u = d / L
+                        du = dd / L
+                        f3 = -du.T @ dd
+
+                        if Bi == 0:
+                            f3 += u.T @ (s_rot(self.Points[Pj]._dsP) * self.Bodies[Bj].dp)
+                        elif Bj == 0:
+                            f3 -= u.T @ (s_rot(self.Points[Pi]._dsP) * self.Bodies[Bi].dp)
+                        else:
+                            term1 = self.Points[Pi]._dsP * self.Bodies[Bi].dp
+                            term2 = self.Points[Pj]._dsP * self.Bodies[Bj].dp
+                            f3 -= u.T @ s_rot(term1 - term2)
+
+                        f = np.vstack([f, [f3]])
+                    
+                case "rev-rev":
+                    Pi = joint.iPindex
+                    Pj = joint.jPindex
+                    Bi = joint.iBindex
+                    Bj = joint.jBindex
+                    
+                    d = self.Points[Pi]._rP - self.Points[Pj]._rP
+                    dd = self.Points[Pi]._drP - self.Points[Pj]._drP
+                    
+                    L = joint.L
+                    u = d/L
+                    ud = dd/L
+                    
+                    f = -ud.T @ dd
+                    
+                    if Bi == 0:
+                        f = f + u.T @ s_rot(self.Points[Pj]._dsP) @ self.Bodies[Bj].dp
+                    elif Bj == 0:
+                        f = f - u.T @ s_rot(self.Points[Pi]._dsP) @ self.Bodies[Bi].dp
+                    else:
+                        f = f - u.T @ s_rot(
+                            self.Points[Pi]._dsP @ self.Bodies[Bi].dp - 
+                            self.Points[Pj]._dsP @ self.Bodies[Bj].dp
+                    )
+
+                case "rev-tran":
+                    Pi = joint.iPindex
+                    Pj = joint.jPindex
+                    Bi = joint.iBindex
+                    Bj = joint.jBindex
+
+                    ui = self.uVectors[joint.iUindex]._u
+                    ui_d = self.uVectors[joint.iUindex]._du
+                    d = self.Points[Pi]._rP - self.Points[Pj]._rP
+                    dd = self.Points[Pi]._drP - self.Points[Pj]._drP
+
+                    if Bi == 0:
+                        f = ui.T @ self.Points[Pj]._dsP @ self.Bodies[Bj].dp
+                    elif Bj == 0:
+                        f = ui_d.T @ (d * self.Bodies[Bi].dp + 2 * s_rot(dd)) - \
+                            ui.T @ self.Points[Pi]._dsP @ self.Bodies[Bi].dp
+                    else:
+                        f = ui_d.T @ (d * self.Bodies[Bi].dp + 2 * s_rot(dd)) - \
+                            ui.T @ (self.Points[Pi]._dsP @ self.Bodies[Bi].dp - \
+                                self.Points[Pj]._dsP @ self.Bodies[Bj].dp)
+                
+                case "rigid":
+                    Bj = joint.jBindex
+
+                    f = np.zeros(3)
+                    if Bj != 0:
+                        f = np.concatenate([
+                            -self.Bodies[Bj]._A @ joint.d0 * self.Bodies[Bj].dp**2,
+                            np.array([0])
+                        ])
+                
+                case "disc":
+                    f = np.zeros(2)
+                    
+                case "rel-rot": # // to check
+                    fun, fun_d, fun_dd = self.Functs(joint.iFunct, self.t)
+                    f = fun_dd
+                    
+                case "rel-tran": # // to check
+                    Pi = joint.iPindex
+                    Pj = joint.jPindex
+                    Bi = joint.iBindex
+                    Bj = joint.jBindex
+                    
+                    d = self.Points[Pi]._rP - self.Points[Pj]._rP
+                    dd = self.Points[Pi]._drP - self.Points[Pj]._drP
+                    
+                    fun, fun_d, fun_dd = self.Functs(joint.iFunct, self.t)
+                    
+                    f = fun * fun_dd + fun_d**2
+                    
+                    if Bi == 0:
+                        f = f + d.T @ s_rot(self.Points[Pj]._dsP).T @ self.Bodies[Bj].dp
+                    elif Bj == 0:
+                        f = f - d.T @ s_rot(self.Points[Pi]._dsP).T @ self.Bodies[Bi].dp - dd.T @ dd
+                    else:
+                        f = f + d.T @ s_rot(self.Points[Pj]._dsP).T @ self.Bodies[Bj].dp \
+                            - d.T @ s_rot(self.Points[Pi]._dsP).T @ self.Bodies[Bi].dp - dd.T @ dd
             
-            elif joint.type == "rigid":
-                Bj = joint.jBindex
-
-                f = np.zeros(3)
-                if Bj != 0:
-                    f = np.concatenate([
-                        -self.Bodies[Bj]._A @ joint.d0 * self.Bodies[Bj].dp**2,
-                        np.array([0])
-                    ])
-            
-            elif joint.type == "disc":
-                f = np.zeros(2)
-                
-            elif joint.type == "rel-rot": # // to check
-                fun, fun_d, fun_dd = self.Functs(joint.iFunct, self.t)
-                f = fun_dd
-                
-            elif joint.type == "rel-tran": # // to check
-                Pi = joint.iPindex
-                Pj = joint.jPindex
-                Bi = joint.iBindex
-                Bj = joint.jBindex
-                
-                d = self.Points[Pi]._rP - self.Points[Pj]._rP
-                dd = self.Points[Pi]._drP - self.Points[Pj]._drP
-                
-                fun, fun_d, fun_dd = self.Functs(joint.iFunct, self.t)
-                
-                f = fun * fun_dd + fun_d**2
-                
-                if Bi == 0:
-                    f = f + d.T @ s_rot(self.Points[Pj]._dsP).T @ self.Bodies[Bj].dp
-                elif Bj == 0:
-                    f = f - d.T @ s_rot(self.Points[Pi]._dsP).T @ self.Bodies[Bi].dp - dd.T @ dd
-                else:
-                    f = f + d.T @ s_rot(self.Points[Pj]._dsP).T @ self.Bodies[Bj].dp \
-                          - d.T @ s_rot(self.Points[Pi]._dsP).T @ self.Bodies[Bi].dp - dd.T @ dd
-        
             #! The value -1 should be fixed during the constraint definition 
             #! to avoid the continous management of indexes for 
             #! slicing operations.
