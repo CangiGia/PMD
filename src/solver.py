@@ -670,16 +670,14 @@ class PlanarDynamicModel:
 
         return rhsv
 
-    def __rhs_acceleration(self):
+    def __rhs_acceleration(self): #// - Check required on rel-tran and rel-rot joints -
         """
-        Calculate the right-hand side acceleration vector for the system 
-        constraints.
+        Compute the right-hand side of acceleration constraints.
 
         Returns
         -------
-        rhsa (NDArray)
-            A column vector representing the right-hand side of the 
-            acceleration equations.
+        numpy.ndarray
+            Right-hand side of acceleration constraints (gamma).
         """
         nConst = self.Joints[-1]._rowe
         rhsa = np.zeros([nConst, 1])
@@ -739,18 +737,89 @@ class PlanarDynamicModel:
 
                     f = np.vstack([f, [f3]])
                 
-            elif joint.type == "rev-rev": 
-                pass
-            elif joint.type == "rev-tran": 
-                pass
-            elif joint.type == "rigid": 
-                pass
-            elif joint.type == "disc": 
-                pass
-            elif joint.type == "rel-rot": 
-                pass
-            elif joint.type == "rel-tran": 
-                pass
+            elif joint.type == "rev-rev":
+                Pi = joint.iPindex
+                Pj = joint.jPindex
+                Bi = joint.iBindex
+                Bj = joint.jBindex
+                
+                d = self.Points[Pi]._rP - self.Points[Pj]._rP
+                dd = self.Points[Pi]._drP - self.Points[Pj]._drP
+                
+                L = joint.L
+                u = d/L
+                ud = dd/L
+                
+                f = -ud.T @ dd
+                
+                if Bi == 0:
+                    f = f + u.T @ s_rot(self.Points[Pj]._dsP) @ self.Bodies[Bj].dp
+                elif Bj == 0:
+                    f = f - u.T @ s_rot(self.Points[Pi]._dsP) @ self.Bodies[Bi].dp
+                else:
+                    f = f - u.T @ s_rot(
+                        self.Points[Pi]._dsP @ self.Bodies[Bi].dp - 
+                        self.Points[Pj]._dsP @ self.Bodies[Bj].dp
+                )
+
+            elif joint.type == "rev-tran":
+                Pi = joint.iPindex
+                Pj = joint.jPindex
+                Bi = joint.iBindex
+                Bj = joint.jBindex
+
+                ui = self.uVectors[joint.iUindex]._u
+                ui_d = self.uVectors[joint.iUindex]._du
+                d = self.Points[Pi]._rP - self.Points[Pj]._rP
+                dd = self.Points[Pi]._drP - self.Points[Pj]._drP
+
+                if Bi == 0:
+                    f = ui.T @ self.Points[Pj]._dsP @ self.Bodies[Bj].dp
+                elif Bj == 0:
+                    f = ui_d.T @ (d * self.Bodies[Bi].dp + 2 * s_rot(dd)) - \
+                        ui.T @ self.Points[Pi]._dsP @ self.Bodies[Bi].dp
+                else:
+                    f = ui_d.T @ (d * self.Bodies[Bi].dp + 2 * s_rot(dd)) - \
+                        ui.T @ (self.Points[Pi]._dsP @ self.Bodies[Bi].dp - \
+                               self.Points[Pj]._dsP @ self.Bodies[Bj].dp)
+            
+            elif joint.type == "rigid":
+                Bj = joint.jBindex
+
+                f = np.zeros(3)
+                if Bj != 0:
+                    f = np.concatenate([
+                        -self.Bodies[Bj]._A @ joint.d0 * self.Bodies[Bj].dp**2,
+                        np.array([0])
+                    ])
+            
+            elif joint.type == "disc":
+                f = np.zeros(2)
+                
+            elif joint.type == "rel-rot": # // to check
+                fun, fun_d, fun_dd = self.Functs(joint.iFunct, self.t)
+                f = fun_dd
+                
+            elif joint.type == "rel-tran": # // to check
+                Pi = joint.iPindex
+                Pj = joint.jPindex
+                Bi = joint.iBindex
+                Bj = joint.jBindex
+                
+                d = self.Points[Pi]._rP - self.Points[Pj]._rP
+                dd = self.Points[Pi]._drP - self.Points[Pj]._drP
+                
+                fun, fun_d, fun_dd = self.Functs(joint.iFunct, self.t)
+                
+                f = fun * fun_dd + fun_d**2
+                
+                if Bi == 0:
+                    f = f + d.T @ s_rot(self.Points[Pj]._dsP).T @ self.Bodies[Bj].dp
+                elif Bj == 0:
+                    f = f - d.T @ s_rot(self.Points[Pi]._dsP).T @ self.Bodies[Bi].dp - dd.T @ dd
+                else:
+                    f = f + d.T @ s_rot(self.Points[Pj]._dsP).T @ self.Bodies[Bj].dp \
+                          - d.T @ s_rot(self.Points[Pi]._dsP).T @ self.Bodies[Bi].dp - dd.T @ dd
         
             #! The value -1 should be fixed during the constraint definition 
             #! to avoid the continous management of indexes for 
