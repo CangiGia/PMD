@@ -490,7 +490,7 @@ class PlanarDynamicModel:
             
         return phi
 
-    def __compute_jacobian(self): #// - To be completed for all joint type -
+    def __compute_jacobian(self):
         """
         Calculate the Jacobian matrix D for the system constraints.
 
@@ -553,17 +553,72 @@ class PlanarDynamicModel:
                     ])
 
             elif joint.type == 'rev-rev':
-                pass
+                Pi = joint.iPindex
+                Pj = joint.jPindex
+
+                d = self.Points[Pi]._rP - self.Points[Pj]._rP
+                L = joint.L
+                u = d/L
+
+                Di = np.block([
+                    u.T, (u.T @ self.Points[Pi]._sPr).reshape(1, 1)
+                    ])
+                Dj = np.block([
+                    -u.T, -(u.T @ self.Points[Pj]._sPr).reshape(1, 1)
+                    ])
+                
             elif joint.type == 'rev-tran':
-                pass
+                Pi = joint.iPindex
+                Pj = joint.jPindex
+
+                ui = self.uVectors[joint.iUindex]._u
+                ui_r = self.uVectors[joint.iUindex]._ur
+                d = self.Points[Pi]._rP - self.Points[Pj]._rP
+
+                Di = np.block([
+                    ui_r.T, (ui.T @ (self.Points[Pi]._sP - d)).reshape(1, 1)
+                    ])
+                Dj = np.block([
+                    -ui_r.T, -(ui.T @ self.Points[Pj]._sP).reshape(1, 1)
+                    ])
+
             elif joint.type == 'rigid':
-                pass
+                Bj = joint.jBindex
+
+                Di = np.eye(3)
+                if Bj != 0:
+                    Dj = np.block([
+                        [-np.eye(2), -s_rot(self.Bodies[Bj]._A @ joint.d0)],
+                        [np.array([0, 0, -1])]
+                    ])
+                    
             elif joint.type == 'disc':
-                pass
+                Di = np.array([
+                    [0, 1, 0],
+                    [1, 0, joint.R]
+                ])
+                
             elif joint.type == 'rel-rot':
-                pass
+                Di = np.array([
+                    [0, 0, 1]
+                    ])
+                Dj = np.array([
+                    [0, 0, -1]
+                    ])
+
             elif joint.type == 'rel-tran':
-                pass
+                Pi = joint.iPindex
+                Pj = joint.jPindex
+
+                d = self.Points[Pi]._rP - self.Points[Pj]._rP
+
+                Di = np.block([
+                    d.T, (d.T @ self.Points[Pi]._sPr).reshape(1, 1)
+                    ])
+                Dj = np.block([
+                    -d.T, -(d.T @ self.Points[Pj]._sPr).reshape(1, 1)
+                    ])
+            
             else:
                 raise ValueError(f"Joint type '{joint.type}' is not supported.")
 
@@ -1082,7 +1137,7 @@ class PlanarDynamicModel:
             header_width = len(header)
             formatted_u = [f"{float(element):.2f}" for element in u]
             for element in formatted_u:
-                print(f"\t{element:^{header_width}}")  # Centra ogni valore rispetto all'intestazione
+                print(f"\t{element:^{header_width}}")
         if np.any(np.isnan(u)) or np.any(np.isinf(u)):
             raise ValueError("\t ... check initial conditions, ""u"" vector contains NaN or Inf values.")
 
