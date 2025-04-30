@@ -927,22 +927,37 @@ class PlanarDynamicModel:
                         self.Bodies[Bj-1]._n += (self.Points[Pj]._sPr.T @ fi).item()
 
                 case 'rot-sda':
-                    pass  # Placeholder for SDA_rot()
+                    Bi = force.iBindex
+                    Bj = force.jBindex
+
+                    if Bi == 0:
+                        theta = -self.Bodies[Bj-1].p
+                        theta_d = -self.Bodies[Bj-1].dp
+                        T = force.k * (theta - force.theta0) + force.dc * theta_d + force.T_a
+                        self.Bodies[Bj-1]._n += T
+                    elif Bj == 0:
+                        theta = self.Bodies[Bi-1].p
+                        theta_d = self.Bodies[Bi-1].dp
+                        T = force.k * (theta - force.theta0) + force.dc * theta_d + force.T_a
+                        self.Bodies[Bi-1]._n -= T
+                    else:
+                        theta = self.Bodies[Bi-1].p - self.Bodies[Bj-1].p
+                        theta_d = self.Bodies[Bi-1].dp - self.Bodies[Bj-1].dp
+                        T = force.k * (theta - force.theta0) + force.dc * theta_d + force.T_a
+                        self.Bodies[Bi-1]._n -= T
+                        self.Bodies[Bj-1]._n += T
 
                 case 'flocal':
-                    # Bi = force.iBindex
-                    # self.Bodies[Bi].f += self.Bodies[Bi]._A @ force.flocal
-                    pass
+                    Bi = force.iBindex
+                    self.Bodies[Bi-1]._f += self.Bodies[Bi-1]._A @ force.flocal
 
                 case 'f':
-                    # Bi = force.iBindex
-                    # self.Bodies[Bi].f += force.f
-                    pass
+                    Bi = force.iBindex
+                    self.Bodies[Bi-1]._f += force.f
 
                 case 'T':
-                    # Bi = force.iBindex
-                    # self.Bodies[Bi].n += force.T
-                    pass
+                    Bi = force.iBindex
+                    self.Bodies[Bi-1]._n += force.T
 
                 case 'user' if callable(force.callback):
                     global_vars = get_globals()
@@ -953,6 +968,7 @@ class PlanarDynamicModel:
                 case _:
                     raise ValueError(f"Unsupported force type: '{force.type}'. Please check your input.")
 
+        # Build force array
         nB3 = 3 * len(self.Bodies)
         g = np.zeros([nB3, 1])
         for Bi, body in enumerate(self.Bodies):
