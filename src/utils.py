@@ -13,6 +13,7 @@ Author: Giacomo Cangi
 import inspect
 import numpy as np
 from numpy.typing import *
+from scipy.interpolate import interp1d
 
 
 def get_globals():
@@ -194,3 +195,77 @@ def validate_shape(vec: NDArray):
             raise ValueError("Input is a row vector with 2 elements, expected a column vector with shape (2, 1).")
         else:
             raise ValueError("Input must be a column vector with shape (2, 1).")
+        
+def downsampling(
+    x_source: NDArray,
+    y_source: NDArray,
+    x_target: NDArray,
+    fill_value: bool = None
+) -> NDArray:
+    
+    """
+    Downsample or resample a time series or signal matrix to a new target domain.
+
+    This function interpolates the given `y_source` data (vector or matrix)
+    originally sampled at `x_source`, to the new points in `x_target`.
+    The result is a new matrix (or vector) with the same number of columns
+    as `y_source` but resampled along `x_target`.
+
+    Parameters
+    ----------
+    x_source : NDArray
+        1D array of original time or sample points corresponding to `y_source`.
+    y_source : NDArray
+        2D array (shape: [n_samples, n_channels]) of data values to be downsampled.
+    x_target : NDArray
+        1D array of new time or sample points at which to evaluate the downsampled data.
+    fill_value : bool, optional
+        If True, allows extrapolation outside the bounds of `x_source`.
+
+    Returns
+    -------
+    y_target : NDArray
+        2D array of shape (len(x_target), n_channels), containing the downsampled values.
+
+    Examples
+    --------
+    >>> import numpy as np
+
+    >>> # original time vector and signal (2 channels)
+    >>> x_source = np.linspace(0, 10, 100)
+    >>> y_source = np.vstack([np.sin(x_source), np.cos(x_source)]).T  # shape (100, 2)
+
+    >>> # new time vector with fewer points
+    >>> x_target = np.linspace(0, 10, 20)
+
+    >>> # downsample the signal with interpolation
+    >>> y_target = downsampling(x_source, y_source, x_target)
+
+    >>> y_target.shape()
+    (20, 2)
+    """
+
+    # check for out-of-bounds values if extrapolation is not allowed
+    if not fill_value:
+        if x_target.min() < x_source.min() or x_target.max() > x_source.max():
+            raise ValueError(
+                " \t ... x_target contains values outside the range of x_source, "
+                "but extrapolation is disabled! \n" \
+                " Set fill_value = True to allow extrapolation ..."
+            )
+        
+    y_target = np.zeros((len(x_target), y_source.shape[1]))
+
+    for i in range(y_source.shape[1]):
+        if fill_value:
+            f = interp1d(
+                x_source,
+                y_source[:, i],
+                kind='linear',
+                fill_value="extrapolate"
+            )
+        else:
+            f = interp1d(x_source, y_source[:, i], kind='linear')
+        y_target[:, i] = f(x_target)
+
+    return y_target

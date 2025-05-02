@@ -26,7 +26,7 @@ s3 = Force()
 s3 = Force(type="weight") #// only weight force, acting along -y axis
 
 #%% double pendulum model creation
-double_pendulum = PlanarDynamicModel()
+double_pendulum = PlanarMultibodyModel()
 time, solution = double_pendulum.solve(method='Radau')
 
 fig, ax = plt.subplots(2, 1, figsize=(12, 12), sharex=True)

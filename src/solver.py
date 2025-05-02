@@ -20,7 +20,7 @@ from src.builder import *
 from scipy.integrate import solve_ivp
 
 
-class PlanarDynamicModel:
+class PlanarMultibodyModel:
     def __init__(self, verbose = False):
         grouped_calsses = group_classes()
         self.verbose = verbose
@@ -31,6 +31,11 @@ class PlanarDynamicModel:
         self.Joints = grouped_calsses.get("Joint", [])
         self.Functs = grouped_calsses.get("Function", []) if "Function" in grouped_calsses else []
         
+        # accumulator attributes 
+        self._integration_time_step = []
+        self._accelerations = []
+        self._reactions = []
+
         # initialize the model for simulation automatically
         self.__initialize()
 
@@ -1193,6 +1198,12 @@ class PlanarDynamicModel:
             ddc = sol[:nB3]
             Lambda = sol[nB3:]
 
+        # storing accelerations and Lagrange multipliers
+        if hasattr(self, "_teval") and np.any(np.isclose(t, self._teval, atol=1e-4, rtol=1e-4)):
+            self._integration_time_step.append(t)
+            self._accelerations.append(ddc.copy())
+            self._reactions.append(Lambda.copy())
+
         # update accelerations for each body
         for Bi, body in enumerate(self.Bodies):
             ir = body._irc - 1
@@ -1253,6 +1264,7 @@ class PlanarDynamicModel:
             Tspan = np.arange(t_initial, t_final, dt)
             u0 = u.flatten()
             options = {'rtol': 1e-6, 'atol': 1e-9, 'max_step': (Tspan[1] - Tspan[0])}
+            self._teval = Tspan #// used as control parameter in __analysis method
             sol = solve_ivp(
                 self.__analysis, 
                 [t_initial, t_final], 
@@ -1263,7 +1275,54 @@ class PlanarDynamicModel:
             T = sol.t
             uT = sol.y.T
 
-        num_evals = self.__num
-        print(f"Number of function evaluations = {num_evals}")
+        print(f"Number of function evaluations = {self.__num}")
         print(f"Simulation completed!")
         return T, uT
+
+    # // ... recomputing them after the simulation is possible, but less efficient ...
+    # // ... needs further evaluation ...
+    def get_reactions(self):
+        """
+        Retrieve the time-resampled reaction forces or multipliers for the system.
+
+        This method interpolates the internally stored reaction forces (or multipliers)
+        evaluated at the original integration time steps and resamples them
+        over a new evaluation time vector `self._teval`, storing the result in
+        `self._resampled_multipliers`.
+
+        Returns
+        -------
+        np.ndarray
+            A 2D array of shape (len(self._teval), n_joints) containing the
+            interpolated reaction values for each joint at the desired time points.
+        """
+
+        _t_analysis = np.array(self._integration_time_step)
+        _multipliers = np.array([_reactions.flatten() for _reactions in self._reactions])
+
+        self._resampled_multipliers = downsampling(_t_analysis, _multipliers, self._teval)
+
+        return self._resampled_multipliers
+    
+    def get_accelerations(self):
+        """
+        Retrieve the time-resampled accelerations of the system.
+
+        This method interpolates the internal acceleration data, originally computed
+        at the integration time steps, and resamples it over the evaluation time vector
+        `self._teval`. The resampled accelerations are stored in the internal attribute
+        `self._resampled_accelerations`.
+
+        Returns
+        -------
+        np.ndarray
+            A 2D array of shape (len(self._teval), n_dofs), where each row contains the
+            interpolated accelerations for all degrees of freedom (DOFs) at a given time step.
+        """
+
+        _t_analysis = np.array(self._integration_time_step)
+        _accelerations = np.array([_accelerations.flatten() for _accelerations in self._accelerations])
+
+        self._resampled_accelerations = downsampling(_t_analysis, _accelerations, self._teval)
+
+        return self._resampled_accelerations

@@ -81,12 +81,14 @@ print(f"\t ... number of Force instances:   {force_count}  ")
 print(f"\t ... number of Joint instances:   {joint_count}  ")
 
 #%% model simulation ...
-my_dynamic_model = PlanarDynamicModel(verbose=True)
+my_dynamic_model = PlanarMultibodyModel(verbose=True)
 time, solution = my_dynamic_model.solve(method='RK45')
+reactions = my_dynamic_model.get_reactions()
+accelerations = my_dynamic_model.get_accelerations()
 
-plt.figure()
-plt.plot(time, solution[:,4])
-plt.show()
+# plt.figure()
+# plt.plot(time, solution[:,4])
+# plt.show()
 
 # np.savetxt('uT_python.txt', solution)
 # np.savetxt('T_python.txt', time)

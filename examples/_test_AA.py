@@ -122,7 +122,7 @@ s3.type = 'weight'
 s3.wgt = np.array([0, -1])
 
 #%% solution
-my_dynamic_model = PlanarDynamicModel(verbose=True)
+my_dynamic_model = PlanarMultibodyModel(verbose=True)
 time, solution = my_dynamic_model.solve(method='RK45')
 
 plt.figure()
