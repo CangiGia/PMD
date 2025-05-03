@@ -14,6 +14,7 @@ import inspect
 import numpy as np
 from numpy.typing import *
 from scipy.interpolate import interp1d
+from numba import njit, prange
 
 
 def get_globals():
@@ -196,15 +197,15 @@ def validate_shape(vec: NDArray):
         else:
             raise ValueError("Input must be a column vector with shape (2, 1).")
         
-def downsampling(
-    x_source: NDArray,
-    y_source: NDArray,
-    x_target: NDArray,
-    fill_value: bool = None
-) -> NDArray:
+def resample(x_source: NDArray,
+                y_source: NDArray,
+                x_target: NDArray,
+                fill_value: bool = None, 
+                kind: str = 'linear' # default interpolation method
+            ) -> NDArray:
     
     """
-    Downsample or resample a time series or signal matrix to a new target domain.
+    Resample a time series or signal matrix to a new target domain.
 
     This function interpolates the given `y_source` data (vector or matrix)
     originally sampled at `x_source`, to the new points in `x_target`.
@@ -221,6 +222,10 @@ def downsampling(
         1D array of new time or sample points at which to evaluate the downsampled data.
     fill_value : bool, optional
         If True, allows extrapolation outside the bounds of `x_source`.
+    kind : str, optional
+        The type of interpolation to use. Default is 'linear'. Other options include 
+        'nearest', 'zero', 'slinear', 'quadratic', 'cubic', etc. 
+        See `scipy.interpolate.interp1d` for more options.
 
     Returns
     -------
@@ -245,7 +250,11 @@ def downsampling(
     (20, 2)
     """
 
-    # check for out-of-bounds values if extrapolation is not allowed
+    PARALLEL_COL_THRESHOLD = 50  # minimum number of columns to enable parallel processing
+    PARALLEL_ROW_THRESHOLD = 5000  # minimum number of rows to enable parallel processing
+    
+    #// ... some controls ...
+    #// ... check for out-of-bounds values if extrapolation is not allowed ...
     if not fill_value:
         if x_target.min() < x_source.min() or x_target.max() > x_source.max():
             raise ValueError(
@@ -254,18 +263,56 @@ def downsampling(
                 " Set fill_value = True to allow extrapolation ..."
             )
         
-    y_target = np.zeros((len(x_target), y_source.shape[1]))
+    #// ... check input ...
+    if not isinstance(x_source, np.ndarray) or x_source.ndim != 1:
+        raise ValueError("... `x_source` must be a 1D NumPy array ...")
+    
+    if not isinstance(x_target, np.ndarray) or x_target.ndim != 1:
+        raise ValueError("... `x_target` must be a 1D NumPy array ...")
 
-    for i in range(y_source.shape[1]):
-        if fill_value:
-            f = interp1d(
-                x_source,
-                y_source[:, i],
-                kind='linear',
-                fill_value="extrapolate"
-            )
-        else:
-            f = interp1d(x_source, y_source[:, i], kind='linear')
-        y_target[:, i] = f(x_target)
+    if not isinstance(y_source, np.ndarray) or y_source.ndim != 2:
+        raise ValueError("... `y_source` must be a 2D NumPy array (n_samples, n_channels) ...")
+
+    if len(x_source) != y_source.shape[0]:
+        raise ValueError("... The length of `x_source` must match the number of rows in `y_source` ...")
+
+    if not np.all(np.diff(x_source) > 0):
+        raise ValueError("... `x_source` must be monotonically increasing ...")
+
+    #// ... check interpolation method ...
+    valid_interpolations = {'linear', 'nearest', 'zero', 'slinear', 'quadratic', 'cubic'}
+    if kind not in valid_interpolations:
+        raise ValueError(f"Invalid interpolation type `{kind}`. Choose from {valid_interpolations}.")
+
+    #// ... pre-allocate the output array ...
+    y_target = np.empty((len(x_target), y_source.shape[1]))  # more efficient than np.zeros()
+
+    channels_number = y_source.shape[1]
+    samples_number = x_source.shape[0]
+
+    @njit(parallel=True)
+    def parallel_resample(x_source, y_source, x_target):
+        """
+        Fast interpolation using NumPy's np.interp(), fully compatible with Numba.
+        This function performs interpolation in parallel across multiple columns 
+        to enance performance for large datasets.
+        """
+        n_channels = y_source.shape[1]
+        y_target_parallel = np.empty((len(x_target), n_channels))
+
+        for i in prange(n_channels):
+            y_target_parallel[:, i] = np.interp(x_target, x_source, y_source[:, i])
+
+        return y_target_parallel
+
+    if channels_number >= PARALLEL_COL_THRESHOLD or samples_number >= PARALLEL_ROW_THRESHOLD:
+        y_target = parallel_resample(x_source, y_source, x_target) # parallel processing
+    else: # standard processing
+        for i in range(y_source.shape[1]):
+            if fill_value:
+                f = interp1d(x_source, y_source[:, i], kind=kind, fill_value="extrapolate")
+            else:
+                f = interp1d(x_source, y_source[:, i], kind=kind)
+            y_target[:, i] = f(x_target)
 
     return y_target

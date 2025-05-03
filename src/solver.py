@@ -18,7 +18,7 @@ import inspect
 from PMD.src.functions import *
 from src.builder import *
 from scipy.integrate import solve_ivp
-
+from tqdm import tqdm
 
 class PlanarMultibodyModel:
     def __init__(self, verbose = False):
@@ -1300,7 +1300,7 @@ class PlanarMultibodyModel:
         _t_analysis = np.array(self._integration_time_step)
         _multipliers = np.array([_reactions.flatten() for _reactions in self._reactions])
 
-        self._resampled_multipliers = downsampling(_t_analysis, _multipliers, self._teval)
+        self._resampled_multipliers = resample(_t_analysis, _multipliers, self._teval)
 
         return self._resampled_multipliers
     
@@ -1323,6 +1323,6 @@ class PlanarMultibodyModel:
         _t_analysis = np.array(self._integration_time_step)
         _accelerations = np.array([_accelerations.flatten() for _accelerations in self._accelerations])
 
-        self._resampled_accelerations = downsampling(_t_analysis, _accelerations, self._teval)
+        self._resampled_accelerations = resample(_t_analysis, _accelerations, self._teval)
 
         return self._resampled_accelerations
