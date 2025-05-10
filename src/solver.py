@@ -1204,59 +1204,6 @@ class PlanarDynamicModel:
         ud = self.__bodies2ud()             # pack velocities and accelerations into ud
         return ud.flatten()
 
-    # def __taqaddum(self, t_initial, t_final):
-    #     """
-    #     Restituisce una funzione che wrappa __analysis e stampa l'avanzamento.
-    #     """
-    #     last_progress = {'value': -1}
-        
-    #     def __wrapp_analysis(t, u):
-    #         progress = int(100 * (t - t_initial) / (t_final - t_initial))
-    #         if progress > last_progress['value']:
-    #             print(f"\t... Simulation status: {progress}%")
-    #             last_progress['value'] = progress
-    #         return self.__analysis(t, u)
-    #     return __wrapp_analysis
-
-    # def solve(self, method="LSODA"):
-    #     """Solve EQMs with real-time progress tracking."""
-    #     self.method = method
-    #     nConst = self.Joints[-1]._rowe
-    #     print("\n")
-    #     ans = input("\t... Do you want to correct the initial conditions? [(y)es/(n)o] ").lower()
-
-    #     if nConst != 0:
-    #         if ans == 'y':
-    #             self.__ic_correct()
-    #         D = self.__compute_jacobian()
-    #         redund = np.linalg.matrix_rank(D)
-    #         if redund < nConst:
-    #             print("\n")
-    #             print("\t...Redundancy in the constraints")
-
-    #     u = self.__bodies2u()
-    #     if np.any(np.isnan(u)) or np.any(np.isinf(u)):
-    #         raise ValueError("\t ... check initial conditions, `u` vector contains NaN or Inf values.")
-
-    #     t_initial = 0
-    #     t_final = float(input("\n\t ...Final time = ? "))
-    #     dt = float(input("\t ...Reporting time-step = ? "))
-
-    #     self.__num = 0
-    #     Tspan = np.arange(t_initial, t_final, dt)
-    #     u0 = u.flatten()
-    #     options = {'rtol': 1e-6, 'atol': 1e-9, 'max_step': (Tspan[1] - Tspan[0])}
-    #     __wrapp_analysis = self.__taqaddum(t_initial, t_final)
-    #     sol = solve_ivp(__wrapp_analysis, [t_initial, t_final], u0, t_eval=Tspan, method=self.method, **options)
-
-    #     T = sol.t
-    #     uT = sol.y.T
-
-    #     num_evals = self.__num
-    #     print(f"\t ...Number of evaluated functions: {num_evals}")
-    #     print(f"\t ...Simulation completed!")
-    #     return T, uT
-
     def __taqaddum(self, t_initial, t_final, pbar):
         """
         Restituisce una funzione wrapper per __analysis con progresso ottimizzato
