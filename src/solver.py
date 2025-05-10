@@ -1215,15 +1215,27 @@ class PlanarMultibodyModel:
         ud = self.__bodies2ud()             # pack velocities and accelerations into ud
         return ud.flatten()
 
-    def solve(self, method = "LSODA"):
+    def __taqaddum(self, t_initial, t_final, pbar):
         """
-        Solve the EQMs of the planar multi-body system.
+        Restituisce una funzione wrapper per __analysis con progresso ottimizzato
         """
-        self.method = method
+        last_progress = 0  # Ora è un intero invece di un dizionario
+        
+        def __wrapp_analysis(t, u):
+            nonlocal last_progress
+            progress = min(100, int(100 * (t - t_initial) / (t_final - t_initial)))
+            if progress > last_progress:
+                pbar.n = progress
+                pbar.refresh()
+                last_progress = progress
+            return self.__analysis(t, u)
+        return __wrapp_analysis
 
+    def solve(self, method="LSODA"):
+        """Solve EQMs with accurate tqdm progress tracking"""
+        self.method = method
         nConst = self.Joints[-1]._rowe
-        nB = len(self.Bodies)
-        nB6 = 6 * nB
+        
         print("\n")
         ans = input("\t... Do you want to correct the initial conditions? [(y)es/(n)o] ").lower()
 
@@ -1231,11 +1243,10 @@ class PlanarMultibodyModel:
             if ans == 'y':
                 self.__ic_correct()
             D = self.__compute_jacobian()
-            redund = np.linalg.matrix_rank(D) # check the rank of D for redundancy
+            redund = np.linalg.matrix_rank(D)
             if redund < nConst:
-                print("Redundancy in the constraints")
+                print("\n\t...Redundancy in the constraints")
 
-        # pack coordinates and velocities ito u array
         u = self.__bodies2u()
         if self.verbose: 
             header = "... initial u vector ..."
@@ -1248,22 +1259,37 @@ class PlanarMultibodyModel:
             raise ValueError("\t ... check initial conditions, ""u"" vector contains NaN or Inf values.")
 
         t_initial = 0
-        t_final = float(input("Final time = ? "))
-
-        # utils to check the convergence
-        self.__showtime = 1
-        self.__num = 0
-        self.__t10 = 0
+        t_final = float(input("\n\t ...Final time = ? "))
+        self.__num = 0 # initialize the number of function evaluations
 
         if t_final == 0:
             self.__analysis(0, u)
             T = 0
             uT = u.T
-        else:
-            dt = float(input("Reporting time-step = ? "))
+        else: 
+            dt = float(input("\t ...Reporting time-step = ? "))
             Tspan = np.arange(t_initial, t_final, dt)
             u0 = u.flatten()
             options = {'rtol': 1e-6, 'atol': 1e-9, 'max_step': (Tspan[1] - Tspan[0])}
+
+            pbar = tqdm(total=100, desc = "         ...Simulation progress", # not the best printing mode ... 
+                        bar_format = "{l_bar}{bar}| [Elapsed time: {elapsed}, Remaining time: {remaining}]",
+                        colour = "green"
+            )
+
+            __wrapp_analysis = self.__taqaddum(t_initial, t_final, pbar)
+            
+            try:
+                sol = solve_ivp(__wrapp_analysis, 
+                                [t_initial, t_final], 
+                                u0, 
+                                t_eval=Tspan, 
+                                method=self.method, 
+                                **options
+                            )
+            finally: # useful to ensure the progress bar is closed even if an error occurs
+                pbar.close()
+
             self._teval = Tspan #// used as control parameter in __analysis method
             sol = solve_ivp(
                 self.__analysis, 
@@ -1275,8 +1301,10 @@ class PlanarMultibodyModel:
             T = sol.t
             uT = sol.y.T
 
-        print(f"Number of function evaluations = {self.__num}")
-        print(f"Simulation completed!")
+        print(f"\n ")
+        print(f"\t ...Number of function evaluations: {self.__num}")
+        print(f"\t ...Simulation completed successfully!")
+        print(f"\n ")
         return T, uT
 
     # // ... recomputing them after the simulation is possible, but less efficient ...
