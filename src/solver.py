@@ -1276,7 +1276,8 @@ class PlanarMultibodyModel:
                         bar_format = "{l_bar}{bar}| [Elapsed time: {elapsed}, Remaining time: {remaining}]",
                         colour = "green"
             )
-
+            
+            self._teval = Tspan #// used as control parameter in __analysis method
             __wrapp_analysis = self.__taqaddum(t_initial, t_final, pbar)
             
             try:
@@ -1290,14 +1291,7 @@ class PlanarMultibodyModel:
             finally: # useful to ensure the progress bar is closed even if an error occurs
                 pbar.close()
 
-            self._teval = Tspan #// used as control parameter in __analysis method
-            sol = solve_ivp(
-                self.__analysis, 
-                [t_initial, t_final], 
-                u0, 
-                t_eval=Tspan, 
-                method=self.method, 
-                **options)
+            
             T = sol.t
             uT = sol.y.T
 
