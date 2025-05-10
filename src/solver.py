@@ -18,7 +18,7 @@ import inspect
 from PMD.src.functions import *
 from src.builder import *
 from scipy.integrate import solve_ivp
-
+from tqdm import tqdm
 
 class PlanarDynamicModel:
     def __init__(self, verbose = False):
@@ -1204,15 +1204,80 @@ class PlanarDynamicModel:
         ud = self.__bodies2ud()             # pack velocities and accelerations into ud
         return ud.flatten()
 
-    def solve(self, method = "LSODA"):
-        """
-        Solve the EQMs of the planar multi-body system.
-        """
-        self.method = method
+    # def __taqaddum(self, t_initial, t_final):
+    #     """
+    #     Restituisce una funzione che wrappa __analysis e stampa l'avanzamento.
+    #     """
+    #     last_progress = {'value': -1}
+        
+    #     def __wrapp_analysis(t, u):
+    #         progress = int(100 * (t - t_initial) / (t_final - t_initial))
+    #         if progress > last_progress['value']:
+    #             print(f"\t... Simulation status: {progress}%")
+    #             last_progress['value'] = progress
+    #         return self.__analysis(t, u)
+    #     return __wrapp_analysis
 
+    # def solve(self, method="LSODA"):
+    #     """Solve EQMs with real-time progress tracking."""
+    #     self.method = method
+    #     nConst = self.Joints[-1]._rowe
+    #     print("\n")
+    #     ans = input("\t... Do you want to correct the initial conditions? [(y)es/(n)o] ").lower()
+
+    #     if nConst != 0:
+    #         if ans == 'y':
+    #             self.__ic_correct()
+    #         D = self.__compute_jacobian()
+    #         redund = np.linalg.matrix_rank(D)
+    #         if redund < nConst:
+    #             print("\n")
+    #             print("\t...Redundancy in the constraints")
+
+    #     u = self.__bodies2u()
+    #     if np.any(np.isnan(u)) or np.any(np.isinf(u)):
+    #         raise ValueError("\t ... check initial conditions, `u` vector contains NaN or Inf values.")
+
+    #     t_initial = 0
+    #     t_final = float(input("\n\t ...Final time = ? "))
+    #     dt = float(input("\t ...Reporting time-step = ? "))
+
+    #     self.__num = 0
+    #     Tspan = np.arange(t_initial, t_final, dt)
+    #     u0 = u.flatten()
+    #     options = {'rtol': 1e-6, 'atol': 1e-9, 'max_step': (Tspan[1] - Tspan[0])}
+    #     __wrapp_analysis = self.__taqaddum(t_initial, t_final)
+    #     sol = solve_ivp(__wrapp_analysis, [t_initial, t_final], u0, t_eval=Tspan, method=self.method, **options)
+
+    #     T = sol.t
+    #     uT = sol.y.T
+
+    #     num_evals = self.__num
+    #     print(f"\t ...Number of evaluated functions: {num_evals}")
+    #     print(f"\t ...Simulation completed!")
+    #     return T, uT
+
+    def __taqaddum(self, t_initial, t_final, pbar):
+        """
+        Restituisce una funzione wrapper per __analysis con progresso ottimizzato
+        """
+        last_progress = 0  # Ora è un intero invece di un dizionario
+        
+        def __wrapp_analysis(t, u):
+            nonlocal last_progress
+            progress = min(100, int(100 * (t - t_initial) / (t_final - t_initial)))
+            if progress > last_progress:
+                pbar.n = progress
+                pbar.refresh()
+                last_progress = progress
+            return self.__analysis(t, u)
+        return __wrapp_analysis
+
+    def solve(self, method="LSODA"):
+        """Solve EQMs with accurate tqdm progress tracking"""
+        self.method = method
         nConst = self.Joints[-1]._rowe
-        nB = len(self.Bodies)
-        nB6 = 6 * nB
+        
         print("\n")
         ans = input("\t... Do you want to correct the initial conditions? [(y)es/(n)o] ").lower()
 
@@ -1220,50 +1285,45 @@ class PlanarDynamicModel:
             if ans == 'y':
                 self.__ic_correct()
             D = self.__compute_jacobian()
-            redund = np.linalg.matrix_rank(D) # check the rank of D for redundancy
+            redund = np.linalg.matrix_rank(D)
             if redund < nConst:
-                print("Redundancy in the constraints")
+                print("\n\t...Redundancy in the constraints")
 
-        # pack coordinates and velocities ito u array
         u = self.__bodies2u()
-        if self.verbose: 
-            header = "... initial u vector ..."
-            print(f"\n\t{header}")
-            header_width = len(header)
-            formatted_u = [f"{float(element):.2f}" for element in u]
-            for element in formatted_u:
-                print(f"\t{element:^{header_width}}")
         if np.any(np.isnan(u)) or np.any(np.isinf(u)):
-            raise ValueError("\t ... check initial conditions, ""u"" vector contains NaN or Inf values.")
+            raise ValueError("\t ... check initial conditions, `u` vector contains NaN or Inf values.")
 
         t_initial = 0
-        t_final = float(input("Final time = ? "))
+        t_final = float(input("\n\t ...Final time = ? "))
+        dt = float(input("\t ...Reporting time-step = ? "))
 
-        # utils to check the convergence
-        self.__showtime = 1
         self.__num = 0
-        self.__t10 = 0
+        Tspan = np.arange(t_initial, t_final, dt)
+        u0 = u.flatten()
+        options = {'rtol': 1e-6, 'atol': 1e-9, 'max_step': (Tspan[1] - Tspan[0])}
 
-        if t_final == 0:
-            self.__analysis(0, u)
-            T = 0
-            uT = u.T
-        else:
-            dt = float(input("Reporting time-step = ? "))
-            Tspan = np.arange(t_initial, t_final, dt)
-            u0 = u.flatten()
-            options = {'rtol': 1e-6, 'atol': 1e-9, 'max_step': (Tspan[1] - Tspan[0])}
-            sol = solve_ivp(
-                self.__analysis, 
-                [t_initial, t_final], 
-                u0, 
-                t_eval=Tspan, 
-                method=self.method, 
-                **options)
-            T = sol.t
-            uT = sol.y.T
+        pbar = tqdm(total=100, desc = "         ...Simulation progress", # not the best printing mode ... 
+                    bar_format = "{l_bar}{bar}| [Elapsed time: {elapsed}, Remaining time: {remaining}]",
+                    colour = "green"
+        )
+
+        __wrapp_analysis = self.__taqaddum(t_initial, t_final, pbar)
+        
+        try:
+            sol = solve_ivp(__wrapp_analysis, 
+                            [t_initial, t_final], 
+                            u0, 
+                            t_eval=Tspan, 
+                            method=self.method, 
+                            **options
+                        )
+        finally:
+            pbar.close()
+
+        T = sol.t
+        uT = sol.y.T
 
         num_evals = self.__num
-        print(f"Number of function evaluations = {num_evals}")
-        print(f"Simulation completed!")
+        print(f"\t ...Number of function evaluations: {num_evals}")
+        print(f"\t ...Simulation completed successfully!")
         return T, uT

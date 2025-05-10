@@ -5,6 +5,7 @@ from PMD.src.builder import *
 from PMD.src.functions import *
 from PMD.src.solver import *
 import matplotlib.pyplot as plt
+plt.style.use('dark_background')
 
 
 #%% bodies
@@ -29,14 +30,14 @@ s3 = Force(type="weight") #// only weight force, acting along -y axis
 double_pendulum = PlanarDynamicModel()
 time, solution = double_pendulum.solve(method='Radau')
 
-fig, ax = plt.subplots(2, 1, figsize=(12, 12), sharex=True)
+fig, ax = plt.subplots(2, 1, figsize=(15, 5), sharex=True)
 
-ax[0].plot(time, solution[:, 0], label=r'$x_1$', color='b', linestyle='-', linewidth=2)
+ax[0].plot(time, solution[:, 0], label=r'$x_1$', color='y', linestyle='-', linewidth=2)
 ax[0].plot(time, solution[:, 1], label=r'$y_1$', color='r', linestyle='-', linewidth=2)
 ax[0].set_ylabel('Displacement (m)', fontsize=12)
 ax[0].legend()
 
-ax[1].plot(time, solution[:, 3], label=r'$x_2$', color='b', linestyle='-', linewidth=2)
+ax[1].plot(time, solution[:, 3], label=r'$x_2$', color='y', linestyle='-', linewidth=2)
 ax[1].plot(time, solution[:, 4], label=r'$y_2$', color='r', linestyle='-', linewidth=2)
 ax[1].set_ylabel('Displacement (m)', fontsize=12)
 ax[1].legend()
