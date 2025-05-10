@@ -1237,40 +1237,53 @@ class PlanarDynamicModel:
                 print("\n\t...Redundancy in the constraints")
 
         u = self.__bodies2u()
+        if self.verbose: 
+            header = "... initial u vector ..."
+            print(f"\n\t{header}")
+            header_width = len(header)
+            formatted_u = [f"{float(element):.2f}" for element in u]
+            for element in formatted_u:
+                print(f"\t{element:^{header_width}}")
         if np.any(np.isnan(u)) or np.any(np.isinf(u)):
-            raise ValueError("\t ... check initial conditions, `u` vector contains NaN or Inf values.")
+            raise ValueError("\t ... check initial conditions, ""u"" vector contains NaN or Inf values.")
 
         t_initial = 0
         t_final = float(input("\n\t ...Final time = ? "))
-        dt = float(input("\t ...Reporting time-step = ? "))
+        self.__num = 0 # initialize the number of function evaluations
 
-        self.__num = 0
-        Tspan = np.arange(t_initial, t_final, dt)
-        u0 = u.flatten()
-        options = {'rtol': 1e-6, 'atol': 1e-9, 'max_step': (Tspan[1] - Tspan[0])}
+        if t_final == 0:
+            self.__analysis(0, u)
+            T = 0
+            uT = u.T
+        else: 
+            dt = float(input("\t ...Reporting time-step = ? "))
+            Tspan = np.arange(t_initial, t_final, dt)
+            u0 = u.flatten()
+            options = {'rtol': 1e-6, 'atol': 1e-9, 'max_step': (Tspan[1] - Tspan[0])}
 
-        pbar = tqdm(total=100, desc = "         ...Simulation progress", # not the best printing mode ... 
-                    bar_format = "{l_bar}{bar}| [Elapsed time: {elapsed}, Remaining time: {remaining}]",
-                    colour = "green"
-        )
+            pbar = tqdm(total=100, desc = "         ...Simulation progress", # not the best printing mode ... 
+                        bar_format = "{l_bar}{bar}| [Elapsed time: {elapsed}, Remaining time: {remaining}]",
+                        colour = "green"
+            )
 
-        __wrapp_analysis = self.__taqaddum(t_initial, t_final, pbar)
-        
-        try:
-            sol = solve_ivp(__wrapp_analysis, 
-                            [t_initial, t_final], 
-                            u0, 
-                            t_eval=Tspan, 
-                            method=self.method, 
-                            **options
-                        )
-        finally:
-            pbar.close()
+            __wrapp_analysis = self.__taqaddum(t_initial, t_final, pbar)
+            
+            try:
+                sol = solve_ivp(__wrapp_analysis, 
+                                [t_initial, t_final], 
+                                u0, 
+                                t_eval=Tspan, 
+                                method=self.method, 
+                                **options
+                            )
+            finally: # useful to ensure the progress bar is closed even if an error occurs
+                pbar.close()
 
-        T = sol.t
-        uT = sol.y.T
+            T = sol.t
+            uT = sol.y.T
 
-        num_evals = self.__num
-        print(f"\t ...Number of function evaluations: {num_evals}")
+        print(f"\n ")
+        print(f"\t ...Number of function evaluations: {self.__num}")
         print(f"\t ...Simulation completed successfully!")
+        print(f"\n ")
         return T, uT
