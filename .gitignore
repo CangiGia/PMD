@@ -47,6 +47,6 @@ htmlcov/
 *.err
 
 # Temporary excel files
-~$*.xlsm
-~$*.xlsx
-~$*.xls
+*~$.xlsm
+*~$.xlsx
+*~$.xls
