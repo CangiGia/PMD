@@ -45,3 +45,8 @@ htmlcov/
 *.log
 *.out
 *.err
+
+# Temporary excel files
+~$*.xlsm
+~$*.xlsx
+~$*.xls
