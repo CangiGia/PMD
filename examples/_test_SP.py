@@ -67,11 +67,11 @@ j1_2.jPindex = 2
 
 #%% model simulation
 my_dynamic_model = PlanarMultibodyModel()
-T, uT = my_dynamic_model.solve(method='Radau', t_final=10.0, t_eval=np.linspace(0, 10, 1001))
+T, uT = my_dynamic_model.solve(method='Radau', t_final=10.0, t_eval=np.linspace(0, 10, 10001))
 
 #%% Save results
 import os
-output_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), '_test_SP.txt')
+output_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results', '_test_SP.txt')
 nB = my_dynamic_model.nB
 nC = my_dynamic_model.nC
 nB3 = nB * 3

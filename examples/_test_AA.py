@@ -47,11 +47,12 @@ s3 = Force(type='weight')  # gravity force
 
 #%% solution
 quarter_car = PlanarMultibodyModel()
-T, uT = quarter_car.solve(method='Radau', t_final=10.0, t_eval=np.linspace(0, 10, 1001))
+T, uT = quarter_car.solve(method='Radau', t_final=10.0, t_eval=np.linspace(0, 10, 10001),
+                          ic_correct=True)
 
 #%% Save results
 import os
-output_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), '_test_AA.txt')
+output_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results', '_test_AA.txt')
 nB = quarter_car.nB
 nC = quarter_car.nC
 nB3 = nB * 3

@@ -28,11 +28,11 @@ s3 = Force(type="weight") #// only weight force, acting along -y axis
 
 #%% double pendulum model creation
 double_pendulum = PlanarMultibodyModel()
-T, uT = double_pendulum.solve(method='Radau', t_final=10.0, t_eval=np.linspace(0, 10, 1001))
+T, uT = double_pendulum.solve(method='Radau', t_final=10.0, t_eval=np.linspace(0, 10, 10001))
 
 #%% Save results
 import os
-output_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), '_test_DP.txt')
+output_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results', '_test_DP.txt')
 nB = double_pendulum.nB
 nC = double_pendulum.nC
 nB3 = nB * 3

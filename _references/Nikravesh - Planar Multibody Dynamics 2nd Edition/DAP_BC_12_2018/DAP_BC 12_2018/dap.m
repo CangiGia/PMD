@@ -51,7 +51,7 @@ end
     
 
 %% Saving results to allow comparison with Python 
-filename = [folder '.txt'];
-output_data = [T uT];
+% filename = [folder '.txt'];
+% output_data = [T uT];
 
-writematrix(output_data, filename);
+% writematrix(output_data, filename);

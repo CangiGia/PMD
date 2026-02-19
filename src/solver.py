@@ -1346,6 +1346,7 @@ class PlanarMultibodyModel:
             ans = 'y' if ic_correct else 'n'
 
         if nConst != 0:
+            self.t = 0.0  # needed by __compute_constraints / __rhs_velocity when ic_correct runs
             if ans == 'y':
                 self.__ic_correct()
             D = self.__compute_jacobian()

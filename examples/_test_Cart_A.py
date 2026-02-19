@@ -73,14 +73,15 @@ fw = Force(type='weight')
 
 #%% Create model and solve
 model = PlanarMultibodyModel()
-T, uT = model.solve(method='Radau', t_final=10.0, t_eval=np.linspace(0, 10, 1001))
+T, uT = model.solve(method='Radau', t_final=10.0, t_eval=np.linspace(0, 10, 10001),
+                    ic_correct=True)
 
 # =============================================================================
 # OUTPUT
 # =============================================================================
 
 #%% Save results
-output_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), '_test_Cart_A.txt')
+output_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results', '_test_Cart_A.txt')
 nB = model.nB
 nC = model.nC
 nB3 = nB * 3
