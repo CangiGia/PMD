@@ -6,6 +6,29 @@ planar multi-body dynamic models, including rigid bodies, constraints,
 and external forces. It is designed for academic research and engineering 
 applications.
 
+INDEX CONVENTION:
+================
+Body indices:  0 = ground (fixed), 1..nB = moving bodies
+Point indices: 0-based (Python standard)
+Joint indices: 0-based (Python standard)
+
+Internal state vector u:
+  u[0:nB3]      = positions  [r1x, r1y, p1, r2x, r2y, p2, ...]
+  u[nB3:2*nB3]  = velocities [dr1x, dr1y, dp1, ...]
+
+Internal index attributes (LEGACY - 1-based from MATLAB):
+  body._irc   = 3*Bi + 1  (start index for position, 1-based)
+  body._irv   = nB3 + 3*Bi + 1  (start index for velocity, 1-based)
+  joint._rows = constraint row start (1-based)
+  joint._colis/coljs = Jacobian column start (1-based)
+
+NOTE: All slicing operations require -1 correction:
+  ir = body._irc - 1
+  rs = joint._rows - 1
+  etc.
+
+TODO: Future refactoring should convert all internal indices to 0-based.
+
 Author: Giacomo Cangi
 """
 
@@ -15,8 +38,9 @@ import numpy as np
 import scipy as sc
 import numpy.linalg as lng
 import inspect
-from PMD.src.functions import *
-from src.builder import *
+from .utils import *
+from .mechanics import *
+from .builder import *
 from scipy.integrate import solve_ivp
 from tqdm import tqdm
 
@@ -58,14 +82,15 @@ class PlanarMultibodyModel:
             body._invJ = 1 / body.J
             body._A = A_matrix(body.p)
 
-        # mass (inertia) matrix as an array
-        self.M_array = np.zeros((nB3, 1))
-        self.invM_array = np.zeros((nB3, 1))
+        # mass (inertia) array and pre-computed diagonal matrix
+        self.M_array = np.zeros(nB3)
+        self.invM_array = np.zeros(nB3)
         for Bi in range(nB):
             is_ = 3 * Bi
             ie_ = is_ + 3
-            self.M_array[is_:ie_] = np.array([[self.Bodies[Bi].m], [self.Bodies[Bi].m], [self.Bodies[Bi].J]])
-            self.invM_array[is_:ie_] = np.array([[self.Bodies[Bi]._invm], [self.Bodies[Bi]._invm], [self.Bodies[Bi]._invJ]])
+            self.M_array[is_:ie_] = np.array([self.Bodies[Bi].m, self.Bodies[Bi].m, self.Bodies[Bi].J])
+            self.invM_array[is_:ie_] = np.array([self.Bodies[Bi]._invm, self.Bodies[Bi]._invm, self.Bodies[Bi]._invJ])
+        self.M_matrix = np.diag(self.M_array)
 
         #// points
         nPtot = len(self.Points)
@@ -199,7 +224,7 @@ class PlanarMultibodyModel:
         if self.Functs:
             nFc = len(self.Functs)
             for Ci in range(nFc):
-                functData(Ci)
+                functData(Ci, self.Functs)
         else:
             pass
 
@@ -840,7 +865,7 @@ class PlanarMultibodyModel:
             #! to avoid the continous management of indexes for 
             #! slicing operations.
             rs = joint._rows - 1 
-            re = rs + 2 
+            re = rs + joint._mrows 
             rhsa[rs:re] = f
         
         return rhsa
@@ -964,7 +989,7 @@ class PlanarMultibodyModel:
                     Bi = force.iBindex
                     self.Bodies[Bi-1]._n += force.T
 
-                case 'user' if callable(force.callback):
+                case 'user' if force.callback is not None and callable(force.callback):
                     global_vars = get_globals()
                     params = list(inspect.signature(force.callback).parameters.keys())
                     args = [global_vars[name] for name in params if name in global_vars]
@@ -1173,17 +1198,14 @@ class PlanarMultibodyModel:
         h_a = self.__compute_force()    # array of applied forces
 
         if nConst == 0:
-            ddc = self.invM_array * h_a # solve for accelerations
+            ddc = self.invM_array.reshape(-1, 1) * h_a # solve for accelerations
         else:
             D = self.__compute_jacobian()
             rhsA = self.__rhs_acceleration()  # right-hand side of acceleration constraints (gamma)
 
             # construct the matrix system to solve
-            #! devo estrarre i singoli valori dal vettore M_array perchè
-            #! è un vettore di array, da modificare sopra sulla creazione 
-            #! del vettore stesso !!!
             DMD = np.block([
-                [np.diag([arr[0] for arr in self.M_array]), -D.T], 
+                [self.M_matrix, -D.T], 
                 [D, np.zeros([nConst, nConst])]
             ])
             rhs = np.concatenate([h_a, rhsA])

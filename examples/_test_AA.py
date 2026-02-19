@@ -2,7 +2,7 @@ import numpy as np
 import scipy as sc
 from PMD.src.builder import *
 from PMD.src.solver import *
-from PMD.src.functions import *
+from PMD.src.mechanics import *
 import matplotlib.pyplot as plt
 
 #%% bodies

@@ -11,7 +11,7 @@ Author: Giacomo Cangi
 
 import numpy as np
 from numpy.typing import *
-from PMD.src.utils import *
+from .utils import *
 
 class Base:
     """
@@ -115,8 +115,10 @@ class Body(Base):
 
     def __init__(self, m=1, J=1, r=None, p=0, dr=None, dp=0, ddr=None, ddp=0):
         super().__init__()  # call to the Base class constructor
-        if m == 0:
-            raise ValueError(" ----- Mass (m) cannot be zero. ----- ")
+        if m <= 0:
+            raise ValueError(f"Body {self.COUNT}: mass must be positive, got {m}")
+        if J < 0:
+            raise ValueError(f"Body {self.COUNT}: moment of inertia cannot be negative, got {J}")
         self.m = m
         self.J = J
         self.r = r if r is not None else colvect(0, 0)
@@ -129,8 +131,8 @@ class Body(Base):
         self._irc = 0
         self._irv = 0
         self._ira = 0
-        self._invm = 1 / m if m != 0 else float('inf')
-        self._invJ = 1 / J if J != 0 else float('inf')
+        self._invm = 1.0 / m
+        self._invJ = 1.0 / J if J != 0 else float('inf')
         self._wgt = colvect(0, 0)
         self._f = colvect(0, 0)
         self._n = 0
@@ -275,8 +277,12 @@ class Force(Base):
     DEFAULT_GRAVITY = 9.81
     DEFAULT_GRAVITY_VECTOR = colvect([0, -1])  # default gravitational force vector
 
-    def __init__(self, type='ptp', iPindex=0, jPindex=0, iBindex=0, jBindex=0, k=0, L0=0, theta0=0, dc=0, f_a=0, T_a=0, flocal=None, f=None, T=0):
+    VALID_TYPES = ['ptp', 'rot-sda', 'weight', 'flocal', 'f', 'T', 'user']
+
+    def __init__(self, type='ptp', iPindex=0, jPindex=0, iBindex=0, jBindex=0, k=0, L0=0, theta0=0, dc=0, f_a=0, T_a=0, flocal=None, f=None, T=0, callback=None):
         super().__init__()  # call to the Base class constructor
+        if type not in Force.VALID_TYPES:
+            raise ValueError(f"Force {self.COUNT}: unknown type '{type}', valid types: {Force.VALID_TYPES}")
         self.type = type
         self.iPindex = iPindex
         self.jPindex = jPindex
@@ -291,6 +297,7 @@ class Force(Base):
         self.flocal = flocal if flocal is not None else colvect([0, 0])
         self.f = f if f is not None else colvect([0, 0])
         self.T = T
+        self.callback = callback
         self._gravity = Force.DEFAULT_GRAVITY  
         self._wgt = Force.DEFAULT_GRAVITY_VECTOR
         self._iFunct = 0
@@ -358,8 +365,12 @@ class Joint(Base):
         Lagrange multipliers.
     """
 
+    VALID_TYPES = ['rev', 'tran', 'rev-rev', 'rev-tran', 'rigid', 'disc', 'rel-rot', 'rel-tran']
+
     def __init__(self, type='rev', iBindex=0, jBindex=0, iPindex=0, jPindex=0, iUindex=0, jUindex=0, iFunct=0, L=0, R=1, x0=0, d0=None, fix=0):
         super().__init__()  # call to the Base class constructor
+        if type not in Joint.VALID_TYPES:
+            raise ValueError(f"Joint {self.COUNT}: unknown type '{type}', valid types: {Joint.VALID_TYPES}")
         self.type = type
         self.iBindex = iBindex
         self.jBindex = jBindex 
