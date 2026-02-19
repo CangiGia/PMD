@@ -48,10 +48,5 @@ end
     disp(['Number of function evaluations = ' num2str(num)])
     beep
 
-    
 
-%% Saving results to allow comparison with Python 
-filename = [folder '.txt'];
-output_data = [T uT];
-
-writematrix(output_data, filename);
+ 
