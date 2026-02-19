@@ -45,21 +45,18 @@ s2.callback = my_force
 
 s3 = Force(type='weight')  # gravity force
 
-#%% solution and plotting
+#%% solution
 quarter_car = PlanarMultibodyModel()
-time, solution = quarter_car.solve(method='Radau')
-# reactions = quarter_car.get_reactions()
+T, uT = quarter_car.solve(method='Radau', t_final=10.0, t_eval=np.linspace(0, 10, 1001))
 
-plt.figure(figsize=(15, 5))
-plt.plot(time, solution[:,4], label='Wheel vertical position', color='y', linestyle='-', linewidth=2)
-plt.ylabel('Displacement (m)', fontsize=12)
-plt.legend()
-plt.title('Wheel Assembly Response', fontsize=14)
-plt.show()
-
-# plt.figure(figsize=(15, 5))
-# plt.plot(time, reactions[:, 0], label='Reaction force at Q', color='b', linestyle='-', linewidth=2)
-# plt.ylabel('Force (N)', fontsize=12)
-# plt.legend()
-# plt.title('Reaction force at Q', fontsize=14)
-# plt.show()
+#%% Save results
+import os
+output_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), '_test_AA.txt')
+nB = quarter_car.nB
+nC = quarter_car.nC
+nB3 = nB * 3
+header = '\t'.join(['t'] + [f'B{i+1}_{c}' for i in range(nB) for c in ['x','y','p']])
+np.savetxt(output_file, np.column_stack([T, uT[:, :nB3]]),
+           delimiter='\t', header=header, comments='', fmt='%.8f')
+print(f"[_test_AA] Done. nB={nB}, nC={nC}, DOF={nB*3-nC}, points={len(T)}")
+print(f"  Results: {output_file}")

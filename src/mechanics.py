@@ -319,6 +319,79 @@ def functData(Ci, Functs):
         raise ValueError(f"Unknown function type '{funct_type}'. Valid types: 'a', 'b', 'c'.")
 
 
+def functEval(funct, t):
+    """
+    Evaluate a Function object at time ``t``.
+
+    Returns ``(f, f_d, f_dd)`` — function value, first and second time
+    derivatives — suitable for use in ``rel-rot`` / ``rel-tran`` joint
+    constraint equations.
+
+    Args
+    ----
+    funct : Function
+        A ``Function`` object previously processed by ``functData``.
+    t : float
+        Current simulation time.
+
+    Returns
+    -------
+    f : float
+        Function value at time ``t``.
+    f_d : float
+        First time derivative at time ``t``.
+    f_dd : float
+        Second time derivative at time ``t``.
+    """
+    ftype = funct.type
+    c = funct.coeff
+
+    if ftype == 'a':
+        # Polynomial: f(t) = c[0] + c[1]*t + c[2]*t^2
+        # After functData: c[3] = 2*c[2] is stored.
+        f   = float(c[0] + c[1] * t + c[2] * t ** 2)
+        f_d = float(c[1] + c[3] * t)   # c[3] = 2*c[2]
+        f_dd = float(c[3])              # = 2*c[2] (constant)
+
+    elif ftype in ('b', 'c'):
+        t0 = float(funct.t_start)
+        te = float(funct.t_end)
+        fs = float(funct.f_start)
+
+        if t < t0:
+            f, f_d, f_dd = fs, 0.0, 0.0
+
+        elif t >= te:
+            tau = te - t0
+            if ftype == 'b':
+                # After t_end: motion has reached f_end, holds constant.
+                f   = float(fs + c[0]*tau**3 + c[1]*tau**4 + c[2]*tau**5)
+                f_d = 0.0
+                f_dd = 0.0
+            else:  # type 'c': after t_end, constant velocity = dfdt_end
+                f_end_val = float(fs + c[0]*tau**4 + c[1]*tau**5 + c[2]*tau**6)
+                fd_end    = float(c[3]*tau**3 + c[4]*tau**4 + c[5]*tau**5)
+                f   = f_end_val + fd_end * (t - te)
+                f_d = fd_end
+                f_dd = 0.0
+
+        else:
+            tau = t - t0
+            if ftype == 'b':
+                f   = float(fs + c[0]*tau**3  + c[1]*tau**4  + c[2]*tau**5)
+                f_d = float(c[3]*tau**2 + c[4]*tau**3 + c[5]*tau**4)
+                f_dd = float(c[6]*tau   + c[7]*tau**2 + c[8]*tau**3)
+            else:  # type 'c'
+                f   = float(fs + c[0]*tau**4  + c[1]*tau**5  + c[2]*tau**6)
+                f_d = float(c[3]*tau**3 + c[4]*tau**4 + c[5]*tau**5)
+                f_dd = float(c[6]*tau**2 + c[7]*tau**3 + c[8]*tau**4)
+
+    else:
+        raise ValueError(f"Unknown function type '{ftype}'. Valid types: 'a', 'b', 'c'.")
+
+    return f, f_d, f_dd
+
+
 # --- Point-to-point force elements ---
 
 def pp_s(d: NDArray, k: float, L0: float):

@@ -428,9 +428,17 @@ class Function(Base):
         super().__init__()  # call to the Base class constructor
         self.type = type
         self.t_start = t_start
-        self.f_start = f_start 
+        self.f_start = f_start
         self.t_end = t_end
         self.f_end = f_end
         self.dfdt_end = dfdt_end
         self.ncoeff = ncoeff
-        self.coeff = coeff if coeff is not None else []
+        # Always allocate a 9-element numpy array so functData (types a, b, c)
+        # can set any index [0..8] without IndexError.
+        if coeff is not None:
+            c = np.asarray(coeff, dtype=float).flatten()
+            padded = np.zeros(9)
+            padded[:min(len(c), 9)] = c[:min(len(c), 9)]
+            self.coeff = padded
+        else:
+            self.coeff = np.zeros(9)

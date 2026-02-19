@@ -65,32 +65,18 @@ j1_2.type = "rev"
 j1_2.iPindex = 1
 j1_2.jPindex = 2
 
-#%% some controls ... 
-body_count    = Body.get_count()
-point_count   = Point.get_count()
-uvector_count = uVector.get_count()
-force_count   = Force.get_count()
-joint_count   = Joint.get_count()
+#%% model simulation
+my_dynamic_model = PlanarMultibodyModel()
+T, uT = my_dynamic_model.solve(method='Radau', t_final=10.0, t_eval=np.linspace(0, 10, 1001))
 
-print(f" ")
-print(f"\t ... some controls ...")
-print(f"\t ... number of Body instances:    {body_count}   ")
-print(f"\t ... number of Point instances:   {point_count}  ")
-print(f"\t ... number of uVector instances: {uvector_count}")
-print(f"\t ... number of Force instances:   {force_count}  ")
-print(f"\t ... number of Joint instances:   {joint_count}  ")
-
-#%% model simulation ...
-my_dynamic_model = PlanarMultibodyModel(verbose=True)
-time, solution = my_dynamic_model.solve(method='RK45')
-reactions = my_dynamic_model.get_reactions()
-accelerations = my_dynamic_model.get_accelerations()
-
-# plt.figure()
-# plt.plot(time, solution[:,4])
-# plt.show()
-
-# np.savetxt('uT_python.txt', solution)
-# np.savetxt('T_python.txt', time)
-
-ecchime = 1
+#%% Save results
+import os
+output_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), '_test_SP.txt')
+nB = my_dynamic_model.nB
+nC = my_dynamic_model.nC
+nB3 = nB * 3
+header = '\t'.join(['t'] + [f'B{i+1}_{c}' for i in range(nB) for c in ['x','y','p']])
+np.savetxt(output_file, np.column_stack([T, uT[:, :nB3]]),
+           delimiter='\t', header=header, comments='', fmt='%.8f')
+print(f"[_test_SP] Done. nB={nB}, nC={nC}, DOF={nB*3-nC}, points={len(T)}")
+print(f"  Results: {output_file}")

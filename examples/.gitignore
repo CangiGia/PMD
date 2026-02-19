@@ -1,0 +1,2 @@
+# Exclude simulation result files from version control
+*.txt

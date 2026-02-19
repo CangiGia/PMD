@@ -44,6 +44,35 @@ from .builder import *
 from scipy.integrate import solve_ivp
 from tqdm import tqdm
 
+
+class SolResult:
+    """Simulation result container.
+
+    Supports both tuple unpacking (``T, uT = result``) and attribute access
+    (``result.t``, ``result.y`` for a scipy-like interface).
+
+    Attributes
+    ----------
+    t : ndarray, shape (n,)
+        Time points.
+    y : ndarray, shape (2*nB3, n)
+        State matrix (positions + velocities), scipy ``solve_ivp`` convention.
+    uT : ndarray, shape (n, 2*nB3)
+        State matrix, legacy convention (rows = time steps).
+    """
+
+    def __init__(self, t, uT):
+        self.t = t
+        self.y = uT.T   # scipy-like: shape (2*nB3, n_timesteps)
+        self.uT = uT    # legacy: shape (n_timesteps, 2*nB3)
+
+    def __iter__(self):
+        return iter((self.t, self.uT))
+
+    def __repr__(self):
+        return f"SolResult(t: {self.t.shape}, y: {self.y.shape})"
+
+
 class PlanarMultibodyModel:
     def __init__(self, verbose = False):
         grouped_calsses = group_classes()
@@ -62,6 +91,20 @@ class PlanarMultibodyModel:
 
         # initialize the model for simulation automatically
         self.__initialize()
+
+    # ------------------------------------------------------------------
+    # Public properties
+    # ------------------------------------------------------------------
+
+    @property
+    def nB(self):
+        """Number of moving bodies."""
+        return len(self.Bodies)
+
+    @property
+    def nC(self):
+        """Total number of constraint equations."""
+        return self.Joints[-1]._rowe if self.Joints else 0
 
     def __initialize(self):
         """
@@ -405,7 +448,9 @@ class PlanarMultibodyModel:
             if Bi != 0:
                 uvector._du = uvector._ur * self.Bodies[Bi-1].dp
             
-    def __compute_constraints(self): #// - Check required on rel-tran and rel-rot joints -
+    def __compute_constraints(self):
+        if not self.Joints:
+            return np.zeros((0, 1))
         nConst = self.Joints[-1]._rowe
         phi = np.zeros([nConst, 1])
 
@@ -488,28 +533,28 @@ class PlanarMultibodyModel:
                 case 'disc':
                     Bi = joint.iBindex
                     f = np.vstack([
-                        self.Bodies[Bi].r[1] - joint.R,
-                        (self.Bodies[Bi].r[0] - joint.x0) + joint.R * (self.Bodies[Bi].p - joint._p0)
+                        self.Bodies[Bi - 1].r[1] - joint.R,
+                        (self.Bodies[Bi - 1].r[0] - joint.x0) + joint.R * (self.Bodies[Bi - 1].p - joint._p0)
                     ])
                     
-                case 'rel-rot': # // to check
-                    fun, fun_d, fun_dd = self.Functs(joint.iFunct, self.t)
+                case 'rel-rot':
+                    fun, fun_d, fun_dd = functEval(self.Functs[joint.iFunct - 1], self.t)
                     Bi = joint.iBindex
                     Bj = joint.jBindex
-                    
-                    if Bi == 0:
-                        f = -self.Bodies[Bj].p - fun
-                    elif Bj == 0:
-                        f = self.Bodies[Bi].p - fun
-                    else:
-                        f = self.Bodies[Bi].p - self.Bodies[Bj].p - fun
 
-                case 'rel-tran': # // to check
+                    if Bi == 0:
+                        f = -self.Bodies[Bj - 1].p - fun
+                    elif Bj == 0:
+                        f = self.Bodies[Bi - 1].p - fun
+                    else:
+                        f = self.Bodies[Bi - 1].p - self.Bodies[Bj - 1].p - fun
+
+                case 'rel-tran':
                     Pi = joint.iPindex
                     Pj = joint.jPindex
 
                     d = self.Points[Pi]._rP - self.Points[Pj]._rP
-                    fun, fun_d, fun_dd = self.Functs(joint.iFunct, self.t)
+                    fun, fun_d, fun_dd = functEval(self.Functs[joint.iFunct - 1], self.t)
 
                     f = (d.T @ d - fun**2)/2
 
@@ -684,17 +729,17 @@ class PlanarMultibodyModel:
         rhsv : numpy.ndarray
             Right-hand side of velocity constraints.
         """
-        nConst = self.Joints[-1]._rowe
+        nConst = self.Joints[-1]._rowe if self.Joints else 0
         rhsv = np.zeros((nConst, 1))
 
         for joint in self.Joints:
             match joint.type:
                 case 'rel-rot':
-                    fun, fun_d, _ = self.Functs(joint.iFunct, self.t)
+                    fun, fun_d, _ = functEval(self.Functs[joint.iFunct - 1], self.t)
                     f = fun_d
 
                 case 'rel-tran':
-                    fun, fun_d, _ = self.Functs(joint.iFunct, self.t)
+                    fun, fun_d, _ = functEval(self.Functs[joint.iFunct - 1], self.t)
                     d = self.Points[joint.iPindex]._rP - self.Points[joint.jPindex]._rP
                     f = fun * fun_d
 
@@ -747,16 +792,16 @@ class PlanarMultibodyModel:
                     ujdr = s_rot(ujd)
 
                     if Bi == 0:
-                        f2 = 0
+                        f2 = 0.0
                     elif Bj == 0:
-                        f2 = 0
+                        f2 = 0.0
                     else:
-                        diffr = self.Bodies[Bi].r - self.Bodies[Bj].r
-                        dp_product = (ujd.T @ diffr) * self.Bodies[Bi].dp
-                        diffdr = self.Bodies[Bi].dr - self.Bodies[Bj].dr
-                        f2 = dp_product - (2 * (ujdr.T @ diffdr))
+                        diffr = self.Bodies[Bi-1].r - self.Bodies[Bj-1].r
+                        dp_product = (ujd.T @ diffr).item() * self.Bodies[Bi-1].dp
+                        diffdr = self.Bodies[Bi-1].dr - self.Bodies[Bj-1].dr
+                        f2 = dp_product - 2.0 * (ujdr.T @ diffdr).item()
 
-                    f = np.array([[f2], [0]])
+                    f = np.array([[f2], [0.0]])
 
                     if joint.fix == 1:
                         d = self.Points[Pi]._rP - self.Points[Pj]._rP
@@ -764,18 +809,18 @@ class PlanarMultibodyModel:
                         L = joint._p0 
                         u = d / L
                         du = dd / L
-                        f3 = -du.T @ dd
+                        f3 = -(du.T @ dd).item()
 
                         if Bi == 0:
-                            f3 += u.T @ (s_rot(self.Points[Pj]._dsP) * self.Bodies[Bj].dp)
+                            f3 += (u.T @ (s_rot(self.Points[Pj]._dsP) * self.Bodies[Bj-1].dp)).item()
                         elif Bj == 0:
-                            f3 -= u.T @ (s_rot(self.Points[Pi]._dsP) * self.Bodies[Bi].dp)
+                            f3 -= (u.T @ (s_rot(self.Points[Pi]._dsP) * self.Bodies[Bi-1].dp)).item()
                         else:
-                            term1 = self.Points[Pi]._dsP * self.Bodies[Bi].dp
-                            term2 = self.Points[Pj]._dsP * self.Bodies[Bj].dp
-                            f3 -= u.T @ s_rot(term1 - term2)
+                            term1 = self.Points[Pi]._dsP * self.Bodies[Bi-1].dp
+                            term2 = self.Points[Pj]._dsP * self.Bodies[Bj-1].dp
+                            f3 -= (u.T @ s_rot(term1 - term2)).item()
 
-                        f = np.vstack([f, [f3]])
+                        f = np.vstack([f, [[f3]]])
                     
                 case "rev-rev":
                     Pi = joint.iPindex
@@ -793,13 +838,13 @@ class PlanarMultibodyModel:
                     f = -ud.T @ dd
                     
                     if Bi == 0:
-                        f = f + u.T @ s_rot(self.Points[Pj]._dsP) @ self.Bodies[Bj].dp
+                        f = f + u.T @ s_rot(self.Points[Pj]._dsP) * self.Bodies[Bj-1].dp
                     elif Bj == 0:
-                        f = f - u.T @ s_rot(self.Points[Pi]._dsP) @ self.Bodies[Bi].dp
+                        f = f - u.T @ s_rot(self.Points[Pi]._dsP) * self.Bodies[Bi-1].dp
                     else:
                         f = f - u.T @ s_rot(
-                            self.Points[Pi]._dsP @ self.Bodies[Bi].dp - 
-                            self.Points[Pj]._dsP @ self.Bodies[Bj].dp
+                            self.Points[Pi]._dsP * self.Bodies[Bi-1].dp - 
+                            self.Points[Pj]._dsP * self.Bodies[Bj-1].dp
                     )
 
                 case "rev-tran":
@@ -814,14 +859,14 @@ class PlanarMultibodyModel:
                     dd = self.Points[Pi]._drP - self.Points[Pj]._drP
 
                     if Bi == 0:
-                        f = ui.T @ self.Points[Pj]._dsP @ self.Bodies[Bj].dp
+                        f = ui.T @ self.Points[Pj]._dsP * self.Bodies[Bj-1].dp
                     elif Bj == 0:
-                        f = ui_d.T @ (d * self.Bodies[Bi].dp + 2 * s_rot(dd)) - \
-                            ui.T @ self.Points[Pi]._dsP @ self.Bodies[Bi].dp
+                        f = ui_d.T @ (d * self.Bodies[Bi-1].dp + 2 * s_rot(dd)) - \
+                            ui.T @ self.Points[Pi]._dsP * self.Bodies[Bi-1].dp
                     else:
-                        f = ui_d.T @ (d * self.Bodies[Bi].dp + 2 * s_rot(dd)) - \
-                            ui.T @ (self.Points[Pi]._dsP @ self.Bodies[Bi].dp - \
-                                self.Points[Pj]._dsP @ self.Bodies[Bj].dp)
+                        f = ui_d.T @ (d * self.Bodies[Bi-1].dp + 2 * s_rot(dd)) - \
+                            ui.T @ (self.Points[Pi]._dsP * self.Bodies[Bi-1].dp - \
+                                self.Points[Pj]._dsP * self.Bodies[Bj-1].dp)
                 
                 case "rigid":
                     Bj = joint.jBindex
@@ -829,44 +874,44 @@ class PlanarMultibodyModel:
                     f = np.zeros(3)
                     if Bj != 0:
                         f = np.concatenate([
-                            -self.Bodies[Bj]._A @ joint.d0 * self.Bodies[Bj].dp**2,
+                            -self.Bodies[Bj-1]._A @ joint.d0 * self.Bodies[Bj-1].dp**2,
                             np.array([0])
                         ])
                 
                 case "disc":
                     f = np.zeros(2)
                     
-                case "rel-rot": # // to check
-                    fun, fun_d, fun_dd = self.Functs(joint.iFunct, self.t)
+                case "rel-rot":
+                    fun, fun_d, fun_dd = functEval(self.Functs[joint.iFunct - 1], self.t)
                     f = fun_dd
-                    
-                case "rel-tran": # // to check
+
+                case "rel-tran":
                     Pi = joint.iPindex
                     Pj = joint.jPindex
                     Bi = joint.iBindex
                     Bj = joint.jBindex
-                    
+
                     d = self.Points[Pi]._rP - self.Points[Pj]._rP
                     dd = self.Points[Pi]._drP - self.Points[Pj]._drP
-                    
-                    fun, fun_d, fun_dd = self.Functs(joint.iFunct, self.t)
-                    
+
+                    fun, fun_d, fun_dd = functEval(self.Functs[joint.iFunct - 1], self.t)
+
                     f = fun * fun_dd + fun_d**2
-                    
+
                     if Bi == 0:
-                        f = f + d.T @ s_rot(self.Points[Pj]._dsP).T @ self.Bodies[Bj].dp
+                        f = f + d.T @ s_rot(self.Points[Pj]._dsP).T @ self.Bodies[Bj - 1].dp
                     elif Bj == 0:
-                        f = f - d.T @ s_rot(self.Points[Pi]._dsP).T @ self.Bodies[Bi].dp - dd.T @ dd
+                        f = f - d.T @ s_rot(self.Points[Pi]._dsP).T @ self.Bodies[Bi - 1].dp - dd.T @ dd
                     else:
-                        f = f + d.T @ s_rot(self.Points[Pj]._dsP).T @ self.Bodies[Bj].dp \
-                            - d.T @ s_rot(self.Points[Pi]._dsP).T @ self.Bodies[Bi].dp - dd.T @ dd
+                        f = f + d.T @ s_rot(self.Points[Pj]._dsP).T @ self.Bodies[Bj - 1].dp \
+                            - d.T @ s_rot(self.Points[Pi]._dsP).T @ self.Bodies[Bi - 1].dp - dd.T @ dd
             
             #! The value -1 should be fixed during the constraint definition 
             #! to avoid the continous management of indexes for 
             #! slicing operations.
             rs = joint._rows - 1 
             re = rs + joint._mrows 
-            rhsa[rs:re] = f
+            rhsa[rs:re] = np.asarray(f).reshape(-1, 1)
         
         return rhsa
 
@@ -1190,15 +1235,17 @@ class PlanarMultibodyModel:
         Lagrange multiplier method.
         """        
         self.__num += 1                 # increment the number of function evaluations
+        self.t = t                      # store current time for force/constraint callbacks
         nB3 = 3 * len(self.Bodies)
-        nConst = self.Joints[-1]._rowe
+        nConst = self.Joints[-1]._rowe if self.Joints else 0
         self.__u2bodies(u)              # unpack u into coordinate and velocity sub-arrays
         self.__update_position()
         self.__update_velocity()
         h_a = self.__compute_force()    # array of applied forces
 
         if nConst == 0:
-            ddc = self.invM_array.reshape(-1, 1) * h_a # solve for accelerations
+            ddc = self.invM_array.reshape(-1, 1) * h_a  # solve for accelerations
+            Lambda = np.array([])  # no constraints, no multipliers
         else:
             D = self.__compute_jacobian()
             rhsA = self.__rhs_acceleration()  # right-hand side of acceleration constraints (gamma)
@@ -1253,13 +1300,50 @@ class PlanarMultibodyModel:
             return self.__analysis(t, u)
         return __wrapp_analysis
 
-    def solve(self, method="LSODA"):
-        """Solve EQMs with accurate tqdm progress tracking"""
+    def solve(self, method="LSODA", t_final=None, dt=None, ic_correct=False,
+              t_eval=None, t_span=None):
+        """Solve equations of motion.
+
+        Supports both interactive (legacy) and programmatic (non-interactive)
+        modes. Pass ``t_final`` directly to skip all ``input()`` prompts.
+
+        Parameters
+        ----------
+        method : str, optional
+            ODE solver method (default "LSODA"). See scipy.integrate.solve_ivp.
+        t_final : float, optional
+            Final simulation time. If None, prompts user interactively.
+        dt : float, optional
+            Output time step. Used only when ``t_eval`` is not given.
+        ic_correct : bool, optional
+            Whether to correct initial conditions before solving
+            (default False). Only applies in non-interactive mode.
+        t_eval : array-like, optional
+            Explicit array of output time points. Overrides ``dt``.
+        t_span : tuple, optional
+            ``(t_start, t_end)`` shorthand; sets ``t_final = t_span[1]``.
+
+        Returns
+        -------
+        SolResult
+            Object supporting tuple unpacking (``T, uT = sol``) and
+            attribute access (``sol.t``, ``sol.y`` in scipy convention).
+        """
         self.method = method
-        nConst = self.Joints[-1]._rowe
-        
-        print("\n")
-        ans = input("\t... Do you want to correct the initial conditions? [(y)es/(n)o] ").lower()
+
+        # Handle t_span shorthand
+        if t_span is not None and t_final is None:
+            t_final = t_span[1]
+
+        nConst = self.Joints[-1]._rowe if self.Joints else 0
+
+        if t_final is None:
+            # --- Interactive (legacy) mode ---
+            print("\n")
+            ans = input("\t... Do you want to correct the initial conditions? [(y)es/(n)o] ").lower()
+        else:
+            # --- Programmatic (non-interactive) mode ---
+            ans = 'y' if ic_correct else 'n'
 
         if nConst != 0:
             if ans == 'y':
@@ -1270,7 +1354,7 @@ class PlanarMultibodyModel:
                 print("\n\t...Redundancy in the constraints")
 
         u = self.__bodies2u()
-        if self.verbose: 
+        if self.verbose:
             header = "... initial u vector ..."
             print(f"\n\t{header}")
             header_width = len(header)
@@ -1278,50 +1362,56 @@ class PlanarMultibodyModel:
             for element in formatted_u:
                 print(f"\t{element:^{header_width}}")
         if np.any(np.isnan(u)) or np.any(np.isinf(u)):
-            raise ValueError("\t ... check initial conditions, ""u"" vector contains NaN or Inf values.")
+            raise ValueError("\t ... check initial conditions, \"u\" vector contains NaN or Inf values.")
 
-        t_initial = 0
-        t_final = float(input("\n\t ...Final time = ? "))
-        self.__num = 0 # initialize the number of function evaluations
+        t_initial = 0.0
+        self.__num = 0  # initialize the number of function evaluations
+
+        if t_final is None:
+            t_final = float(input("\n\t ...Final time = ? "))
 
         if t_final == 0:
             self.__analysis(0, u)
-            T = 0
+            T = np.array([0.0])
             uT = u.T
-        else: 
-            dt = float(input("\t ...Reporting time-step = ? "))
-            Tspan = np.arange(t_initial, t_final, dt)
-            u0 = u.flatten()
-            options = {'rtol': 1e-6, 'atol': 1e-9, 'max_step': (Tspan[1] - Tspan[0])}
+        else:
+            if t_eval is not None:
+                Tspan = np.asarray(t_eval, dtype=float)
+            elif dt is not None:
+                Tspan = np.arange(t_initial, t_final + dt * 0.5, dt)
+            else:
+                dt_input = float(input("\t ...Reporting time-step = ? "))
+                Tspan = np.arange(t_initial, t_final, dt_input)
 
-            pbar = tqdm(total=100, desc = "         ...Simulation progress", # not the best printing mode ... 
-                        bar_format = "{l_bar}{bar}| [Elapsed time: {elapsed}, Remaining time: {remaining}]",
-                        colour = "green"
-            )
-            
-            self._teval = Tspan #// used as control parameter in __analysis method
+            u0 = u.flatten()
+            options = {'rtol': 1e-6, 'atol': 1e-9,
+                       'max_step': float(Tspan[1] - Tspan[0])}
+
+            pbar = tqdm(total=100, desc="         ...Simulation progress",
+                        bar_format="{l_bar}{bar}| [Elapsed time: {elapsed}, Remaining time: {remaining}]",
+                        colour="green")
+
+            self._teval = Tspan  # used as control parameter in __analysis method
             __wrapp_analysis = self.__taqaddum(t_initial, t_final, pbar)
-            
+
             try:
-                sol = solve_ivp(__wrapp_analysis, 
-                                [t_initial, t_final], 
-                                u0, 
-                                t_eval=Tspan, 
-                                method=self.method, 
-                                **options
-                            )
-            finally: # useful to ensure the progress bar is closed even if an error occurs
+                _sol = solve_ivp(__wrapp_analysis,
+                                 [t_initial, t_final],
+                                 u0,
+                                 t_eval=Tspan,
+                                 method=self.method,
+                                 **options)
+            finally:  # ensure progress bar is closed even on error
                 pbar.close()
 
-            
-            T = sol.t
-            uT = sol.y.T
+            T = _sol.t
+            uT = _sol.y.T
 
         print(f"\n ")
         print(f"\t ...Number of function evaluations: {self.__num}")
         print(f"\t ...Simulation completed successfully!")
         print(f"\n ")
-        return T, uT
+        return SolResult(T, uT)
 
     # // ... recomputing them after the simulation is possible, but less efficient ...
     # // ... needs further evaluation ...
