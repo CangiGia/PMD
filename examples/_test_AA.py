@@ -6,7 +6,7 @@ from PMD.src.mechanics import *
 import matplotlib.pyplot as plt
 
 #%% bodies
-B1 = Body(m=2, J=0.5, r=[0.4398, 0.2512], p=6.2465)   # lower suspension arm
+B1 = Body(m=2, J=0.5, r=[0.4398, 0.2512], p=-0.0367)   # lower suspension arm
 B2 = Body(m=30, J=2.5, r=[0.6817, 0.3498], p=0.0783)  # wheel assembly
 B3 = Body(m=1, J=0.5, r=[0.4463, 0.4308], p=6.5222)   # upper suspension arm
 
