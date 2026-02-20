@@ -50,3 +50,6 @@ htmlcov/
 ~$*.xlsm
 ~$*.xlsx
 ~$*.xls
+
+# Temporary Excel files
+*.txt
