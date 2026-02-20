@@ -6,5 +6,12 @@
     "python.autoComplete.extraPaths": [
         "c:\\Users\\giacomo.cangi\\.vscode\\extensions\\savvyanalyst.msc-adams-1.0.0\\resources\\adamspy",
         "c:\\Users\\Giaco\\.vscode\\extensions\\savvyanalyst.msc-adams-1.0.0\\resources\\adamspy"
-    ]
+    ],
+    "python.testing.pytestEnabled": true,
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestArgs": [
+        "tests",
+        "-v"
+    ],
+    "python.testing.cwd": "C:\\Users\\Giaco\\anaconda3\\envs\\GiacoEnv"
 }

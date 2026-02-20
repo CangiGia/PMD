@@ -53,3 +53,6 @@ htmlcov/
 
 # Temporary Excel files
 *.txt
+
+# Pytest temporary model outputs
+tests/_tmp/
