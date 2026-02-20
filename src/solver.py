@@ -1228,6 +1228,7 @@ class PlanarMultibodyModel:
             print("\t", f"{'x-dot':^12}{'y-dot':^12}{'phi-dot':^12}")
             for row in vels:
                 print(f"\t {row[0]:^12.5f}{row[1]:^12.5f}{row[2]:^12.5f}")
+            print("\n")
 
     def __analysis(self, t, u):
         """

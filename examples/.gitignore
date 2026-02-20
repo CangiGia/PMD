@@ -1,2 +1,6 @@
 # Exclude simulation result files from version control
 *.txt
+
+# Exclude any other temporary file
+*.log
+~$*
