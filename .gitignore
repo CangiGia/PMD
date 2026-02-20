@@ -46,7 +46,7 @@ htmlcov/
 *.out
 *.err
 
-# Temporary excel files
-*~$.xlsm
-*~$.xlsx
-*~$.xls
+# Temporary Excel files
+~$*.xlsm
+~$*.xlsx
+~$*.xls
