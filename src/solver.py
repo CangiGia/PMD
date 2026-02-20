@@ -16,18 +16,15 @@ Internal state vector u:
   u[0:nB3]      = positions  [r1x, r1y, p1, r2x, r2y, p2, ...]
   u[nB3:2*nB3]  = velocities [dr1x, dr1y, dp1, ...]
 
-Internal index attributes (LEGACY - 1-based from MATLAB):
-  body._irc   = 3*Bi + 1  (start index for position, 1-based)
-  body._irv   = nB3 + 3*Bi + 1  (start index for velocity, 1-based)
-  joint._rows = constraint row start (1-based)
-  joint._colis/coljs = Jacobian column start (1-based)
+Internal index attributes (0-based):
+  body._irc   = 3*Bi       (start index for position in u, inclusive)
+  body._irv   = nB3 + 3*Bi (start index for velocity in u, inclusive)
+  joint._rows = constraint row start (0-based, inclusive)
+  joint._rowe = constraint row end (0-based, exclusive)
+  joint._colis/_coljs = Jacobian column start (0-based, inclusive)
+  joint._colie/_colje = Jacobian column end (0-based, exclusive)
 
-NOTE: All slicing operations require -1 correction:
-  ir = body._irc - 1
-  rs = joint._rows - 1
-  etc.
-
-TODO: Future refactoring should convert all internal indices to 0-based.
+All slicing uses standard Python [start:end) convention directly.
 
 Author: Giacomo Cangi
 """
@@ -119,8 +116,8 @@ class PlanarMultibodyModel:
         #// bodies
         for Bi in range(nB):
             body = self.Bodies[Bi]
-            body._irc = 3 * Bi + 1
-            body._irv = nB3 + 3 * Bi + 1
+            body._irc = 3 * Bi
+            body._irv = nB3 + 3 * Bi
             body._invm = 1 / body.m
             body._invJ = 1 / body.J
             body._A = A_matrix(body.p)
@@ -275,16 +272,16 @@ class PlanarMultibodyModel:
         nConst = 0
         for Ji in range(nJ):
             joint = self.Joints[Ji]
-            joint._rows = nConst + 1
+            joint._rows = nConst
             joint._rowe = nConst + joint._mrows
             nConst = joint._rowe
             Bi = joint.iBindex
             if Bi != 0:
-                joint._colis = 3 * (Bi - 1) + 1
+                joint._colis = 3 * (Bi - 1)
                 joint._colie = 3 * Bi
             Bj = joint.jBindex
             if Bj != 0:
-                joint._coljs = 3 * (Bj - 1) + 1
+                joint._coljs = 3 * (Bj - 1)
                 joint._colje = 3 * Bj
 
         # // ---
@@ -561,7 +558,7 @@ class PlanarMultibodyModel:
                 case _:
                     raise ValueError(f"Joint type '{joint.type}' is not supported.")
 
-            rs = joint._rows - 1
+            rs = joint._rows
             re = joint._rowe
             phi[rs:re] = f
             
@@ -701,20 +698,18 @@ class PlanarMultibodyModel:
                     raise ValueError(f"Joint type '{joint.type}' is not supported.")
 
             # row indices for the current joint in the Jacobian matrix
-            rs = joint._rows - 1
+            rs = joint._rows
             re = joint._rowe
 
-            #! Possibile problema con gli indici, risolvere a monte, 
-            #! quando attribuisco i valori a cis e cie !!!
             # column indices for body i 
             if joint.iBindex != 0:
-                cis = joint._colis - 1
+                cis = joint._colis
                 cie = joint._colie
                 D[rs:re, cis:cie] = Di
 
             # column indices for body j
             if joint.jBindex != 0:
-                cjs = joint._coljs - 1
+                cjs = joint._coljs
                 cje = joint._colje
                 D[rs:re, cjs:cje] = Dj
 
@@ -746,7 +741,7 @@ class PlanarMultibodyModel:
                 case _:
                     continue
 
-            rs = joint._rows - 1
+            rs = joint._rows
             re = joint._rowe
             rhsv[rs:re] = f
 
@@ -906,10 +901,7 @@ class PlanarMultibodyModel:
                         f = f + d.T @ s_rot(self.Points[Pj]._dsP).T @ self.Bodies[Bj - 1].dp \
                             - d.T @ s_rot(self.Points[Pi]._dsP).T @ self.Bodies[Bi - 1].dp - dd.T @ dd
             
-            #! The value -1 should be fixed during the constraint definition 
-            #! to avoid the continous management of indexes for 
-            #! slicing operations.
-            rs = joint._rows - 1 
+            rs = joint._rows
             re = rs + joint._mrows 
             rhsa[rs:re] = np.asarray(f).reshape(-1, 1)
         
@@ -923,8 +915,8 @@ class PlanarMultibodyModel:
         u = np.zeros([(3 * nB * 2), 1])
 
         for Bi in range(nB):
-            ir = self.Bodies[Bi]._irc - 1
-            ird = self.Bodies[Bi]._irv - 1
+            ir = self.Bodies[Bi]._irc
+            ird = self.Bodies[Bi]._irv
             u[ir:ir+3] = np.block([[self.Bodies[Bi].r],[self.Bodies[Bi].p]])
             u[ird:ird+3] = np.block([[self.Bodies[Bi].dr], [self.Bodies[Bi].dp]])
         
@@ -938,8 +930,8 @@ class PlanarMultibodyModel:
         ud = np.zeros([nB6, 1])
 
         for Bi, body in enumerate(self.Bodies):
-            ir = body._irc - 1
-            ird = body._irv - 1
+            ir = body._irc
+            ird = body._irv
             ud[ir:ir + 3] = np.vstack([body.dr, body.dp]).reshape(3, 1)
             ud[ird:ird + 3] = np.vstack([body.ddr, body.ddp]).reshape(3, 1)
 
@@ -955,8 +947,8 @@ class PlanarMultibodyModel:
             
         nB = len(self.Bodies)
         for Bi in range(nB): 
-            ir = self.Bodies[Bi]._irc - 1
-            ird = self.Bodies[Bi]._irv - 1
+            ir = self.Bodies[Bi]._irc
+            ird = self.Bodies[Bi]._irv
             self.Bodies[Bi].r  = u[ir:ir+2]
             self.Bodies[Bi].p  = u[ir+2][0]
             self.Bodies[Bi].dr = u[ird:ird+2]
@@ -1047,7 +1039,7 @@ class PlanarMultibodyModel:
         nB3 = 3 * len(self.Bodies)
         g = np.zeros([nB3, 1])
         for Bi, body in enumerate(self.Bodies):
-            ks = body._irc - 1
+            ks = body._irc
             ke = ks + 3
             g[ks:ke] = np.vstack([body._f, body._n])
 
@@ -1276,7 +1268,7 @@ class PlanarMultibodyModel:
 
         # update accelerations for each body
         for Bi, body in enumerate(self.Bodies):
-            ir = body._irc - 1
+            ir = body._irc
             i2 = ir + 2
             i3 = i2
             body.ddr = ddc[ir:i2]
