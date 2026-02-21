@@ -50,7 +50,7 @@ def my_force(B1, B2):
     # Motor (DC model capped at T_max)
     omega_max = 4.0 * np.pi
     T_max = 20.0
-    omega = abs(float(B2.dp))
+    omega = abs(B2.dp)
     T_motor = T_max * (1.0 - omega / omega_max)
     if T_motor > T_max:
         T_motor = T_max
@@ -58,7 +58,7 @@ def my_force(B1, B2):
     B1._n += T_motor
     # Aerodynamic drag  F = damp_aero * v_x^2  (opposes motion)
     damp_aero = 10.0
-    x_d = float(B1.dr[0])
+    x_d = B1.dr[0, 0]
     f_aero = damp_aero * x_d ** 2
     B1._f[0] -= f_aero   # drag always opposes motion direction
 

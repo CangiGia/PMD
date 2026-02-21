@@ -63,7 +63,7 @@ def my_force(B1):
     v_s = 0.001; p = 2; k_t = 10000
     fy_normal = 9.81          # normal force (body weight on horizontal surface)
     v_conv = 0.1
-    v = v_conv - float(B1.dr[0])   # relative sliding velocity
+    v = v_conv - B1.dr[0, 0]   # relative sliding velocity
     ff = friction_A(mu_s, mu_d, v_s, p, k_t, v, fy_normal)
     fx = ff + mu_v * v * fy_normal
     B1._f[0] += fx

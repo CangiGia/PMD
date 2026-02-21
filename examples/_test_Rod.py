@@ -39,6 +39,7 @@ import os
 from PMD.src.builder import *
 from PMD.src.solver import *
 from PMD.src.mechanics import *
+from PMD.examples._plot_utils import plot_comparison
 
 # =============================================================================
 # MODEL DEFINITION
@@ -60,12 +61,12 @@ def my_force(B1):
         v_P_y = v_CM_y + omega * sp_glob_x      (2D rigid body formula)
     where sp_glob = A(phi) @ sp_local.
     """
-    A_phi  = A_matrix(float(B1.p))
-    omega  = float(B1.dp)
-    vy_cm  = float(B1.dr[1])
+    A_phi  = A_matrix(B1.p)
+    omega  = B1.dp
+    vy_cm  = B1.dr[1, 0]
     for sp_local in [np.array([0., -1.]), np.array([0., 1.])]:
         sp_glob = A_phi @ sp_local                    # global offset from CM
-        p_y      = float(B1.r[1]) + sp_glob[1]        # global y of endpoint
+        p_y      = B1.r[1, 0] + sp_glob[1]        # global y of endpoint
         if p_y < 0:
             v_y  = vy_cm + omega * float(sp_glob[0])  # vertical vel of endpoint
             depth = -p_y
@@ -84,19 +85,22 @@ f1.callback = my_force
 
 #%% Create model and solve
 model = PlanarMultibodyModel()
-T, uT = model.solve(method='Radau', t_final=3.0, t_eval=np.linspace(0, 3, 3001))
+T, uT = model.solve(method='Radau', t_final=3.0, t_eval=np.linspace(0, 2, 2001))
 
 # =============================================================================
 # OUTPUT
 # =============================================================================
 
 #%% Save results
-output_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results', '_test_Rod.txt')
-nB = model.nB
-nC = model.nC
-nB3 = nB * 3
-header = '\t'.join(['t'] + [f'B{i+1}_{c}' for i in range(nB) for c in ['x', 'y', 'p']])
-np.savetxt(output_file, np.column_stack([T, uT[:, :nB3]]),
-           delimiter='\t', header=header, comments='', fmt='%.8f')
-print(f"[_test_Rod] Done. nB={nB}, nC={nC}, DOF={nB*3-nC}, points={len(T)}")
-print(f"  Results: {output_file}")
+# output_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results', '_test_Rod.txt')
+# nB = model.nB
+# nC = model.nC
+# nB3 = nB * 3
+# header = '\t'.join(['t'] + [f'B{i+1}_{c}' for i in range(nB) for c in ['x', 'y', 'p']])
+# np.savetxt(output_file, np.column_stack([T, uT[:, :nB3]]),
+#            delimiter='\t', header=header, comments='', fmt='%.8f')
+# print(f"[_test_Rod] Done. nB={nB}, nC={nC}, DOF={nB*3-nC}, points={len(T)}")
+# print(f"  Results: {output_file}")
+
+if __name__ == '__main__':
+    plot_comparison(T, uT, matlab_filename='Rod.txt', model_title='Rod')
