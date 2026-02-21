@@ -63,9 +63,9 @@ s0 = Force(type='ptp', iPindex=1, jPindex=3, k=20000.0, L0=0.34, dc=1100.0)
 
 def my_force(B1, s1, pt_C1):
     """Unilateral tire contact — same model as MP_A/B."""
-    del_y = float(B1.r[1]) - s1.L0
+    del_y = B1.r[1, 0] - s1.L0
     if del_y < 0:
-        fy = s1.k * del_y + s1.dc * float(B1.dr[1])
+        fy = s1.k * del_y + s1.dc * B1.dr[1, 0]
         fsd = np.array([[0.0], [-fy]])
         B1._f += fsd
         B1._n += (s_rot(pt_C1._sP).T @ fsd).item()
@@ -99,4 +99,5 @@ T, uT = model.solve(method='Radau', t_final=10.0, t_eval=np.linspace(0, 10, 1000
 # print(f"[_test_MP_C] Done. nB={nB}, nC={nC}, DOF={nB*3-nC}, points={len(T)}")
 # print(f"  Results: {output_file}")
 
-plot_comparison(T, uT, matlab_filename='MP_C.txt', model_title='MP_C')
+if __name__ == '__main__':
+    plot_comparison(T, uT, matlab_filename='MP_C.txt', model_title='MP_C')

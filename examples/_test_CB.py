@@ -94,4 +94,5 @@ T, uT = model.solve(method='Radau', t_final=10.0, t_eval=np.linspace(0, 10, 1000
 # print(f"[_test_CB] Done. nB={nB}, nC={nC}, DOF={nB*3-nC}, points={len(T)}")
 # print(f"  Results: {output_file}")
 
-plot_comparison(T, uT, matlab_filename='CB.txt', model_title='CB')
+if __name__ == '__main__':
+    plot_comparison(T, uT, matlab_filename='CB.txt', model_title='CB')

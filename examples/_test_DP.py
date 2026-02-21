@@ -43,4 +43,5 @@ T, uT = double_pendulum.solve(method='Radau', t_final=10.0, t_eval=np.linspace(0
 # print(f"[_test_DP] Done. nB={nB}, nC={nC}, DOF={nB*3-nC}, points={len(T)}")
 # print(f"  Results: {output_file}")
 
-plot_comparison(T, uT, matlab_filename='DP.txt', model_title='DP')
+if __name__ == '__main__':
+    plot_comparison(T, uT, matlab_filename='DP.txt', model_title='DP')

@@ -8,6 +8,7 @@ Cart supported on two disc wheels. A motor drives wheel B2 relative to the
 cart B1 at a constant angular velocity (-2*pi rad/s, type-'a' polynomial).
 The wheel-ground contact is enforced via disc constraints.
 
+
 Bodies:
   B1: cart body  (m=20, J=5,   r=[0.5, 0.2],  p=0)
   B2: left wheel (m=2,  J=0.5, r=[0.2, 0.1],  p=0)
@@ -92,4 +93,5 @@ T, uT = model.solve(method='Radau', t_final=10.0, t_eval=np.linspace(0, 10, 1000
 # print(f"[_test_Cart_A] Done. nB={nB}, nC={nC}, DOF={nB*3-nC}, points={len(T)}")
 # print(f"  Results: {output_file}")
 
-plot_comparison(T, uT, matlab_filename='Cart_A.txt', model_title='Cart_A')
+if __name__ == '__main__':
+    plot_comparison(T, uT, matlab_filename='Cart_A.txt', model_title='Cart_A')
