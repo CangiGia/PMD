@@ -29,6 +29,7 @@ import os
 from PMD.src.builder import *
 from PMD.src.solver import *
 from PMD.src.mechanics import *
+from PMD.examples._plot_utils import plot_comparison
 
 # =============================================================================
 # MODEL DEFINITION
@@ -80,13 +81,15 @@ T, uT = model.solve(method='Radau', t_final=10.0, t_eval=np.linspace(0, 10, 1000
 # OUTPUT
 # =============================================================================
 
-#%% Save results
-output_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results', '_test_Cart_C.txt')
-nB = model.nB
-nC = model.nC
-nB3 = nB * 3
-header = '\t'.join(['t'] + [f'B{i+1}_{c}' for i in range(nB) for c in ['x', 'y', 'p']])
-np.savetxt(output_file, np.column_stack([T, uT[:, :nB3]]),
-           delimiter='\t', header=header, comments='', fmt='%.8f')
-print(f"[_test_Cart_C] Done. nB={nB}, nC={nC}, DOF={nB*3-nC}, points={len(T)}")
-print(f"  Results: {output_file}")
+# #%% Save results
+# output_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results', '_test_Cart_C.txt')
+# nB = model.nB
+# nC = model.nC
+# nB3 = nB * 3
+# header = '\t'.join(['t'] + [f'B{i+1}_{c}' for i in range(nB) for c in ['x', 'y', 'p']])
+# np.savetxt(output_file, np.column_stack([T, uT[:, :nB3]]),
+#            delimiter='\t', header=header, comments='', fmt='%.8f')
+# print(f"[_test_Cart_C] Done. nB={nB}, nC={nC}, DOF={nB*3-nC}, points={len(T)}")
+# print(f"  Results: {output_file}")
+
+plot_comparison(T, uT, matlab_filename='Cart_C.txt', model_title='Cart_C')

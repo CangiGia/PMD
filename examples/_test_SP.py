@@ -4,6 +4,7 @@ from PMD.src.builder import *
 from PMD.src.mechanics import *
 from PMD.src.solver import *
 import matplotlib.pyplot as plt
+from PMD.examples._plot_utils import plot_comparison
 
 
 #* Multi-Body model creation - Bodies, Joints, Forces
@@ -69,14 +70,16 @@ j1_2.jPindex = 2
 my_dynamic_model = PlanarMultibodyModel()
 T, uT = my_dynamic_model.solve(method='Radau', t_final=10.0, t_eval=np.linspace(0, 10, 10001))
 
-#%% Save results
-import os
-output_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results', '_test_SP.txt')
-nB = my_dynamic_model.nB
-nC = my_dynamic_model.nC
-nB3 = nB * 3
-header = '\t'.join(['t'] + [f'B{i+1}_{c}' for i in range(nB) for c in ['x','y','p']])
-np.savetxt(output_file, np.column_stack([T, uT[:, :nB3]]),
-           delimiter='\t', header=header, comments='', fmt='%.8f')
-print(f"[_test_SP] Done. nB={nB}, nC={nC}, DOF={nB*3-nC}, points={len(T)}")
-print(f"  Results: {output_file}")
+# #%% Save results
+# import os
+# output_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results', '_test_SP.txt')
+# nB = my_dynamic_model.nB
+# nC = my_dynamic_model.nC
+# nB3 = nB * 3
+# header = '\t'.join(['t'] + [f'B{i+1}_{c}' for i in range(nB) for c in ['x','y','p']])
+# np.savetxt(output_file, np.column_stack([T, uT[:, :nB3]]),
+#            delimiter='\t', header=header, comments='', fmt='%.8f')
+# print(f"[_test_SP] Done. nB={nB}, nC={nC}, DOF={nB*3-nC}, points={len(T)}")
+# print(f"  Results: {output_file}")
+
+plot_comparison(T, uT, matlab_filename='SP.txt', model_title='SP')

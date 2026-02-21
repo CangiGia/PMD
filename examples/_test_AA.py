@@ -4,6 +4,7 @@ from PMD.src.builder import *
 from PMD.src.solver import *
 from PMD.src.mechanics import *
 import matplotlib.pyplot as plt
+from PMD.examples._plot_utils import plot_comparison
 
 #%% bodies
 B1 = Body(m=2, J=0.5, r=[0.4398, 0.2512], p=-0.0367)   # lower suspension arm
@@ -50,14 +51,16 @@ quarter_car = PlanarMultibodyModel()
 T, uT = quarter_car.solve(method='Radau', t_final=10.0, t_eval=np.linspace(0, 10, 10001),
                           ic_correct=True)
 
-#%% Save results
-import os
-# output_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results', '_test_AA.txt')
-nB = quarter_car.nB
-nC = quarter_car.nC
-nB3 = nB * 3
-header = '\t'.join(['t'] + [f'B{i+1}_{c}' for i in range(nB) for c in ['x','y','p']])
-# np.savetxt(output_file, np.column_stack([T, uT[:, :nB3]]),
-#            delimiter='\t', header=header, comments='', fmt='%.8f')
-print(f"[_test_AA] Done. nB={nB}, nC={nC}, DOF={nB*3-nC}, points={len(T)}")
-# print(f"  Results: {output_file}")
+# #%% Save results
+# import os
+# # output_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results', '_test_AA.txt')
+# nB = quarter_car.nB
+# nC = quarter_car.nC
+# nB3 = nB * 3
+# header = '\t'.join(['t'] + [f'B{i+1}_{c}' for i in range(nB) for c in ['x','y','p']])
+# # np.savetxt(output_file, np.column_stack([T, uT[:, :nB3]]),
+# #            delimiter='\t', header=header, comments='', fmt='%.8f')
+# print(f"[_test_AA] Done. nB={nB}, nC={nC}, DOF={nB*3-nC}, points={len(T)}")
+# # print(f"  Results: {output_file}")
+
+plot_comparison(T, uT, matlab_filename='AA.txt', model_title='AA')
