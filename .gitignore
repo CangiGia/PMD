@@ -38,6 +38,7 @@ htmlcov/
 # IDE specific files
 .vscode/
 .idea/
+*.json
 *.swp
 *.swo
 

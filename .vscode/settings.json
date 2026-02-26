@@ -13,5 +13,12 @@
         "tests",
         "-v"
     ],
-    "python.testing.cwd": "C:\\Users\\Giaco\\anaconda3\\envs\\GiacoEnv"
+    "python.testing.cwd": "C:\\Users\\Giaco\\anaconda3\\envs\\GiacoEnv",
+    "python-envs.pythonProjects": [
+        {
+            "path": ".",
+            "envManager": "ms-python.python:conda",
+            "packageManager": "ms-python.python:conda"
+        }
+    ]
 }
