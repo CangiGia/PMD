@@ -1564,12 +1564,29 @@ class PlanarMultibodyModel:
             D = self.__compute_jacobian()
             rhsA = self.__rhs_acceleration()  # right-hand side of acceleration constraints (gamma)
 
-            # construct the matrix system to solve
+            # GGL regularization: replace zero block with (1/μ)·I
+            if self._ggl_mu > 0:
+                reg_block = (1.0 / self._ggl_mu) * np.eye(nConst)
+            else:
+                reg_block = np.zeros((nConst, nConst))
+
             DMD = np.block([
                 [self.M_matrix, -D.T], 
-                [D, np.zeros([nConst, nConst])]
+                [D, reg_block]
             ])
-            rhs = np.concatenate([h_a, rhsA])
+
+            # Baumgarte stabilization: add -2α·dΦ - β²·Φ to RHS
+            if self._baumgarte_alpha > 0 or self._baumgarte_beta > 0:
+                Phi = np.asarray(self.__compute_constraints()).flatten()
+                dq = u[nB3:]  # velocity part of state vector
+                dPhi = np.asarray(D @ dq).flatten()
+                gamma_stab = (rhsA.flatten()
+                              - 2.0 * self._baumgarte_alpha * dPhi
+                              - self._baumgarte_beta**2 * Phi)
+            else:
+                gamma_stab = rhsA.flatten()
+
+            rhs = np.concatenate([h_a.flatten(), gamma_stab])
 
             #* check on conditioned index of the coefficient matrix
             cond_number = np.linalg.cond(DMD)
@@ -1577,7 +1594,7 @@ class PlanarMultibodyModel:
                 print(f"Warning: DMD matrix is poorly conditioned with condition number {cond_number}")
     
             # solve the system of equations
-            sol = np.linalg.solve(DMD, rhs)
+            sol = np.linalg.solve(DMD, rhs).reshape(-1, 1)
             ddc = sol[:nB3]
             Lambda = sol[nB3:]
 
@@ -1609,7 +1626,8 @@ class PlanarMultibodyModel:
         return __wrapp_analysis
 
     def solve(self, method="LSODA", t_final=None, dt=None, ic_correct=False,
-              t_eval=None, t_span=None):
+              t_eval=None, t_span=None,
+              baumgarte_alpha=5.0, baumgarte_beta=5.0, ggl_penalty=1e8):
         """Solve equations of motion.
 
         Supports both interactive (legacy) and programmatic (non-interactive)
@@ -1630,6 +1648,17 @@ class PlanarMultibodyModel:
             Explicit array of output time points. Overrides ``dt``.
         t_span : tuple, optional
             ``(t_start, t_end)`` shorthand; sets ``t_final = t_span[1]``.
+        baumgarte_alpha : float, optional
+            Baumgarte velocity-level stabilization gain (default 5.0).
+            Controls damping of constraint velocity drift.
+        baumgarte_beta : float, optional
+            Baumgarte position-level stabilization gain (default 5.0).
+            Controls correction of constraint position drift.
+        ggl_penalty : float, optional
+            GGL (Gear-Gupta-Leimkuhler) regularization parameter (default 1e8).
+            Replaces the zero block with ``(1/ggl_penalty)*I`` in the augmented
+            matrix, preventing singularity with redundant constraints.
+            Set to 0 to disable regularization.
 
         Returns
         -------
@@ -1638,6 +1667,11 @@ class PlanarMultibodyModel:
             attribute access (``sol.t``, ``sol.y`` in scipy convention).
         """
         self.method = method
+
+        # Store stabilization parameters for __analysis and _post_process
+        self._baumgarte_alpha = baumgarte_alpha
+        self._baumgarte_beta = baumgarte_beta
+        self._ggl_mu = ggl_penalty
 
         # Handle t_span shorthand
         if t_span is not None and t_final is None:
@@ -1766,11 +1800,29 @@ class PlanarMultibodyModel:
                 D = self.__compute_jacobian()
                 rhsA = self.__rhs_acceleration()
 
+                # GGL regularization: replace zero block with (1/μ)·I
+                if self._ggl_mu > 0:
+                    reg_block = (1.0 / self._ggl_mu) * np.eye(nConst)
+                else:
+                    reg_block = np.zeros((nConst, nConst))
+
                 DMD = np.block([
                     [self.M_matrix, -D.T],
-                    [D, np.zeros((nConst, nConst))]
+                    [D, reg_block]
                 ])
-                rhs = np.concatenate([h_a, rhsA])
+
+                # Baumgarte stabilization: add -2α·dΦ - β²·Φ to RHS
+                if self._baumgarte_alpha > 0 or self._baumgarte_beta > 0:
+                    Phi = np.asarray(self.__compute_constraints()).flatten()
+                    dq_i = u_i[nB3:]
+                    dPhi = np.asarray(D @ dq_i).flatten()
+                    gamma_stab = (rhsA.flatten()
+                                  - 2.0 * self._baumgarte_alpha * dPhi
+                                  - self._baumgarte_beta**2 * Phi)
+                else:
+                    gamma_stab = rhsA.flatten()
+
+                rhs = np.concatenate([h_a.flatten(), gamma_stab])
                 sol = np.linalg.solve(DMD, rhs)
                 ddc = sol[:nB3]
                 Lambda = sol[nB3:]
