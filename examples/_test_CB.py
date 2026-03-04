@@ -42,23 +42,23 @@ from PMD.examples._plot_utils import plot_comparison
 #%% Bodies
 B1 = Body(m=1.0, J=1.0, r=[1.0, 0.2], p=0.0, dr=[0.0, 0.0])
 
-#%% Points  (MATLAB P1→pt0, P2→pt1  ;  MATLAB iPindex=2→Python ipindex=1, jPindex=1→0)
-pt0 = Point(Bindex=0, sPlocal=np.array([0.0, 0.2]))  # wall anchor on ground
-pt1 = Point(Bindex=1, sPlocal=np.array([0.0, 0.0]))  # body reference on B1
+#%% Points
+pt0 = Point(body=Ground, sPlocal=np.array([0.0, 0.2]))  # wall anchor on ground
+pt1 = Point(body=B1, sPlocal=np.array([0.0, 0.0]))  # body reference on B1
 
-#%% Unit Vectors  (MATLAB U1→u0, U2→u1  ; MATLAB iUindex=2→Python 1, jUindex=1→0)
-u0 = uVector(Bindex=0, ulocal=np.array([1.0, 0.0]))  # horizontal ground vector
-u1 = uVector(Bindex=1, ulocal=np.array([1.0, 0.0]))  # horizontal body vector
+#%% Unit Vectors
+u0 = uVector(body=Ground, ulocal=np.array([1.0, 0.0]))  # horizontal ground vector
+u1 = uVector(body=B1, ulocal=np.array([1.0, 0.0]))  # horizontal body vector
 
 #%% Joints
-j0 = Joint(type='tran', iPindex=1, jPindex=0, iUindex=1, jUindex=0)
+j0 = Joint(type='tran', iPoint=pt1, jPoint=pt0, iUvec=u1, jUvec=u0)
 
 #%% Forces
-f0 = Force(type='ptp', iPindex=1, jPindex=0, k=10.0, L0=0.8, dc=0.0)
+f0 = Force(type='ptp', iPoint=pt1, jPoint=pt0, k=10.0, L0=0.8, dc=0.0)
 f1 = Force(type='weight')
 
-def my_force(B1):
-    """Anderson friction model — body slides against conveyor belt at v_conv=0.1 m/s."""
+def my_force():
+    """Anderson friction model -- body slides against conveyor belt at v_conv=0.1 m/s."""
     mu_d = 0.15; mu_s = 0.2; mu_v = 0.0
     v_s = 0.001; p = 2; k_t = 10000
     fy_normal = 9.81          # normal force (body weight on horizontal surface)
@@ -76,23 +76,13 @@ f2.callback = my_force
 # =============================================================================
 
 #%% Create model and solve
-model = PlanarMultibodyModel()
+model = PlanarMultibodyModel(
+    bodies=[B1],
+    joints=[j0],
+    forces=[f0, f1, f2],
+    points=[pt0, pt1],
+    uvectors=[u0, u1])
 T, uT = model.solve(method='Radau', t_final=10.0, t_eval=np.linspace(0, 10, 10001))
-
-# =============================================================================
-# OUTPUT
-# =============================================================================
-
-# #%% Save results
-# output_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results', '_test_CB.txt')
-# nB = model.nB
-# nC = model.nC
-# nB3 = nB * 3
-# header = '\t'.join(['t'] + [f'B{i+1}_{c}' for i in range(nB) for c in ['x', 'y', 'p']])
-# np.savetxt(output_file, np.column_stack([T, uT[:, :nB3]]),
-#            delimiter='\t', header=header, comments='', fmt='%.8f')
-# print(f"[_test_CB] Done. nB={nB}, nC={nC}, DOF={nB*3-nC}, points={len(T)}")
-# print(f"  Results: {output_file}")
 
 if __name__ == '__main__':
     plot_comparison(T, uT, matlab_filename='CB.txt', model_title='CB')

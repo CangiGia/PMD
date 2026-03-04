@@ -14,34 +14,26 @@ b1 = Body(m=1, J=0.0833, r=[0.0,0.5], p=0.0)
 b2 = Body(m=2, J=0.375, r=[0.75,1.0], p=0.0)
 
 #%% points
-p0 = Point(Bindex=0, sPlocal=np.array([0.0, 0.0]))     #// revolute joint between b1 and b0 - ground side (b0 is always the ground)
-p1 = Point(Bindex=1, sPlocal=np.array([0.0, -0.5]))    #// revolute joint between b1 and b0 - body 1 side (b0 is always the ground)
-p2 = Point(Bindex=1, sPlocal=np.array([0.0, 0.5]))     #// revolute joint between b1 and b2 - body 1 side
-p3 = Point(Bindex=2, sPlocal=np.array([-0.75, 0]))     #// revolute joint between b1 and b2 - body 2 side
+p0 = Point(body=Ground, sPlocal=np.array([0.0, 0.0]))     #// revolute joint between b1 and b0
+p1 = Point(body=b1, sPlocal=np.array([0.0, -0.5]))    #// revolute joint between b1 and b0
+p2 = Point(body=b1, sPlocal=np.array([0.0, 0.5]))     #// revolute joint between b1 and b2
+p3 = Point(body=b2, sPlocal=np.array([-0.75, 0]))     #// revolute joint between b1 and b2
 
 #%% joints
-j1 = Joint(type="rev", iPindex=0, jPindex=1) #// Revolute joint between b1 and b0
-j2 = Joint(type="rev", iPindex=2, jPindex=3) #// Revolute joint between b1 and b2
+j1 = Joint(type="rev", iPoint=p0, jPoint=p1) #// Revolute joint between b1 and b0
+j2 = Joint(type="rev", iPoint=p2, jPoint=p3) #// Revolute joint between b1 and b2
 
 #%% forces
 s3 = Force()
 s3 = Force(type="weight") #// only weight force, acting along -y axis
 
 #%% double pendulum model creation
-double_pendulum = PlanarMultibodyModel()
+double_pendulum = PlanarMultibodyModel(
+    bodies=[b1, b2],
+    joints=[j1, j2],
+    forces=[s3],
+    points=[p0, p1, p2, p3])
 T, uT = double_pendulum.solve(method='Radau', t_final=10.0, t_eval=np.linspace(0, 10, 10001))
-
-# #%% Save results
-# import os
-# output_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results', '_test_DP.txt')
-# nB = double_pendulum.nB
-# nC = double_pendulum.nC
-# nB3 = nB * 3
-# header = '\t'.join(['t'] + [f'B{i+1}_{c}' for i in range(nB) for c in ['x','y','p']])
-# np.savetxt(output_file, np.column_stack([T, uT[:, :nB3]]),
-#            delimiter='\t', header=header, comments='', fmt='%.8f')
-# print(f"[_test_DP] Done. nB={nB}, nC={nC}, DOF={nB*3-nC}, points={len(T)}")
-# print(f"  Results: {output_file}")
 
 if __name__ == '__main__':
     plot_comparison(T, uT, matlab_filename='DP.txt', model_title='DP')

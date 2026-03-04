@@ -34,20 +34,20 @@ B2 = Body(m=2.0,  J=0.5, r=[0.2, 0.1], p=0.0)
 B3 = Body(m=2.0,  J=0.5, r=[0.8, 0.1], p=0.0)
 
 #%% Points
-pt0 = Point(Bindex=1, sPlocal=np.array([-0.3, -0.1]))
-pt1 = Point(Bindex=1, sPlocal=np.array([ 0.3, -0.1]))
-pt2 = Point(Bindex=2, sPlocal=np.array([ 0.0,  0.0]))
-pt3 = Point(Bindex=3, sPlocal=np.array([ 0.0,  0.0]))
+pt0 = Point(body=B1, sPlocal=np.array([-0.3, -0.1]))
+pt1 = Point(body=B1, sPlocal=np.array([ 0.3, -0.1]))
+pt2 = Point(body=B2, sPlocal=np.array([ 0.0,  0.0]))
+pt3 = Point(body=B3, sPlocal=np.array([ 0.0,  0.0]))
 
-#%% Functions  (smooth ramp: 0 → -2*pi rad/s over 2 s)
+#%% Functions  (smooth ramp: 0 -> -2*pi rad/s over 2 s)
 fn0 = Function(type='c', t_end=2.0, dfdt_end=-2.0*np.pi)
 
 #%% Joints
-j0 = Joint(type='rev',     iPindex=0, jPindex=2)
-j1 = Joint(type='rev',     iPindex=1, jPindex=3)
-j2 = Joint(type='disc',    iBindex=2, R=0.1, x0=0.2)
-j3 = Joint(type='disc',    iBindex=3, R=0.1, x0=0.8)
-j4 = Joint(type='rel-rot', iBindex=2, jBindex=1, iFunct=1)
+j0 = Joint(type='rev',     iPoint=pt0, jPoint=pt2)
+j1 = Joint(type='rev',     iPoint=pt1, jPoint=pt3)
+j2 = Joint(type='disc',    iBody=B2, R=0.1, x0=0.2)
+j3 = Joint(type='disc',    iBody=B3, R=0.1, x0=0.8)
+j4 = Joint(type='rel-rot', iBody=B2, jBody=B1, iFunct=fn0)
 
 #%% Forces
 fw = Force(type='weight')
@@ -57,23 +57,13 @@ fw = Force(type='weight')
 # =============================================================================
 
 #%% Create model and solve
-model = PlanarMultibodyModel()
+model = PlanarMultibodyModel(
+    bodies=[B1, B2, B3],
+    joints=[j0, j1, j2, j3, j4],
+    forces=[fw],
+    points=[pt0, pt1, pt2, pt3],
+    functions=[fn0])
 T, uT = model.solve(method='Radau', t_final=10.0, t_eval=np.linspace(0, 10, 10001))
-
-# =============================================================================
-# OUTPUT
-# =============================================================================
-
-# #%% Save results
-# output_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results', '_test_Cart_B.txt')
-# nB = model.nB
-# nC = model.nC
-# nB3 = nB * 3
-# header = '\t'.join(['t'] + [f'B{i+1}_{c}' for i in range(nB) for c in ['x', 'y', 'p']])
-# np.savetxt(output_file, np.column_stack([T, uT[:, :nB3]]),
-#            delimiter='\t', header=header, comments='', fmt='%.8f')
-# print(f"[_test_Cart_B] Done. nB={nB}, nC={nC}, DOF={nB*3-nC}, points={len(T)}")
-# print(f"  Results: {output_file}")
 
 if __name__ == '__main__':
     plot_comparison(T, uT, matlab_filename='Cart_B.txt', model_title='Cart_B')

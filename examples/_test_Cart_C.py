@@ -41,24 +41,24 @@ B2 = Body(m=2.0,  J=0.5, r=[0.2, 0.1], p=0.0)
 B3 = Body(m=2.0,  J=0.5, r=[0.8, 0.1], p=0.0)
 
 #%% Points
-pt0 = Point(Bindex=1, sPlocal=np.array([-0.3, -0.1]))
-pt1 = Point(Bindex=1, sPlocal=np.array([ 0.3, -0.1]))
-pt2 = Point(Bindex=2, sPlocal=np.array([ 0.0,  0.0]))
-pt3 = Point(Bindex=3, sPlocal=np.array([ 0.0,  0.0]))
+pt0 = Point(body=B1, sPlocal=np.array([-0.3, -0.1]))
+pt1 = Point(body=B1, sPlocal=np.array([ 0.3, -0.1]))
+pt2 = Point(body=B2, sPlocal=np.array([ 0.0,  0.0]))
+pt3 = Point(body=B3, sPlocal=np.array([ 0.0,  0.0]))
 
-#%% Joints (4 joints — no rel-rot)
-j0 = Joint(type='rev',  iPindex=0, jPindex=2)
-j1 = Joint(type='rev',  iPindex=1, jPindex=3)
-j2 = Joint(type='disc', iBindex=2, R=0.1, x0=0.2)
-j3 = Joint(type='disc', iBindex=3, R=0.1, x0=0.8)
+#%% Joints (4 joints -- no rel-rot)
+j0 = Joint(type='rev',  iPoint=pt0, jPoint=pt2)
+j1 = Joint(type='rev',  iPoint=pt1, jPoint=pt3)
+j2 = Joint(type='disc', iBody=B2, R=0.1, x0=0.2)
+j3 = Joint(type='disc', iBody=B3, R=0.1, x0=0.8)
 
 #%% Forces
 fw = Force(type='weight')
 
-def my_force(B1, B2):
+def my_force():
     """DC motor: torque on B2 with equal and opposite reaction on B1."""
     omega_max = 4.0 * np.pi   # [rad/s] no-load speed
-    T_max = 20.0               # [N·m]  stall torque
+    T_max = 20.0               # [N*m]  stall torque
     omega = abs(float(B2.dp))
     T_motor = T_max * (1.0 - omega / omega_max)
     if T_motor > T_max:
@@ -74,23 +74,12 @@ fu.callback = my_force
 # =============================================================================
 
 #%% Create model and solve
-model = PlanarMultibodyModel()
+model = PlanarMultibodyModel(
+    bodies=[B1, B2, B3],
+    joints=[j0, j1, j2, j3],
+    forces=[fw, fu],
+    points=[pt0, pt1, pt2, pt3])
 T, uT = model.solve(method='Radau', t_final=10.0, t_eval=np.linspace(0, 10, 10001))
-
-# =============================================================================
-# OUTPUT
-# =============================================================================
-
-# #%% Save results
-# output_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results', '_test_Cart_C.txt')
-# nB = model.nB
-# nC = model.nC
-# nB3 = nB * 3
-# header = '\t'.join(['t'] + [f'B{i+1}_{c}' for i in range(nB) for c in ['x', 'y', 'p']])
-# np.savetxt(output_file, np.column_stack([T, uT[:, :nB3]]),
-#            delimiter='\t', header=header, comments='', fmt='%.8f')
-# print(f"[_test_Cart_C] Done. nB={nB}, nC={nC}, DOF={nB*3-nC}, points={len(T)}")
-# print(f"  Results: {output_file}")
 
 if __name__ == '__main__':
     plot_comparison(T, uT, matlab_filename='Cart_C.txt', model_title='Cart_C')

@@ -34,7 +34,6 @@ import os
 import numpy as np
 import scipy as sc
 import numpy.linalg as lng
-import inspect
 from .utils import *
 from .mechanics import *
 from .builder import *
@@ -397,15 +396,15 @@ class SolResult:
 
 
 class PlanarMultibodyModel:
-    def __init__(self, verbose = False):
-        grouped_calsses = group_classes()
+    def __init__(self, bodies, joints=None, forces=None, points=None,
+                 uvectors=None, functions=None, verbose=False):
         self.verbose = verbose
-        self.Bodies = grouped_calsses.get("Body", [])
-        self.Points = grouped_calsses.get("Point", [])
-        self.uVectors = grouped_calsses.get("uVector", [])
-        self.Forces = grouped_calsses.get("Force", [])
-        self.Joints = grouped_calsses.get("Joint", [])
-        self.Functs = grouped_calsses.get("Function", []) if "Function" in grouped_calsses else []
+        self.Bodies = list(bodies)
+        self.Joints = list(joints) if joints else []
+        self.Forces = list(forces) if forces else []
+        self.Points = list(points) if points else []
+        self.uVectors = list(uvectors) if uvectors else []
+        self.Functs = list(functions) if functions else []
         
         # initialize the model for simulation automatically
         self.__initialize()
@@ -426,17 +425,16 @@ class PlanarMultibodyModel:
 
     def __initialize(self):
         """
-        Initializi the multi-body model considering the values defined 
+        Initialize the multi-body model considering the values defined 
         by the user.
         """
         # initialize variables
         nB = len(self.Bodies)
         nB3 = 3 * nB
-        nB6 = 6 * nB
 
-        #// bodies
-        for Bi in range(nB):
-            body = self.Bodies[Bi]
+        #// bodies — assign internal index and compute derived quantities
+        for Bi, body in enumerate(self.Bodies):
+            body._bidx = Bi + 1          # 1-based: ground=0, bodies=1..nB
             body._irc = 3 * Bi
             body._irv = nB3 + 3 * Bi
             body._invm = 1 / body.m
@@ -446,115 +444,96 @@ class PlanarMultibodyModel:
         # mass (inertia) array and pre-computed diagonal matrix
         self.M_array = np.zeros(nB3)
         self.invM_array = np.zeros(nB3)
-        for Bi in range(nB):
+        for Bi, body in enumerate(self.Bodies):
             is_ = 3 * Bi
             ie_ = is_ + 3
-            self.M_array[is_:ie_] = np.array([self.Bodies[Bi].m, self.Bodies[Bi].m, self.Bodies[Bi].J])
-            self.invM_array[is_:ie_] = np.array([self.Bodies[Bi]._invm, self.Bodies[Bi]._invm, self.Bodies[Bi]._invJ])
+            self.M_array[is_:ie_] = np.array([body.m, body.m, body.J])
+            self.invM_array[is_:ie_] = np.array([body._invm, body._invm, body._invJ])
         self.M_matrix = np.diag(self.M_array)
 
         #// points
-        nPtot = len(self.Points)
-        for Pi in range(nPtot):
-            point = self.Points[Pi]
-            if point.Bindex == 0:
+        for point in self.Points:
+            if point.body is Ground:
                 point._sP = point.sPlocal
                 point._sPr = s_rot(point._sP)
                 point._rP = point._sP
-
-            for Bi in range(nB):
-                if point.Bindex == (Bi+1):
-                    self.Bodies[Bi]._pts.append(Pi)  # append point index to the body's points
+            else:
+                point.body._pts.append(point)
 
         #// unit vectors
-        nU = len(self.uVectors)
-        for Vi in range(nU):
-            unit_vector = self.uVectors[Vi]
-            if unit_vector.Bindex == 0:
-                unit_vector._u = unit_vector.ulocal
-                unit_vector._ur = s_rot(unit_vector._u)
+        for uvector in self.uVectors:
+            if uvector.body is Ground:
+                uvector._u = uvector.ulocal
+                uvector._ur = s_rot(uvector._u)
 
         #// force elements
-        nF = len(self.Forces)
-        for Fi in range(nF):
-            force = self.Forces[Fi]
+        for force in self.Forces:
             if force.type == 'weight':
                 ug = force._gravity * force._wgt
-                for Bi in range(nB):
-                    self.Bodies[Bi]._wgt = self.Bodies[Bi].m * ug
+                for body in self.Bodies:
+                    body._wgt = body.m * ug
             elif force.type == 'ptp':
-                Pi = force.iPindex
-                Pj = force.jPindex
-                force.iBindex = self.Points[Pi].Bindex
-                force.jBindex = self.Points[Pj].Bindex
+                # derive body references from point attachments
+                force.iBody = force.iPoint.body
+                force.jBody = force.jPoint.body
 
         #// joints
-        nJ = len(self.Joints)
-        cfriction = 0
-
-        for Ji in range(nJ):
-            joint = self.Joints[Ji]
-            joint_type = joint.type
-
-            match joint_type:
+        for joint in self.Joints:
+            match joint.type:
                 case 'rev':
                     joint._mrows = 2
                     joint._nbody = 2
-                    Pi = joint.iPindex
-                    Pj = joint.jPindex
-                    joint.iBindex = self.Points[Pi].Bindex
-                    joint.jBindex = self.Points[Pj].Bindex
+                    joint.iBody = joint.iPoint.body
+                    joint.jBody = joint.jPoint.body
                     if joint.fix == 1:
                         joint._mrows = 3
-                        if joint.iBindex == 0:
-                            joint._p0 = -self.Bodies[joint.jBindex].p
-                        elif joint.jBindex == 0:
-                            joint._p0 = self.Bodies[joint.iBindex].p
+                        Bi = joint.iBody
+                        Bj = joint.jBody
+                        if Bi is Ground:
+                            joint._p0 = -Bj.p
+                        elif Bj is Ground:
+                            joint._p0 = Bi.p
                         else:
-                            joint._p0 = self.Bodies[joint.iBindex].p - self.Bodies[joint.jBindex].p
+                            joint._p0 = Bi.p - Bj.p
 
                 case 'tran':
                     joint._mrows = 2
                     joint._nbody = 2
-                    Pi = joint.iPindex
-                    Pj = joint.jPindex
-                    joint.iBindex = self.Points[Pi].Bindex
-                    joint.jBindex = self.Points[Pj].Bindex
+                    joint.iBody = joint.iPoint.body
+                    joint.jBody = joint.jPoint.body
                     if joint.fix == 1:
                         joint._mrows = 3
-                        if joint.iBindex == 0:
-                            joint._p0 = np.linalg.norm(self.Points[Pi]._rP - 
-                                                    self.Bodies[joint.jBindex].r - 
-                                                    self.Bodies[joint.jBindex]._A @ 
-                                                    self.Points[Pj].sPlocal)
-                        elif joint.jBindex == 0:
-                            joint._p0 = np.linalg.norm(self.Bodies[joint.iBindex].r + 
-                                                    self.Bodies[joint.iBindex]._A @ 
-                                                    self.Points[Pi].sPlocal - 
-                                                    self.Points[Pj]._rP)
+                        Bi = joint.iBody
+                        Bj = joint.jBody
+                        iPt = joint.iPoint
+                        jPt = joint.jPoint
+                        if Bi is Ground:
+                            joint._p0 = np.linalg.norm(iPt._rP -
+                                                    Bj.r - Bj._A @
+                                                    jPt.sPlocal)
+                        elif Bj is Ground:
+                            joint._p0 = np.linalg.norm(Bi.r +
+                                                    Bi._A @
+                                                    iPt.sPlocal -
+                                                    jPt._rP)
                         else:
-                            joint._p0 = np.linalg.norm(self.Bodies[joint.iBindex].r + 
-                                                    self.Bodies[joint.iBindex]._A @ 
-                                                    self.Points[Pi].sPlocal - 
-                                                    self.Bodies[joint.jBindex].r - 
-                                                    self.Bodies[joint.jBindex]._A @ 
-                                                    self.Points[Pj].sPlocal)
+                            joint._p0 = np.linalg.norm(Bi.r +
+                                                    Bi._A @
+                                                    iPt.sPlocal -
+                                                    Bj.r - Bj._A @
+                                                    jPt.sPlocal)
 
                 case 'rev-rev':
                     joint._mrows = 1
                     joint._nbody = 2
-                    Pi = joint.iPindex
-                    Pj = joint.jPindex
-                    joint.iBindex = self.Points[Pi].Bindex
-                    joint.jBindex = self.Points[Pj].Bindex
+                    joint.iBody = joint.iPoint.body
+                    joint.jBody = joint.jPoint.body
 
                 case 'rev-tran':
                     joint._mrows = 1
                     joint._nbody = 2
-                    Pi = joint.iPindex
-                    Pj = joint.jPindex
-                    joint.iBindex = self.Points[Pi].Bindex
-                    joint.jBindex = self.Points[Pj].Bindex
+                    joint.iBody = joint.iPoint.body
+                    joint.jBody = joint.jPoint.body
 
                 case 'rel-rot' | 'rel-tran':
                     joint._mrows = 1
@@ -566,17 +545,17 @@ class PlanarMultibodyModel:
                 case 'rigid':
                     joint._mrows = 3
                     joint._nbody = 2
-                    Bi = joint.iBindex
-                    Bj = joint.jBindex
-                    if Bi == 0:
-                        joint.d0 = -self.Bodies[Bj]._A.T @ self.Bodies[Bj].r
-                        joint._p0 = -self.Bodies[Bj].p
-                    elif Bj == 0:
-                        joint.d0 = self.Bodies[Bi].r
-                        joint._p0 = self.Bodies[Bi].p
+                    Bi = joint.iBody
+                    Bj = joint.jBody
+                    if Bi is Ground:
+                        joint.d0 = -Bj._A.T @ Bj.r
+                        joint._p0 = -Bj.p
+                    elif Bj is Ground:
+                        joint.d0 = Bi.r
+                        joint._p0 = Bi.p
                     else:
-                        joint.d0 = self.Bodies[Bj]._A.T @ (self.Bodies[Bi].r - self.Bodies[Bj].r)
-                        joint._p0 = self.Bodies[Bi].p - self.Bodies[Bj].p
+                        joint.d0 = Bj._A.T @ (Bi.r - Bj.r)
+                        joint._p0 = Bi.p - Bj.p
 
                 case _:
                     raise ValueError("Joint type doesn't supported!")
@@ -586,24 +565,21 @@ class PlanarMultibodyModel:
             nFc = len(self.Functs)
             for Ci in range(nFc):
                 functData(Ci, self.Functs)
-        else:
-            pass
 
         # compute number of constraints and determine row/column pointers
         nConst = 0
-        for Ji in range(nJ):
-            joint = self.Joints[Ji]
+        for joint in self.Joints:
             joint._rows = nConst
             joint._rowe = nConst + joint._mrows
             nConst = joint._rowe
-            Bi = joint.iBindex
-            if Bi != 0:
-                joint._colis = 3 * (Bi - 1)
-                joint._colie = 3 * Bi
-            Bj = joint.jBindex
-            if Bj != 0:
-                joint._coljs = 3 * (Bj - 1)
-                joint._colje = 3 * Bj
+            Bi_idx = joint.iBody._bidx
+            if Bi_idx != 0:
+                joint._colis = 3 * (Bi_idx - 1)
+                joint._colie = 3 * Bi_idx
+            Bj_idx = joint.jBody._bidx
+            if Bj_idx != 0:
+                joint._coljs = 3 * (Bj_idx - 1)
+                joint._colje = 3 * Bj_idx
 
         # // ---
         # // ... some check if required ...
@@ -644,7 +620,7 @@ class PlanarMultibodyModel:
             print(f"-----")
             for i, point in enumerate(self.Points):
                 print(f"\t... point: {i}")
-                print(f"\t... body index: {point.Bindex}")
+                print(f"\t... body: {point.body}")
                 print(f"\t... local coordinates: {', '.join(map(str, point.sPlocal.flatten()))}")
                 print(f"\t... global coordinates: {', '.join(map(str, point._rP.flatten()))}")
                 print(f"\t... sP: {', '.join(map(str, point._sP.flatten()))}")
@@ -659,7 +635,7 @@ class PlanarMultibodyModel:
             print(f"-----")
             for i, uvector in enumerate(self.uVectors, start=1):
                 print(f"\t... uVector: {i}")
-                print(f"\t... body index: {uvector.Bindex}")
+                print(f"\t... body: {uvector.body}")
                 print(f"\t... local vector: {', '.join(map(str, uvector.ulocal.flatten()))}")
                 print(f"\t... global vector: {', '.join(map(str, uvector._u.flatten()))}")
                 print(f"\t... ur: {', '.join(map(str, uvector._ur.flatten()))}")
@@ -672,10 +648,10 @@ class PlanarMultibodyModel:
             for i, force in enumerate(self.Forces, start=1):
                 print(f"\t... force: {i}")
                 print(f"\t... type: {force.type}")
-                print(f"\t... head point index: {force.iPindex}")
-                print(f"\t... tail point index: {force.jPindex}")
-                print(f"\t... head body index: {force.iBindex}")
-                print(f"\t... tail body index: {force.jBindex}")
+                print(f"\t... head point: {force.iPoint}")
+                print(f"\t... tail point: {force.jPoint}")
+                print(f"\t... head body: {force.iBody}")
+                print(f"\t... tail body: {force.jBody}")
                 print(f"\t... spring stiffness: {force.k}")
                 print(f"\t... undeformed spring length: {force.L0}")
                 print(f"\t... undeformed torsional spring angle: {force.theta0}")
@@ -696,12 +672,12 @@ class PlanarMultibodyModel:
             for i, joint in enumerate(self.Joints, start=1):
                 print(f"\t... joint: {i}")
                 print(f"\t... type: {joint.type}")
-                print(f"\t... body i index: {joint.iBindex}")
-                print(f"\t... body j index: {joint.jBindex}")
-                print(f"\t... point i index: {joint.iPindex}")
-                print(f"\t... point j index: {joint.jPindex}")
-                print(f"\t... unit vector i index: {joint.iUindex}")
-                print(f"\t... unit vector j index: {joint.jUindex}")
+                print(f"\t... body i: {joint.iBody}")
+                print(f"\t... body j: {joint.jBody}")
+                print(f"\t... point i: {joint.iPoint}")
+                print(f"\t... point j: {joint.jPoint}")
+                print(f"\t... unit vector i: {joint.iUvec}")
+                print(f"\t... unit vector j: {joint.jUvec}")
                 print(f"\t... function index: {joint.iFunct}")
                 print(f"\t... length: {joint.L}")
                 print(f"\t... radius: {joint.R}")
@@ -725,29 +701,21 @@ class PlanarMultibodyModel:
         Update position entities.
         """
         # update rotation matrix of the body
-        nB = len(self.Bodies)
-        for Bi in range(nB):
-            body = self.Bodies[Bi]
+        for body in self.Bodies:
             body._A = A_matrix(body.p)
 
         # compute sP = A * sP_prime; rP = r + sP
-        nP = len(self.Points)
-        for Pi in range(nP):
-            point = self.Points[Pi]
-            Bi = point.Bindex
-            if Bi != 0:
-                body = self.Bodies[Bi-1]
+        for point in self.Points:
+            if point.body is not Ground:
+                body = point.body
                 point._sP = body._A @ point.sPlocal
                 point._sPr = s_rot(point._sP)
                 point._rP = body.r + point._sP
 
         # compute u = _A * up
-        nU = len(self.uVectors)
-        for Vi in range(nU):
-            unit_vector = self.uVectors[Vi]
-            Bi = unit_vector.Bindex
-            if Bi != 0:
-                body = self.Bodies[Bi - 1]
+        for unit_vector in self.uVectors:
+            if unit_vector.body is not Ground:
+                body = unit_vector.body
                 unit_vector._u = body._A @ unit_vector.ulocal
                 unit_vector._ur = s_rot(unit_vector._u)
 
@@ -755,16 +723,16 @@ class PlanarMultibodyModel:
         """
         Compute sP_dot and rP_dot vectors and update velocity components.
         """
-        for Pi, point in enumerate(self.Points):
-            Bi = point.Bindex
-            if Bi != 0:
-                point._dsP = point._sPr * self.Bodies[Bi-1].dp
-                point._drP = self.Bodies[Bi-1].dr + point._dsP
+        for point in self.Points:
+            if point.body is not Ground:
+                body = point.body
+                point._dsP = point._sPr * body.dp
+                point._drP = body.dr + point._dsP
 
-        for Vi, uvector in enumerate(self.uVectors):
-            Bi = uvector.Bindex
-            if Bi != 0:
-                uvector._du = uvector._ur * self.Bodies[Bi-1].dp
+        for uvector in self.uVectors:
+            if uvector.body is not Ground:
+                body = uvector.body
+                uvector._du = uvector._ur * body.dp
             
     def __compute_constraints(self):
         if not self.Joints:
@@ -775,31 +743,27 @@ class PlanarMultibodyModel:
         for joint in self.Joints:
             match joint.type:
                 case 'rev':
-                    Pi = joint.iPindex
-                    Pj = joint.jPindex
-                    iBindex = joint.iBindex
-                    jBindex = joint.jBindex
+                    iPt = joint.iPoint
+                    jPt = joint.jPoint
                     
                     # compute relative positions of the points
-                    rPi = self.Points[Pi]._rP
-                    rPj = self.Points[Pj]._rP
-                    f = rPi - rPj
+                    f = iPt._rP - jPt._rP
 
                     if joint.fix == 1:
-                        if iBindex == 0:  # body i is ground (fixed)
-                            f = np.append(f, (-self.Bodies[jBindex].p - joint._p0))
-                        elif jBindex == 0:  # body j is ground (fixed)
-                            f = np.append(f, (self.Bodies[iBindex].p - joint._p0))
+                        if joint.iBody is Ground:
+                            f = np.append(f, (-joint.jBody.p - joint._p0))
+                        elif joint.jBody is Ground:
+                            f = np.append(f, (joint.iBody.p - joint._p0))
                         else:
-                            f = np.append(f, (self.Bodies[iBindex].p - self.Bodies[jBindex].p - joint._p0))
+                            f = np.append(f, (joint.iBody.p - joint.jBody.p - joint._p0))
 
                 case 'tran':
-                    Pi = joint.iPindex
-                    Pj = joint.jPindex
+                    iPt = joint.iPoint
+                    jPt = joint.jPoint
 
-                    ujr = self.uVectors[joint.jUindex]._ur
-                    ui = self.uVectors[joint.iUindex]._u
-                    d = self.Points[Pi]._rP - self.Points[Pj]._rP
+                    ujr = joint.jUvec._ur
+                    ui = joint.iUvec._u
+                    d = iPt._rP - jPt._rP
 
                     # compute constraint equations
                     f = np.array([ujr.T @ d, ujr.T @ ui]).reshape(2,1)
@@ -809,70 +773,70 @@ class PlanarMultibodyModel:
                         f = np.append(f, (ui.T @ d - joint._p0) / 2).reshape(3,1)
 
                 case 'rev-rev':
-                    Pi = joint.iPindex
-                    Pj = joint.jPindex
+                    iPt = joint.iPoint
+                    jPt = joint.jPoint
 
-                    d = self.Points[Pi]._rP - self.Points[Pj]._rP
+                    d = iPt._rP - jPt._rP
                     L = joint.L
                     u = d/L
                     # compute constraint equations
                     f = (u.T @ d - L)/2
 
                 case 'rev-tran':
-                    Pi = joint.iPindex
-                    Pj = joint.jPindex
+                    iPt = joint.iPoint
+                    jPt = joint.jPoint
 
-                    uir = self.uVectors[joint.iUindex]._ur
-                    d = self.Points[Pi]._rP - self.Points[Pj]._rP
+                    uir = joint.iUvec._ur
+                    d = iPt._rP - jPt._rP
 
                     # compute constraint equations
                     f = (uir.T @ d - joint.L)
 
                 case 'rigid':
-                    Bi = joint.iBindex
-                    Bj = joint.jBindex
+                    Bi = joint.iBody
+                    Bj = joint.jBody
                     
-                    if Bi == 0:
+                    if Bi is Ground:
                         f = np.vstack([
-                            -(self.Bodies[Bj].r + self.Bodies[Bj]._A @ joint.d0),
-                            -self.Bodies[Bj].p - joint._p0
+                            -(Bj.r + Bj._A @ joint.d0),
+                            -Bj.p - joint._p0
                         ])
-                    elif Bj == 0:
+                    elif Bj is Ground:
                         f = np.vstack([
-                            self.Bodies[Bi].r - joint.d0,
-                            self.Bodies[Bi].p - joint._p0
+                            Bi.r - joint.d0,
+                            Bi.p - joint._p0
                         ])
                     else:
                         f = np.vstack([
-                            self.Bodies[Bi].r - (self.Bodies[Bj].r + self.Bodies[Bj]._A @ joint.d0),
-                            self.Bodies[Bi].p - self.Bodies[Bj].p - joint._p0
+                            Bi.r - (Bj.r + Bj._A @ joint.d0),
+                            Bi.p - Bj.p - joint._p0
                         ])
 
                 case 'disc':
-                    Bi = joint.iBindex
+                    Bi = joint.iBody
                     f = np.vstack([
-                        self.Bodies[Bi - 1].r[1] - joint.R,
-                        (self.Bodies[Bi - 1].r[0] - joint.x0) + joint.R * (self.Bodies[Bi - 1].p - joint._p0)
+                        Bi.r[1] - joint.R,
+                        (Bi.r[0] - joint.x0) + joint.R * (Bi.p - joint._p0)
                     ])
                     
                 case 'rel-rot':
-                    fun, fun_d, fun_dd = functEval(self.Functs[joint.iFunct - 1], self.t)
-                    Bi = joint.iBindex
-                    Bj = joint.jBindex
+                    fun, fun_d, fun_dd = functEval(joint.iFunct, self.t)
+                    Bi = joint.iBody
+                    Bj = joint.jBody
 
-                    if Bi == 0:
-                        f = -self.Bodies[Bj - 1].p - fun
-                    elif Bj == 0:
-                        f = self.Bodies[Bi - 1].p - fun
+                    if Bi is Ground:
+                        f = -Bj.p - fun
+                    elif Bj is Ground:
+                        f = Bi.p - fun
                     else:
-                        f = self.Bodies[Bi - 1].p - self.Bodies[Bj - 1].p - fun
+                        f = Bi.p - Bj.p - fun
 
                 case 'rel-tran':
-                    Pi = joint.iPindex
-                    Pj = joint.jPindex
+                    iPt = joint.iPoint
+                    jPt = joint.jPoint
 
-                    d = self.Points[Pi]._rP - self.Points[Pj]._rP
-                    fun, fun_d, fun_dd = functEval(self.Functs[joint.iFunct - 1], self.t)
+                    d = iPt._rP - jPt._rP
+                    fun, fun_d, fun_dd = functEval(joint.iFunct, self.t)
 
                     f = (d.T @ d - fun**2)/2
 
@@ -901,14 +865,14 @@ class PlanarMultibodyModel:
         for Ji, joint in enumerate(self.Joints):
             match joint.type:
                 case 'rev':
-                    Pi = joint.iPindex
-                    Pj = joint.jPindex
+                    iPt = joint.iPoint
+                    jPt = joint.jPoint
 
                     Di = np.block([
-                        [np.eye(2), self.Points[Pi]._sPr.reshape(2, 1)]
+                        [np.eye(2), iPt._sPr.reshape(2, 1)]
                     ])
                     Dj = np.block([
-                        [-np.eye(2), -self.Points[Pj]._sPr.reshape(2, 1)]
+                        [-np.eye(2), -jPt._sPr.reshape(2, 1)]
                     ])
 
                     if joint.fix == 1:
@@ -922,69 +886,69 @@ class PlanarMultibodyModel:
                         ])
 
                 case 'tran':
-                    Pi = joint.iPindex
-                    Pj = joint.jPindex
+                    iPt = joint.iPoint
+                    jPt = joint.jPoint
 
-                    uj = self.uVectors[joint.jUindex]._u
-                    ujr = self.uVectors[joint.jUindex]._ur
-                    d = self.Points[Pi]._rP - self.Points[Pj]._rP
+                    uj = joint.jUvec._u
+                    ujr = joint.jUvec._ur
+                    d = iPt._rP - jPt._rP
 
                     Di = np.block([
-                        [ujr.T, (uj.T @ self.Points[Pi]._sP).reshape(1, 1)],
+                        [ujr.T, (uj.T @ iPt._sP).reshape(1, 1)],
                         [np.array([0, 0, 1])]
                     ])
                     Dj = np.block([
-                        [-ujr.T, -(uj.T @ (self.Points[Pj]._sP + d)).reshape(1, 1)],
+                        [-ujr.T, -(uj.T @ (jPt._sP + d)).reshape(1, 1)],
                         [np.array([0, 0, -1])]
                     ])
 
                     if joint.fix == 1:
                         Di = np.vstack([
                             Di,
-                            [uj.T, (uj.T @ self.Points[Pi]._sPr).reshape(1)]
+                            [uj.T, (uj.T @ iPt._sPr).reshape(1)]
                         ])
                         Dj = np.vstack([
                             Dj,
-                            [-uj.T, -(uj.T @ self.Points[Pj]._sPr).reshape(1)]
+                            [-uj.T, -(uj.T @ jPt._sPr).reshape(1)]
                         ])
 
                 case 'rev-rev':
-                    Pi = joint.iPindex
-                    Pj = joint.jPindex
+                    iPt = joint.iPoint
+                    jPt = joint.jPoint
 
-                    d = self.Points[Pi]._rP - self.Points[Pj]._rP
+                    d = iPt._rP - jPt._rP
                     L = joint.L
                     u = d/L
 
                     Di = np.block([
-                        u.T, (u.T @ self.Points[Pi]._sPr).reshape(1, 1)
+                        u.T, (u.T @ iPt._sPr).reshape(1, 1)
                         ])
                     Dj = np.block([
-                        -u.T, -(u.T @ self.Points[Pj]._sPr).reshape(1, 1)
+                        -u.T, -(u.T @ jPt._sPr).reshape(1, 1)
                         ])
                     
                 case 'rev-tran':
-                    Pi = joint.iPindex
-                    Pj = joint.jPindex
+                    iPt = joint.iPoint
+                    jPt = joint.jPoint
 
-                    ui = self.uVectors[joint.iUindex]._u
-                    ui_r = self.uVectors[joint.iUindex]._ur
-                    d = self.Points[Pi]._rP - self.Points[Pj]._rP
+                    ui = joint.iUvec._u
+                    ui_r = joint.iUvec._ur
+                    d = iPt._rP - jPt._rP
 
                     Di = np.block([
-                        ui_r.T, (ui.T @ (self.Points[Pi]._sP - d)).reshape(1, 1)
+                        ui_r.T, (ui.T @ (iPt._sP - d)).reshape(1, 1)
                         ])
                     Dj = np.block([
-                        -ui_r.T, -(ui.T @ self.Points[Pj]._sP).reshape(1, 1)
+                        -ui_r.T, -(ui.T @ jPt._sP).reshape(1, 1)
                         ])
 
                 case 'rigid':
-                    Bj = joint.jBindex
+                    Bj = joint.jBody
 
                     Di = np.eye(3)
-                    if Bj != 0:
+                    if Bj is not Ground:
                         Dj = np.block([
-                            [-np.eye(2), -s_rot(self.Bodies[Bj]._A @ joint.d0)],
+                            [-np.eye(2), -s_rot(Bj._A @ joint.d0)],
                             [np.array([0, 0, -1])]
                         ])
                         
@@ -1003,16 +967,16 @@ class PlanarMultibodyModel:
                         ])
 
                 case 'rel-tran':
-                    Pi = joint.iPindex
-                    Pj = joint.jPindex
+                    iPt = joint.iPoint
+                    jPt = joint.jPoint
 
-                    d = self.Points[Pi]._rP - self.Points[Pj]._rP
+                    d = iPt._rP - jPt._rP
 
                     Di = np.block([
-                        d.T, (d.T @ self.Points[Pi]._sPr).reshape(1, 1)
+                        d.T, (d.T @ iPt._sPr).reshape(1, 1)
                         ])
                     Dj = np.block([
-                        -d.T, -(d.T @ self.Points[Pj]._sPr).reshape(1, 1)
+                        -d.T, -(d.T @ jPt._sPr).reshape(1, 1)
                         ])
                 
                 case _:
@@ -1023,13 +987,13 @@ class PlanarMultibodyModel:
             re = joint._rowe
 
             # column indices for body i 
-            if joint.iBindex != 0:
+            if joint.iBody is not Ground:
                 cis = joint._colis
                 cie = joint._colie
                 D[rs:re, cis:cie] = Di
 
             # column indices for body j
-            if joint.jBindex != 0:
+            if joint.jBody is not Ground:
                 cjs = joint._coljs
                 cje = joint._colje
                 D[rs:re, cjs:cje] = Dj
@@ -1051,12 +1015,12 @@ class PlanarMultibodyModel:
         for joint in self.Joints:
             match joint.type:
                 case 'rel-rot':
-                    fun, fun_d, _ = functEval(self.Functs[joint.iFunct - 1], self.t)
+                    fun, fun_d, _ = functEval(joint.iFunct, self.t)
                     f = fun_d
 
                 case 'rel-tran':
-                    fun, fun_d, _ = functEval(self.Functs[joint.iFunct - 1], self.t)
-                    d = self.Points[joint.iPindex]._rP - self.Points[joint.jPindex]._rP
+                    fun, fun_d, _ = functEval(joint.iFunct, self.t)
+                    d = joint.iPoint._rP - joint.jPoint._rP
                     f = fun * fun_d
 
                 case _:
@@ -1085,67 +1049,71 @@ class PlanarMultibodyModel:
 
             match joint_type:
                 case "rev":
-                    Pi, Pj = joint.iPindex, joint.jPindex
-                    Bi, Bj = self.Points[Pi].Bindex, self.Points[Pj].Bindex
+                    iPt = joint.iPoint
+                    jPt = joint.jPoint
+                    Bi = joint.iBody
+                    Bj = joint.jBody
 
-                    if Bi == 0:
-                        f = s_rot(self.Points[Pj]._dsP) * self.Bodies[Bj - 1].dp
-                    elif Bj == 0:
-                        f = -s_rot(self.Points[Pi]._dsP) * self.Bodies[Bi - 1].dp
+                    if Bi is Ground:
+                        f = s_rot(jPt._dsP) * Bj.dp
+                    elif Bj is Ground:
+                        f = -s_rot(iPt._dsP) * Bi.dp
                     else:
                         f = (
-                            -s_rot(self.Points[Pi]._dsP) * self.Bodies[Bi - 1].dp
-                            + s_rot(self.Points[Pj]._dsP) * self.Bodies[Bj - 1].dp
+                            -s_rot(iPt._dsP) * Bi.dp
+                            + s_rot(jPt._dsP) * Bj.dp
                         )
 
                     if joint.fix == 1:
                         f = np.vstack([f, [0]])
                 
                 case "tran":
-                    Bi, Bj = joint.iBindex, joint.jBindex
-                    Pi, Pj = joint.iPindex, joint.jPindex
-                    ujd = self.uVectors[joint.jUindex]._du
+                    Bi = joint.iBody
+                    Bj = joint.jBody
+                    iPt = joint.iPoint
+                    jPt = joint.jPoint
+                    ujd = joint.jUvec._du
                     ujdr = s_rot(ujd)
 
-                    if Bi == 0:
+                    if Bi is Ground:
                         f2 = 0.0
-                    elif Bj == 0:
+                    elif Bj is Ground:
                         f2 = 0.0
                     else:
-                        diffr = self.Bodies[Bi-1].r - self.Bodies[Bj-1].r
-                        dp_product = (ujd.T @ diffr).item() * self.Bodies[Bi-1].dp
-                        diffdr = self.Bodies[Bi-1].dr - self.Bodies[Bj-1].dr
+                        diffr = Bi.r - Bj.r
+                        dp_product = (ujd.T @ diffr).item() * Bi.dp
+                        diffdr = Bi.dr - Bj.dr
                         f2 = dp_product - 2.0 * (ujdr.T @ diffdr).item()
 
                     f = np.array([[f2], [0.0]])
 
                     if joint.fix == 1:
-                        d = self.Points[Pi]._rP - self.Points[Pj]._rP
-                        dd = self.Points[Pi]._drP - self.Points[Pj]._drP
+                        d = iPt._rP - jPt._rP
+                        dd = iPt._drP - jPt._drP
                         L = joint._p0 
                         u = d / L
                         du = dd / L
                         f3 = -(du.T @ dd).item()
 
-                        if Bi == 0:
-                            f3 += (u.T @ (s_rot(self.Points[Pj]._dsP) * self.Bodies[Bj-1].dp)).item()
-                        elif Bj == 0:
-                            f3 -= (u.T @ (s_rot(self.Points[Pi]._dsP) * self.Bodies[Bi-1].dp)).item()
+                        if Bi is Ground:
+                            f3 += (u.T @ (s_rot(jPt._dsP) * Bj.dp)).item()
+                        elif Bj is Ground:
+                            f3 -= (u.T @ (s_rot(iPt._dsP) * Bi.dp)).item()
                         else:
-                            term1 = self.Points[Pi]._dsP * self.Bodies[Bi-1].dp
-                            term2 = self.Points[Pj]._dsP * self.Bodies[Bj-1].dp
+                            term1 = iPt._dsP * Bi.dp
+                            term2 = jPt._dsP * Bj.dp
                             f3 -= (u.T @ s_rot(term1 - term2)).item()
 
                         f = np.vstack([f, [[f3]]])
                     
                 case "rev-rev":
-                    Pi = joint.iPindex
-                    Pj = joint.jPindex
-                    Bi = joint.iBindex
-                    Bj = joint.jBindex
+                    iPt = joint.iPoint
+                    jPt = joint.jPoint
+                    Bi = joint.iBody
+                    Bj = joint.jBody
                     
-                    d = self.Points[Pi]._rP - self.Points[Pj]._rP
-                    dd = self.Points[Pi]._drP - self.Points[Pj]._drP
+                    d = iPt._rP - jPt._rP
+                    dd = iPt._drP - jPt._drP
                     
                     L = joint.L
                     u = d/L
@@ -1153,44 +1121,44 @@ class PlanarMultibodyModel:
                     
                     f = -ud.T @ dd
                     
-                    if Bi == 0:
-                        f = f + u.T @ s_rot(self.Points[Pj]._dsP) * self.Bodies[Bj-1].dp
-                    elif Bj == 0:
-                        f = f - u.T @ s_rot(self.Points[Pi]._dsP) * self.Bodies[Bi-1].dp
+                    if Bi is Ground:
+                        f = f + u.T @ s_rot(jPt._dsP) * Bj.dp
+                    elif Bj is Ground:
+                        f = f - u.T @ s_rot(iPt._dsP) * Bi.dp
                     else:
                         f = f - u.T @ s_rot(
-                            self.Points[Pi]._dsP * self.Bodies[Bi-1].dp - 
-                            self.Points[Pj]._dsP * self.Bodies[Bj-1].dp
+                            iPt._dsP * Bi.dp - 
+                            jPt._dsP * Bj.dp
                     )
 
                 case "rev-tran":
-                    Pi = joint.iPindex
-                    Pj = joint.jPindex
-                    Bi = joint.iBindex
-                    Bj = joint.jBindex
+                    iPt = joint.iPoint
+                    jPt = joint.jPoint
+                    Bi = joint.iBody
+                    Bj = joint.jBody
 
-                    ui = self.uVectors[joint.iUindex]._u
-                    ui_d = self.uVectors[joint.iUindex]._du
-                    d = self.Points[Pi]._rP - self.Points[Pj]._rP
-                    dd = self.Points[Pi]._drP - self.Points[Pj]._drP
+                    ui = joint.iUvec._u
+                    ui_d = joint.iUvec._du
+                    d = iPt._rP - jPt._rP
+                    dd = iPt._drP - jPt._drP
 
-                    if Bi == 0:
-                        f = ui.T @ self.Points[Pj]._dsP * self.Bodies[Bj-1].dp
-                    elif Bj == 0:
-                        f = ui_d.T @ (d * self.Bodies[Bi-1].dp + 2 * s_rot(dd)) - \
-                            ui.T @ self.Points[Pi]._dsP * self.Bodies[Bi-1].dp
+                    if Bi is Ground:
+                        f = ui.T @ jPt._dsP * Bj.dp
+                    elif Bj is Ground:
+                        f = ui_d.T @ (d * Bi.dp + 2 * s_rot(dd)) - \
+                            ui.T @ iPt._dsP * Bi.dp
                     else:
-                        f = ui_d.T @ (d * self.Bodies[Bi-1].dp + 2 * s_rot(dd)) - \
-                            ui.T @ (self.Points[Pi]._dsP * self.Bodies[Bi-1].dp - \
-                                self.Points[Pj]._dsP * self.Bodies[Bj-1].dp)
+                        f = ui_d.T @ (d * Bi.dp + 2 * s_rot(dd)) - \
+                            ui.T @ (iPt._dsP * Bi.dp - \
+                                jPt._dsP * Bj.dp)
                 
                 case "rigid":
-                    Bj = joint.jBindex
+                    Bj = joint.jBody
 
                     f = np.zeros(3)
-                    if Bj != 0:
+                    if Bj is not Ground:
                         f = np.concatenate([
-                            -self.Bodies[Bj-1]._A @ joint.d0 * self.Bodies[Bj-1].dp**2,
+                            -Bj._A @ joint.d0 * Bj.dp**2,
                             np.array([0])
                         ])
                 
@@ -1198,29 +1166,29 @@ class PlanarMultibodyModel:
                     f = np.zeros(2)
                     
                 case "rel-rot":
-                    fun, fun_d, fun_dd = functEval(self.Functs[joint.iFunct - 1], self.t)
+                    fun, fun_d, fun_dd = functEval(joint.iFunct, self.t)
                     f = fun_dd
 
                 case "rel-tran":
-                    Pi = joint.iPindex
-                    Pj = joint.jPindex
-                    Bi = joint.iBindex
-                    Bj = joint.jBindex
+                    iPt = joint.iPoint
+                    jPt = joint.jPoint
+                    Bi = joint.iBody
+                    Bj = joint.jBody
 
-                    d = self.Points[Pi]._rP - self.Points[Pj]._rP
-                    dd = self.Points[Pi]._drP - self.Points[Pj]._drP
+                    d = iPt._rP - jPt._rP
+                    dd = iPt._drP - jPt._drP
 
-                    fun, fun_d, fun_dd = functEval(self.Functs[joint.iFunct - 1], self.t)
+                    fun, fun_d, fun_dd = functEval(joint.iFunct, self.t)
 
                     f = fun * fun_dd + fun_d**2
 
-                    if Bi == 0:
-                        f = f + d.T @ s_rot(self.Points[Pj]._dsP).T @ self.Bodies[Bj - 1].dp
-                    elif Bj == 0:
-                        f = f - d.T @ s_rot(self.Points[Pi]._dsP).T @ self.Bodies[Bi - 1].dp - dd.T @ dd
+                    if Bi is Ground:
+                        f = f + d.T @ s_rot(jPt._dsP).T @ Bj.dp
+                    elif Bj is Ground:
+                        f = f - d.T @ s_rot(iPt._dsP).T @ Bi.dp - dd.T @ dd
                     else:
-                        f = f + d.T @ s_rot(self.Points[Pj]._dsP).T @ self.Bodies[Bj - 1].dp \
-                            - d.T @ s_rot(self.Points[Pi]._dsP).T @ self.Bodies[Bi - 1].dp - dd.T @ dd
+                        f = f + d.T @ s_rot(jPt._dsP).T @ Bj.dp \
+                            - d.T @ s_rot(iPt._dsP).T @ Bi.dp - dd.T @ dd
             
             rs = joint._rows
             re = rs + joint._mrows 
@@ -1294,64 +1262,60 @@ class PlanarMultibodyModel:
                         body._f += body._wgt
 
                 case 'ptp':
-                    Pi, Pj = force.iPindex, force.jPindex
-                    Bi, Bj = force.iBindex, force.jBindex
-                    d = self.Points[Pi]._rP - self.Points[Pj]._rP
-                    dd = self.Points[Pi]._drP - self.Points[Pj]._drP
+                    iPt = force.iPoint
+                    jPt = force.jPoint
+                    Bi = force.iBody
+                    Bj = force.jBody
+                    d = iPt._rP - jPt._rP
+                    dd = iPt._drP - jPt._drP
                     L = np.linalg.norm(d)
                     dL = d.T @ dd / L
-                    delta = L - self.Forces[Fi].L0
+                    delta = L - force.L0
                     u = d / L
 
-                    f = self.Forces[Fi].k * delta + self.Forces[Fi].dc * dL + self.Forces[Fi].f_a
+                    f = force.k * delta + force.dc * dL + force.f_a
                     fi = f * u
 
-                    if Bi != 0:
-                        self.Bodies[Bi-1]._f -= fi
-                        self.Bodies[Bi-1]._n -= (self.Points[Pi]._sPr.T @ fi).item()
+                    if Bi is not Ground:
+                        Bi._f -= fi
+                        Bi._n -= (iPt._sPr.T @ fi).item()
                     
-                    if Bj != 0:
-                        self.Bodies[Bj-1]._f += fi
-                        self.Bodies[Bj-1]._n += (self.Points[Pj]._sPr.T @ fi).item()
+                    if Bj is not Ground:
+                        Bj._f += fi
+                        Bj._n += (jPt._sPr.T @ fi).item()
 
                 case 'rot-sda':
-                    Bi = force.iBindex
-                    Bj = force.jBindex
+                    Bi = force.iBody
+                    Bj = force.jBody
 
-                    if Bi == 0:
-                        theta = -self.Bodies[Bj-1].p
-                        theta_d = -self.Bodies[Bj-1].dp
+                    if Bi is Ground:
+                        theta = -Bj.p
+                        theta_d = -Bj.dp
                         T = force.k * (theta - force.theta0) + force.dc * theta_d + force.T_a
-                        self.Bodies[Bj-1]._n += T
-                    elif Bj == 0:
-                        theta = self.Bodies[Bi-1].p
-                        theta_d = self.Bodies[Bi-1].dp
+                        Bj._n += T
+                    elif Bj is Ground:
+                        theta = Bi.p
+                        theta_d = Bi.dp
                         T = force.k * (theta - force.theta0) + force.dc * theta_d + force.T_a
-                        self.Bodies[Bi-1]._n -= T
+                        Bi._n -= T
                     else:
-                        theta = self.Bodies[Bi-1].p - self.Bodies[Bj-1].p
-                        theta_d = self.Bodies[Bi-1].dp - self.Bodies[Bj-1].dp
+                        theta = Bi.p - Bj.p
+                        theta_d = Bi.dp - Bj.dp
                         T = force.k * (theta - force.theta0) + force.dc * theta_d + force.T_a
-                        self.Bodies[Bi-1]._n -= T
-                        self.Bodies[Bj-1]._n += T
+                        Bi._n -= T
+                        Bj._n += T
 
                 case 'flocal':
-                    Bi = force.iBindex
-                    self.Bodies[Bi-1]._f += self.Bodies[Bi-1]._A @ force.flocal
+                    force.iBody._f += force.iBody._A @ force.flocal
 
                 case 'f':
-                    Bi = force.iBindex
-                    self.Bodies[Bi-1]._f += force.f
+                    force.iBody._f += force.f
 
                 case 'T':
-                    Bi = force.iBindex
-                    self.Bodies[Bi-1]._n += force.T
+                    force.iBody._n += force.T
 
                 case 'user' if force.callback is not None and callable(force.callback):
-                    global_vars = get_globals()
-                    params = list(inspect.signature(force.callback).parameters.keys())
-                    args = [global_vars[name] for name in params if name in global_vars]
-                    force.callback(*args)
+                    force.callback()
 
                 case _:
                     raise ValueError(f"Unsupported force type: '{force.type}'. Please check your input.")
@@ -1456,7 +1420,7 @@ class PlanarMultibodyModel:
             print(f"-----")
             for i, point in enumerate(self.Points):
                 print(f"\t... point: {i}")
-                print(f"\t... body index: {point.Bindex}")
+                print(f"\t... body: {point.body}")
                 print(f"\t... local coordinates: {', '.join(map(str, point.sPlocal.flatten()))}")
                 print(f"\t... global coordinates: {', '.join(map(str, point._rP.flatten()))}")
                 print(f"\t... sP: {', '.join(map(str, point._sP.flatten()))}")
@@ -1471,7 +1435,7 @@ class PlanarMultibodyModel:
             print(f"-----")
             for i, uvector in enumerate(self.uVectors, start=1):
                 print(f"\t... uVector: {i}")
-                print(f"\t... body index: {uvector.Bindex}")
+                print(f"\t... body: {uvector.body}")
                 print(f"\t... local vector: {', '.join(map(str, uvector.ulocal.flatten()))}")
                 print(f"\t... global vector: {', '.join(map(str, uvector._u.flatten()))}")
                 print(f"\t... ur: {', '.join(map(str, uvector._ur.flatten()))}")
@@ -1484,10 +1448,10 @@ class PlanarMultibodyModel:
             for i, force in enumerate(self.Forces, start=1):
                 print(f"\t... force: {i}")
                 print(f"\t... type: {force.type}")
-                print(f"\t... head point index: {force.iPindex}")
-                print(f"\t... tail point index: {force.jPindex}")
-                print(f"\t... head body index: {force.iBindex}")
-                print(f"\t... tail body index: {force.jBindex}")
+                print(f"\t... head point: {force.iPoint}")
+                print(f"\t... tail point: {force.jPoint}")
+                print(f"\t... head body: {force.iBody}")
+                print(f"\t... tail body: {force.jBody}")
                 print(f"\t... spring stiffness: {force.k}")
                 print(f"\t... undeformed spring length: {force.L0}")
                 print(f"\t... undeformed torsional spring angle: {force.theta0}")
@@ -1508,12 +1472,12 @@ class PlanarMultibodyModel:
             for i, joint in enumerate(self.Joints, start=1):
                 print(f"\t... joint: {i}")
                 print(f"\t... type: {joint.type}")
-                print(f"\t... body i index: {joint.iBindex}")
-                print(f"\t... body j index: {joint.jBindex}")
-                print(f"\t... point i index: {joint.iPindex}")
-                print(f"\t... point j index: {joint.jPindex}")
-                print(f"\t... unit vector i index: {joint.iUindex}")
-                print(f"\t... unit vector j index: {joint.jUindex}")
+                print(f"\t... body i: {joint.iBody}")
+                print(f"\t... body j: {joint.jBody}")
+                print(f"\t... point i: {joint.iPoint}")
+                print(f"\t... point j: {joint.jPoint}")
+                print(f"\t... unit vector i: {joint.iUvec}")
+                print(f"\t... unit vector j: {joint.jUvec}")
                 print(f"\t... function index: {joint.iFunct}")
                 print(f"\t... length: {joint.L}")
                 print(f"\t... radius: {joint.R}")

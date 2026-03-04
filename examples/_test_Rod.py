@@ -24,7 +24,7 @@ Forces:
 Contact model: Damped-spring penalty contact
   F_n = k_c * delta - c_c * delta_d   (delta = penetration depth > 0)
   k_c = 1e4   (contact stiffness, N/m)
-  c_c = 200   (contact damping, N·s/m; ~ ζ=1 critical damping for k_c, m=1)
+  c_c = 200   (contact damping, N*s/m; ~ zeta=1 critical damping for k_c, m=1)
 
 NOTE: MATLAB uses the Lankarani-Nikravesh model with K=1e11, e=0.95 which
       produces near-instantaneous contact events that the Python Radau solver
@@ -52,9 +52,9 @@ B1 = Body(m=1.0, J=0.01, r=[0.0, 1.0], p=np.pi/4, dr=[0.0, -6.0])
 f0 = Force(type='weight')   # gravity
 
 _k_c = 1e4   # contact stiffness (N/m)
-_c_c = 200.0 # contact damping (N·s/m; critically-damped: 2*sqrt(k_c*m))
+_c_c = 200.0 # contact damping (N*s/m; critically-damped: 2*sqrt(k_c*m))
 
-def my_force(B1):
+def my_force():
     """Damped penalty contact at both rod endpoints (ground at y=0).
 
     Velocity of endpoint P on a rigid body:
@@ -84,23 +84,10 @@ f1.callback = my_force
 # =============================================================================
 
 #%% Create model and solve
-model = PlanarMultibodyModel()
+model = PlanarMultibodyModel(
+    bodies=[B1],
+    forces=[f0, f1])
 T, uT = model.solve(method='Radau', t_final=3.0, t_eval=np.linspace(0, 2, 2001))
-
-# =============================================================================
-# OUTPUT
-# =============================================================================
-
-#%% Save results
-# output_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'results', '_test_Rod.txt')
-# nB = model.nB
-# nC = model.nC
-# nB3 = nB * 3
-# header = '\t'.join(['t'] + [f'B{i+1}_{c}' for i in range(nB) for c in ['x', 'y', 'p']])
-# np.savetxt(output_file, np.column_stack([T, uT[:, :nB3]]),
-#            delimiter='\t', header=header, comments='', fmt='%.8f')
-# print(f"[_test_Rod] Done. nB={nB}, nC={nC}, DOF={nB*3-nC}, points={len(T)}")
-# print(f"  Results: {output_file}")
 
 if __name__ == '__main__':
     plot_comparison(T, uT, matlab_filename='Rod.txt', model_title='Rod')

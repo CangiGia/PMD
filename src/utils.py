@@ -3,62 +3,17 @@ Utilities for Planar Multi-Body Dynamics
 
 This module provides various utility functions to support 
 the development of planar multi-body dynamic models. It includes tools 
-for handling global variables, grouping class instances, and managing 
-vector transformations.
+for managing vector transformations.
 
 Author: Giacomo Cangi
 """
 
 
-import inspect
 import numpy as np
 from numpy.typing import *
 from scipy.interpolate import interp1d
 from numba import njit, prange
 
-
-def get_globals():
-    """
-    Retrieve the global variables of the calling module.
-
-    This method uses the inspect module to access the stack and 
-    fetch the global variables from the caller's context.
-
-    Returns
-    -------
-    dict
-        A dictionary of the caller's global variables.
-    """
-    for frame_info in inspect.stack():
-        if frame_info.function == "<module>" and frame_info.frame.f_globals.get("__name__") == "__main__":
-            return frame_info.frame.f_globals
-        
-    return inspect.stack()[1].frame.f_globals
-
-def group_classes():
-    """
-    Looping through all the global variables this method returns a 
-    dictionary, in which, all the defined instances are contained.
-
-    Returns
-    -------
-    dict
-        A dictionary where each key is a class name (string) and the corresponding 
-        value is a list of instances of that class type.
-    """
-    grouped_instances = {}
-    global_vars = get_globals()
-    
-    # loop through global vars
-    for var_name, var_instance in global_vars.items():
-        # check if the instance has a __class__ attribute
-        if hasattr(var_instance, '__class__'):
-            class_name = var_instance.__class__.__name__
-            if class_name not in grouped_instances:
-                grouped_instances[class_name] = []
-            grouped_instances[class_name].append(var_instance)
-
-    return grouped_instances
 
 def as_column_property(name):
     """

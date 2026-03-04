@@ -13,6 +13,45 @@ import numpy as np
 from numpy.typing import *
 from .utils import *
 
+
+# ── Ground singleton ──────────────────────────────────────────────
+
+class _GroundType:
+    """Singleton representing the inertial ground/world frame.
+
+    Ground is the immovable reference body with zero state.  Use the
+    module-level ``Ground`` instance instead of instantiating this class.
+    """
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    # Fixed zero state — mirrors the Body interface that the solver reads.
+    r   = np.zeros((2, 1))
+    p   = 0.0
+    dr  = np.zeros((2, 1))
+    dp  = 0.0
+    ddr = np.zeros((2, 1))
+    ddp = 0.0
+    _A  = np.eye(2)
+    _bidx = 0          # internal body index: 0 ≡ ground
+
+    def __repr__(self):
+        return "Ground"
+
+    def __bool__(self):
+        """Ground is falsy so ``if body:`` is False for Ground, True for Body."""
+        return False
+
+
+Ground = _GroundType()
+
+
+# ── Base class ────────────────────────────────────────────────────
+
 class Base:
     """
     Base class for all multi-body simulation objects.
@@ -93,6 +132,8 @@ class Body(Base):
     -----
     _A (NDArray) 
         Rotational transformation matrix.
+    _bidx (int)
+        Internal body index (1-based), set by the solver during initialization.
     _irc (int) 
         Index of the first element of r in u.
     _irv (int) 
@@ -110,7 +151,7 @@ class Body(Base):
     _n (float) 
         Sum of moments acting on the body.
     _pts (list) 
-        List of point indexes associated with this body.
+        List of Point objects associated with this body.
     """
 
     def __init__(self, m=1, J=1, r=None, p=0, dr=None, dp=0, ddr=None, ddp=0):
@@ -128,6 +169,7 @@ class Body(Base):
         self.ddr = ddr if ddr is not None else colvect(0, 0)
         self.ddp = ddp
         self._A = np.eye(2)
+        self._bidx = 0
         self._irc = 0
         self._irv = 0
         self._ira = 0
@@ -150,8 +192,8 @@ class Point(Base):
 
     Attributes
     ----------
-    Bindex (int)
-        Body index to which the point belong.
+    body : Body or Ground
+        The body to which this point is attached.
     sPlocal (NDArray)
         Point coordinates with respect to the local reference frame.
     
@@ -171,9 +213,9 @@ class Point(Base):
         `x` and `y` second time derivative of the vector `r`.         
     """
 
-    def __init__(self, Bindex=0, sPlocal=None):
+    def __init__(self, body=None, sPlocal=None):
         super().__init__()  # call to the Base class constructor
-        self.Bindex = Bindex
+        self.body = body if body is not None else Ground
         self.sPlocal = sPlocal if sPlocal is not None else colvect(0, 0)
         self._sP = colvect(0, 0)
         self._sPr = colvect(0, 0)
@@ -194,28 +236,28 @@ class Point(Base):
 
 class uVector(Base): 
     """
-    Crate a body-fixed `unit vector` in a planar multi-body dynamic simulation.
+    Create a body-fixed `unit vector` in a planar multi-body dynamic simulation.
 
     Attributes
     ----------
-    Bindex (int)
-        Body index to which the vector belong.
+    body : Body or Ground
+        The body to which this vector is attached.
     ulocal (NDArray)
         `xi` and `eta` components of the vector in the local reference frame.
 
     Notes
     -----
     _u (NDArray)
-        `x` and `y` componenets of the vector in the global reference frame.
+        `x` and `y` components of the vector in the global reference frame.
     _ur (NDArray)
         Components of the vector `u`, rotated. 
     _du (NDArray)
         First time derivative of the vector `u`.
     """
 
-    def __init__(self, Bindex=0, ulocal=None):
+    def __init__(self, body=None, ulocal=None):
         super().__init__()  # call to the Base class constructor
-        self.Bindex = Bindex
+        self.body = body if body is not None else Ground
         self.ulocal = ulocal if ulocal is not None else colvect(1, 0) # default value
         self._u = colvect(0, 0)
         self._ur = colvect(0, 0)
@@ -230,46 +272,49 @@ class uVector(Base):
 
 class Force(Base):
     """
-    Crate a force in a planar multi-body dynamic simulation.
+    Create a force in a planar multi-body dynamic simulation.
 
     Attributes
     ----------
-    type (str)
-        Element type: ptp, rot_sda, weight, fp, f, T.
-    iPindex (int)
-        Index of the head (arrow) point.
-    jPindex (int)
-        Index of the tail point.
-    iBindex (int)
-        Index of the head (arrow) body.
-    jBindex (int)
-        Index of the tail body.
-    k (float)
+    type : str
+        Element type: ``'ptp'``, ``'rot-sda'``, ``'weight'``,
+        ``'flocal'``, ``'f'``, ``'T'``, ``'user'``.
+    iPoint : Point or None
+        Head (arrow) point.
+    jPoint : Point or None
+        Tail point.
+    iBody : Body, Ground, or None
+        Head (arrow) body.
+    jBody : Body, Ground, or None
+        Tail body.
+    k : float
         Spring stiffness.
-    L0 (float)
+    L0 : float
         Undeformed spring length.
-    theta0 (float)
+    theta0 : float
         Undeformed torsional spring angle.
-    dc (float)
+    dc : float
         Damping coefficient.
-    f_a (float)
+    f_a : float
         Constant actuator force.
-    T_a (float)
+    T_a : float
         Constant actuator torque.
-    flocal (NDArray)
+    flocal : NDArray
         Constant force in the local reference frame.
-    f (NDArray)
-       Constant force in the `x-y` reference frame.
-    T (float)
-        Constant torque in the `x-y` refernce frame.
+    f : NDArray
+       Constant force in the ``x-y`` reference frame.
+    T : float
+        Constant torque in the ``x-y`` reference frame.
+    callback : callable or None
+        User-defined force callback (no arguments, uses closures).
 
     Notes
     -----        
-    _gravity (float)
+    _gravity : float
         Gravitational constant.
-    _wgt (NDArray)
-        Gravitational direction (default `-y`).
-    _iFunct (int)
+    _wgt : NDArray
+        Gravitational direction (default ``-y``).
+    _iFunct : int
         Analytical function index.
     """
 
@@ -279,15 +324,18 @@ class Force(Base):
 
     VALID_TYPES = ['ptp', 'rot-sda', 'weight', 'flocal', 'f', 'T', 'user']
 
-    def __init__(self, type='ptp', iPindex=0, jPindex=0, iBindex=0, jBindex=0, k=0, L0=0, theta0=0, dc=0, f_a=0, T_a=0, flocal=None, f=None, T=0, callback=None):
+    def __init__(self, type='ptp', iPoint=None, jPoint=None,
+                 iBody=None, jBody=None,
+                 k=0, L0=0, theta0=0, dc=0, f_a=0, T_a=0,
+                 flocal=None, f=None, T=0, callback=None):
         super().__init__()  # call to the Base class constructor
         if type not in Force.VALID_TYPES:
             raise ValueError(f"Force {self.COUNT}: unknown type '{type}', valid types: {Force.VALID_TYPES}")
         self.type = type
-        self.iPindex = iPindex
-        self.jPindex = jPindex
-        self.iBindex = iBindex
-        self.jBindex = jBindex
+        self.iPoint = iPoint
+        self.jPoint = jPoint
+        self.iBody = iBody if iBody is not None else Ground
+        self.jBody = jBody if jBody is not None else Ground
         self.k = k
         self.L0 = L0
         self.theta0 = theta0
@@ -313,71 +361,74 @@ class Joint(Base):
 
     Attributes
     ----------
-    type (str)
-        Joint type: `rev`, `tran`, `rev-rev`, `rev-tran`, `rigid`, `disc`, 
-        `rel-rot`, `rel-tran`.
-    iBindex (int)
-        Index of body `i`. 
-    jBindex (int)
-        Index of body `j`. 
-    iPindex (int)
-        Index of point `Pi`. 
-    jPindex (int)
-        Index of point `Pj`.
-    iUindex (int)
-        Index of unit vector `ui`.
-    jUindex (int)
-        Index of unit vector `uj`.
-    iFunct (int)
-        Analytical function index. 
-    L (float)
+    type : str
+        Joint type: ``'rev'``, ``'tran'``, ``'rev-rev'``, ``'rev-tran'``,
+        ``'rigid'``, ``'disc'``, ``'rel-rot'``, ``'rel-tran'``.
+    iBody : Body or Ground
+        Body ``i``.
+    jBody : Body or Ground
+        Body ``j``.
+    iPoint : Point or None
+        Point ``Pi``.
+    jPoint : Point or None
+        Point ``Pj``.
+    iUvec : uVector or None
+        Unit vector ``ui``.
+    jUvec : uVector or None
+        Unit vector ``uj``.
+    iFunct : Function or None
+        Analytical function object.
+    L : float
         Constant length.
-    R (float)
+    R : float
         Constant radius.
-    x0 (float)
-        Initial condition `x`, for disc.
-    d0 (NDArray)
-        Initial condition for `d` (rigid). 
-    fix (int)
+    x0 : float
+        Initial condition ``x``, for disc.
+    d0 : NDArray
+        Initial condition for ``d`` (rigid). 
+    fix : int
         Fix relative dof (if = 1, rev or tran). 
 
     Notes
     -----    
-    _p0 (float)
-        Initial condition `phi` for a disc (or rigid).
-    _nbody (int)
+    _p0 : float
+        Initial condition ``phi`` for a disc (or rigid).
+    _nbody : int
         Number of moving bodies involved.
-    _mrows (int)
+    _mrows : int
         Number of rows (constraints).
-    _rows (int)
+    _rows : int
         Row index start.
-    _rowe (int)
+    _rowe : int
         Row index end.
-    _colis (int)
-        Comlumn index for body i-start. 
-    _colie (int)
-        Column index for body j-start. 
-    _coljs (int)
-        Column index for body j-start.
-    _colje (int)
+    _colis : int
         Column index for body i-start. 
-    _lagrange (NDArray)
+    _colie : int
+        Column index for body i-end. 
+    _coljs : int
+        Column index for body j-start.
+    _colje : int
+        Column index for body j-end. 
+    _lagrange : NDArray
         Lagrange multipliers.
     """
 
     VALID_TYPES = ['rev', 'tran', 'rev-rev', 'rev-tran', 'rigid', 'disc', 'rel-rot', 'rel-tran']
 
-    def __init__(self, type='rev', iBindex=0, jBindex=0, iPindex=0, jPindex=0, iUindex=0, jUindex=0, iFunct=0, L=0, R=1, x0=0, d0=None, fix=0):
+    def __init__(self, type='rev', iBody=None, jBody=None,
+                 iPoint=None, jPoint=None,
+                 iUvec=None, jUvec=None,
+                 iFunct=None, L=0, R=1, x0=0, d0=None, fix=0):
         super().__init__()  # call to the Base class constructor
         if type not in Joint.VALID_TYPES:
             raise ValueError(f"Joint {self.COUNT}: unknown type '{type}', valid types: {Joint.VALID_TYPES}")
         self.type = type
-        self.iBindex = iBindex
-        self.jBindex = jBindex 
-        self.iPindex = iPindex
-        self.jPindex = jPindex
-        self.iUindex = iUindex
-        self.jUindex = jUindex
+        self.iBody = iBody if iBody is not None else Ground
+        self.jBody = jBody if jBody is not None else Ground
+        self.iPoint = iPoint
+        self.jPoint = jPoint
+        self.iUvec = iUvec
+        self.jUvec = jUvec
         self.iFunct = iFunct
         self.L = L
         self.R = R
