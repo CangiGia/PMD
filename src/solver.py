@@ -36,7 +36,7 @@ import scipy as sc
 import numpy.linalg as lng
 from .utils import *
 from .mechanics import *
-from .builder import *
+from .model import Ground
 from scipy.integrate import solve_ivp
 from tqdm import tqdm
 
@@ -193,7 +193,7 @@ class SolResult:
     # ── Plot methods ───────────────────────────────────────────────
 
     def plot_displacements(self, bodies=None, figsize=(12, 4)):
-        """Plot x, y, \u03c6 for selected bodies.
+        """Plot x, y, φ for selected bodies.
 
         Parameters
         ----------
@@ -228,7 +228,7 @@ class SolResult:
         plt.show()
 
     def plot_velocities(self, bodies=None, figsize=(12, 4)):
-        """Plot dx, dy, d\u03c6 for selected bodies.
+        """Plot dx, dy, dφ for selected bodies.
 
         Parameters
         ----------
@@ -263,7 +263,7 @@ class SolResult:
         plt.show()
 
     def plot_accelerations(self, bodies=None, figsize=(12, 4)):
-        """Plot ddx, ddy, dd\u03c6 for selected bodies. Triggers lazy computation.
+        """Plot ddx, ddy, ddφ for selected bodies. Triggers lazy computation.
 
         Parameters
         ----------
@@ -396,18 +396,22 @@ class SolResult:
 
 
 class PlanarMultibodyModel:
-    def __init__(self, bodies, joints=None, forces=None, points=None,
-                 uvectors=None, functions=None, verbose=False):
+    def __init__(self, bodies, joints=None, forces=None, functions=None,
+                 verbose=False):
         self.verbose = verbose
         self.Bodies = list(bodies)
         self.Joints = list(joints) if joints else []
         self.Forces = list(forces) if forces else []
-        self.Points = list(points) if points else []
-        self.uVectors = list(uvectors) if uvectors else []
         self.Functs = list(functions) if functions else []
-        
+
+        # Auto-assembly trigger: only if a body has neither r nor p provided
+        from .builder import _assemble
+        needs_assembly = any(not b._r_given and not b._p_given for b in self.Bodies)
+        if needs_assembly:
+            _assemble(self.Bodies, self.Joints)
+
         # initialize the model for simulation automatically
-        self.__initialize()
+        self._initialize()
 
     # ------------------------------------------------------------------
     # Public properties
@@ -423,7 +427,7 @@ class PlanarMultibodyModel:
         """Total number of constraint equations."""
         return self.Joints[-1]._rowe if self.Joints else 0
 
-    def __initialize(self):
+    def _initialize(self):
         """
         Initialize the multi-body model considering the values defined 
         by the user.
@@ -451,20 +455,26 @@ class PlanarMultibodyModel:
             self.invM_array[is_:ie_] = np.array([body._invm, body._invm, body._invJ])
         self.M_matrix = np.diag(self.M_array)
 
-        #// points
-        for point in self.Points:
-            if point.body is Ground:
-                point._sP = point.sPlocal
-                point._sPr = s_rot(point._sP)
-                point._rP = point._sP
-            else:
-                point.body._pts.append(point)
+        #// markers — Ground markers
+        for marker in Ground._markers:
+            pos_col = marker.position.reshape(2, 1)
+            marker._sP  = pos_col.copy()
+            marker._sPr = s_rot(pos_col)
+            marker._rP  = pos_col.copy()
+            if marker.has_orientation:
+                marker._u  = marker._ulocal.copy()
+                marker._ur = s_rot(marker._ulocal)
 
-        #// unit vectors
-        for uvector in self.uVectors:
-            if uvector.body is Ground:
-                uvector._u = uvector.ulocal
-                uvector._ur = s_rot(uvector._u)
+        #// markers — Body markers
+        for body in self.Bodies:
+            for marker in body._markers:
+                pos_col = marker.position.reshape(2, 1)
+                marker._sP  = body._A @ pos_col
+                marker._sPr = s_rot(marker._sP)
+                marker._rP  = body.r + marker._sP
+                if marker.has_orientation:
+                    marker._u  = body._A @ marker._ulocal
+                    marker._ur = s_rot(marker._u)
 
         #// force elements
         for force in self.Forces:
@@ -473,9 +483,9 @@ class PlanarMultibodyModel:
                 for body in self.Bodies:
                     body._wgt = body.m * ug
             elif force.type == 'ptp':
-                # derive body references from point attachments
-                force.iBody = force.iPoint.body
-                force.jBody = force.jPoint.body
+                # derive body references from marker attachments
+                force.iBody = force.iMarker.body
+                force.jBody = force.jMarker.body
 
         #// joints
         for joint in self.Joints:
@@ -483,8 +493,8 @@ class PlanarMultibodyModel:
                 case 'rev':
                     joint._mrows = 2
                     joint._nbody = 2
-                    joint.iBody = joint.iPoint.body
-                    joint.jBody = joint.jPoint.body
+                    joint.iBody = joint.iMarker.body
+                    joint.jBody = joint.jMarker.body
                     if joint.fix == 1:
                         joint._mrows = 3
                         Bi = joint.iBody
@@ -499,41 +509,41 @@ class PlanarMultibodyModel:
                 case 'tran':
                     joint._mrows = 2
                     joint._nbody = 2
-                    joint.iBody = joint.iPoint.body
-                    joint.jBody = joint.jPoint.body
+                    joint.iBody = joint.iMarker.body
+                    joint.jBody = joint.jMarker.body
                     if joint.fix == 1:
                         joint._mrows = 3
                         Bi = joint.iBody
                         Bj = joint.jBody
-                        iPt = joint.iPoint
-                        jPt = joint.jPoint
+                        iPt = joint.iMarker
+                        jPt = joint.jMarker
                         if Bi is Ground:
                             joint._p0 = np.linalg.norm(iPt._rP -
                                                     Bj.r - Bj._A @
-                                                    jPt.sPlocal)
+                                                    jPt.position.reshape(2,1))
                         elif Bj is Ground:
                             joint._p0 = np.linalg.norm(Bi.r +
                                                     Bi._A @
-                                                    iPt.sPlocal -
+                                                    iPt.position.reshape(2,1) -
                                                     jPt._rP)
                         else:
                             joint._p0 = np.linalg.norm(Bi.r +
                                                     Bi._A @
-                                                    iPt.sPlocal -
+                                                    iPt.position.reshape(2,1) -
                                                     Bj.r - Bj._A @
-                                                    jPt.sPlocal)
+                                                    jPt.position.reshape(2,1))
 
                 case 'rev-rev':
                     joint._mrows = 1
                     joint._nbody = 2
-                    joint.iBody = joint.iPoint.body
-                    joint.jBody = joint.jPoint.body
+                    joint.iBody = joint.iMarker.body
+                    joint.jBody = joint.jMarker.body
 
                 case 'rev-tran':
                     joint._mrows = 1
                     joint._nbody = 2
-                    joint.iBody = joint.iPoint.body
-                    joint.jBody = joint.jPoint.body
+                    joint.iBody = joint.iMarker.body
+                    joint.jBody = joint.jMarker.body
 
                 case 'rel-rot' | 'rel-tran':
                     joint._mrows = 1
@@ -560,6 +570,17 @@ class PlanarMultibodyModel:
                 case _:
                     raise ValueError("Joint type doesn't supported!")
 
+        # Validation V7: check all joint bodies are in self.Bodies or are Ground
+        body_ids = {id(b) for b in self.Bodies}
+        body_ids.add(id(Ground))
+        for joint in self.Joints:
+            if id(joint.iBody) not in body_ids:
+                raise ValueError(
+                    f"Joint iBody {joint.iBody} is not in the model's bodies list")
+            if id(joint.jBody) not in body_ids:
+                raise ValueError(
+                    f"Joint jBody {joint.jBody} is not in the model's bodies list")
+
         #// functions
         if self.Functs:
             nFc = len(self.Functs)
@@ -581,9 +602,6 @@ class PlanarMultibodyModel:
                 joint._coljs = 3 * (Bj_idx - 1)
                 joint._colje = 3 * Bj_idx
 
-        # // ---
-        # // ... some check if required ...
-        # // ---
         if self.verbose:
             print("\n")
             print("\t... model has been created and initialized correctly ...")
@@ -609,38 +627,27 @@ class PlanarMultibodyModel:
                 print(f"\t... weight: {', '.join(map(str, body._wgt.flatten()))}")
                 print(f"\t... force: {', '.join(map(str, body._f.flatten()))}")
                 print(f"\t... torque: {body._n}")
-                print(f"\t... points: {', '.join(map(str, body._pts))}")
+                print(f"\t... markers: {body._markers}")
                 print(f"\t... irc: {body._irc}")
                 print(f"\t... irv: {body._irv}")
                 print(f"\t... ira: {body._ira}")
                 print("\n")
             
             print(f"-----")
-            print(f"points ")
+            print(f"markers ")
             print(f"-----")
-            for i, point in enumerate(self.Points):
-                print(f"\t... point: {i}")
-                print(f"\t... body: {point.body}")
-                print(f"\t... local coordinates: {', '.join(map(str, point.sPlocal.flatten()))}")
-                print(f"\t... global coordinates: {', '.join(map(str, point._rP.flatten()))}")
-                print(f"\t... sP: {', '.join(map(str, point._sP.flatten()))}")
-                print(f"\t... sPr: {', '.join(map(str, point._sPr.flatten()))}")
-                print(f"\t... dsP: {', '.join(map(str, point._dsP.flatten()))}")
-                print(f"\t... drP: {', '.join(map(str, point._drP.flatten()))}")
-                print(f"\t... ddrP: {', '.join(map(str, point._ddrP.flatten()))}")
-                print("\n")
-            
-            print(f"-----")
-            print(f"vectors ")
-            print(f"-----")
-            for i, uvector in enumerate(self.uVectors, start=1):
-                print(f"\t... uVector: {i}")
-                print(f"\t... body: {uvector.body}")
-                print(f"\t... local vector: {', '.join(map(str, uvector.ulocal.flatten()))}")
-                print(f"\t... global vector: {', '.join(map(str, uvector._u.flatten()))}")
-                print(f"\t... ur: {', '.join(map(str, uvector._ur.flatten()))}")
-                print(f"\t... du: {', '.join(map(str, uvector._du.flatten()))}")
-                print("\n")
+            for i, body in enumerate(self.Bodies, start=1):
+                for j, marker in enumerate(body._markers):
+                    print(f"\t... body {i}, marker {j}: {marker.name}")
+                    print(f"\t... position (local): {marker.position}")
+                    print(f"\t... theta: {marker.theta}")
+                    print(f"\t... _rP: {', '.join(map(str, marker._rP.flatten()))}")
+                    print(f"\t... _sP: {', '.join(map(str, marker._sP.flatten()))}")
+                    print(f"\t... _sPr: {', '.join(map(str, marker._sPr.flatten()))}")
+                    if marker.has_orientation:
+                        print(f"\t... _u: {', '.join(map(str, marker._u.flatten()))}")
+                        print(f"\t... _ur: {', '.join(map(str, marker._ur.flatten()))}")
+                    print("\n")
             
             print(f"-----")
             print(f"forces ")
@@ -648,8 +655,8 @@ class PlanarMultibodyModel:
             for i, force in enumerate(self.Forces, start=1):
                 print(f"\t... force: {i}")
                 print(f"\t... type: {force.type}")
-                print(f"\t... head point: {force.iPoint}")
-                print(f"\t... tail point: {force.jPoint}")
+                print(f"\t... head marker: {force.iMarker}")
+                print(f"\t... tail marker: {force.jMarker}")
                 print(f"\t... head body: {force.iBody}")
                 print(f"\t... tail body: {force.jBody}")
                 print(f"\t... spring stiffness: {force.k}")
@@ -674,16 +681,15 @@ class PlanarMultibodyModel:
                 print(f"\t... type: {joint.type}")
                 print(f"\t... body i: {joint.iBody}")
                 print(f"\t... body j: {joint.jBody}")
-                print(f"\t... point i: {joint.iPoint}")
-                print(f"\t... point j: {joint.jPoint}")
-                print(f"\t... unit vector i: {joint.iUvec}")
-                print(f"\t... unit vector j: {joint.jUvec}")
+                print(f"\t... iMarker: {joint.iMarker}")
+                print(f"\t... jMarker: {joint.jMarker}")
                 print(f"\t... function index: {joint.iFunct}")
                 print(f"\t... length: {joint.L}")
                 print(f"\t... radius: {joint.R}")
                 print(f"\t... initial condition x: {joint.x0}")
-                print(f"\t... initial condition d: {', '.join(map(str, joint.d0))}")
+                print(f"\t... initial condition d: {', '.join(map(str, joint.d0)) if hasattr(joint.d0, '__iter__') else joint.d0}")
                 print(f"\t... fix: {joint.fix}")
+                print(f"\t... q0: {joint.q0}")
                 print(f"\t... initial condition phi: {joint._p0}")
                 print(f"\t... number of bodies: {joint._nbody}")
                 print(f"\t... number of rows: {joint._mrows}")
@@ -696,45 +702,35 @@ class PlanarMultibodyModel:
                 print(f"\t... lagrange multipliers: {', '.join(map(str, joint._lagrange.flatten()))}")
                 print("\n")
 
-    def __update_position(self):
+    def _update_position(self):
         """
         Update position entities.
         """
-        # update rotation matrix of the body
         for body in self.Bodies:
             body._A = A_matrix(body.p)
 
-        # compute sP = A * sP_prime; rP = r + sP
-        for point in self.Points:
-            if point.body is not Ground:
-                body = point.body
-                point._sP = body._A @ point.sPlocal
-                point._sPr = s_rot(point._sP)
-                point._rP = body.r + point._sP
+        for body in self.Bodies:
+            for marker in body._markers:
+                pos_col = marker.position.reshape(2, 1)
+                marker._sP  = body._A @ pos_col
+                marker._sPr = s_rot(marker._sP)
+                marker._rP  = body.r + marker._sP
+                if marker.has_orientation:
+                    marker._u  = body._A @ marker._ulocal
+                    marker._ur = s_rot(marker._u)
 
-        # compute u = _A * up
-        for unit_vector in self.uVectors:
-            if unit_vector.body is not Ground:
-                body = unit_vector.body
-                unit_vector._u = body._A @ unit_vector.ulocal
-                unit_vector._ur = s_rot(unit_vector._u)
-
-    def __update_velocity(self):
+    def _update_velocity(self):
         """
         Compute sP_dot and rP_dot vectors and update velocity components.
         """
-        for point in self.Points:
-            if point.body is not Ground:
-                body = point.body
-                point._dsP = point._sPr * body.dp
-                point._drP = body.dr + point._dsP
-
-        for uvector in self.uVectors:
-            if uvector.body is not Ground:
-                body = uvector.body
-                uvector._du = uvector._ur * body.dp
+        for body in self.Bodies:
+            for marker in body._markers:
+                marker._dsP = marker._sPr * body.dp
+                marker._drP = body.dr + marker._dsP
+                if marker.has_orientation:
+                    marker._du = marker._ur * body.dp
             
-    def __compute_constraints(self):
+    def _compute_constraints(self):
         if not self.Joints:
             return np.zeros((0, 1))
         nConst = self.Joints[-1]._rowe
@@ -743,8 +739,8 @@ class PlanarMultibodyModel:
         for joint in self.Joints:
             match joint.type:
                 case 'rev':
-                    iPt = joint.iPoint
-                    jPt = joint.jPoint
+                    iPt = joint.iMarker
+                    jPt = joint.jMarker
                     
                     # compute relative positions of the points
                     f = iPt._rP - jPt._rP
@@ -758,11 +754,11 @@ class PlanarMultibodyModel:
                             f = np.append(f, (joint.iBody.p - joint.jBody.p - joint._p0))
 
                 case 'tran':
-                    iPt = joint.iPoint
-                    jPt = joint.jPoint
+                    iPt = joint.iMarker
+                    jPt = joint.jMarker
 
-                    ujr = joint.jUvec._ur
-                    ui = joint.iUvec._u
+                    ujr = joint.jMarker._ur
+                    ui = joint.iMarker._u
                     d = iPt._rP - jPt._rP
 
                     # compute constraint equations
@@ -773,8 +769,8 @@ class PlanarMultibodyModel:
                         f = np.append(f, (ui.T @ d - joint._p0) / 2).reshape(3,1)
 
                 case 'rev-rev':
-                    iPt = joint.iPoint
-                    jPt = joint.jPoint
+                    iPt = joint.iMarker
+                    jPt = joint.jMarker
 
                     d = iPt._rP - jPt._rP
                     L = joint.L
@@ -783,10 +779,10 @@ class PlanarMultibodyModel:
                     f = (u.T @ d - L)/2
 
                 case 'rev-tran':
-                    iPt = joint.iPoint
-                    jPt = joint.jPoint
+                    iPt = joint.iMarker
+                    jPt = joint.jMarker
 
-                    uir = joint.iUvec._ur
+                    uir = joint.iMarker._ur
                     d = iPt._rP - jPt._rP
 
                     # compute constraint equations
@@ -832,8 +828,8 @@ class PlanarMultibodyModel:
                         f = Bi.p - Bj.p - fun
 
                 case 'rel-tran':
-                    iPt = joint.iPoint
-                    jPt = joint.jPoint
+                    iPt = joint.iMarker
+                    jPt = joint.jMarker
 
                     d = iPt._rP - jPt._rP
                     fun, fun_d, fun_dd = functEval(joint.iFunct, self.t)
@@ -849,7 +845,7 @@ class PlanarMultibodyModel:
             
         return phi
 
-    def __compute_jacobian(self):
+    def _compute_jacobian(self):
         """
         Calculate the Jacobian matrix D for the system constraints.
 
@@ -865,8 +861,8 @@ class PlanarMultibodyModel:
         for Ji, joint in enumerate(self.Joints):
             match joint.type:
                 case 'rev':
-                    iPt = joint.iPoint
-                    jPt = joint.jPoint
+                    iPt = joint.iMarker
+                    jPt = joint.jMarker
 
                     Di = np.block([
                         [np.eye(2), iPt._sPr.reshape(2, 1)]
@@ -886,11 +882,11 @@ class PlanarMultibodyModel:
                         ])
 
                 case 'tran':
-                    iPt = joint.iPoint
-                    jPt = joint.jPoint
+                    iPt = joint.iMarker
+                    jPt = joint.jMarker
 
-                    uj = joint.jUvec._u
-                    ujr = joint.jUvec._ur
+                    uj = joint.jMarker._u
+                    ujr = joint.jMarker._ur
                     d = iPt._rP - jPt._rP
 
                     Di = np.block([
@@ -913,8 +909,8 @@ class PlanarMultibodyModel:
                         ])
 
                 case 'rev-rev':
-                    iPt = joint.iPoint
-                    jPt = joint.jPoint
+                    iPt = joint.iMarker
+                    jPt = joint.jMarker
 
                     d = iPt._rP - jPt._rP
                     L = joint.L
@@ -928,11 +924,11 @@ class PlanarMultibodyModel:
                         ])
                     
                 case 'rev-tran':
-                    iPt = joint.iPoint
-                    jPt = joint.jPoint
+                    iPt = joint.iMarker
+                    jPt = joint.jMarker
 
-                    ui = joint.iUvec._u
-                    ui_r = joint.iUvec._ur
+                    ui = joint.iMarker._u
+                    ui_r = joint.iMarker._ur
                     d = iPt._rP - jPt._rP
 
                     Di = np.block([
@@ -967,8 +963,8 @@ class PlanarMultibodyModel:
                         ])
 
                 case 'rel-tran':
-                    iPt = joint.iPoint
-                    jPt = joint.jPoint
+                    iPt = joint.iMarker
+                    jPt = joint.jMarker
 
                     d = iPt._rP - jPt._rP
 
@@ -1000,7 +996,7 @@ class PlanarMultibodyModel:
 
         return D
 
-    def __rhs_velocity(self):
+    def _rhs_velocity(self):
         """
         Calculate the right-hand side velocity vector for the system constraints.
         
@@ -1020,7 +1016,7 @@ class PlanarMultibodyModel:
 
                 case 'rel-tran':
                     fun, fun_d, _ = functEval(joint.iFunct, self.t)
-                    d = joint.iPoint._rP - joint.jPoint._rP
+                    d = joint.iMarker._rP - joint.jMarker._rP
                     f = fun * fun_d
 
                 case _:
@@ -1032,7 +1028,7 @@ class PlanarMultibodyModel:
 
         return rhsv
 
-    def __rhs_acceleration(self): #// - Check required on rel-tran and rel-rot joints -
+    def _rhs_acceleration(self):
         """
         Compute the right-hand side of acceleration constraints.
 
@@ -1049,8 +1045,8 @@ class PlanarMultibodyModel:
 
             match joint_type:
                 case "rev":
-                    iPt = joint.iPoint
-                    jPt = joint.jPoint
+                    iPt = joint.iMarker
+                    jPt = joint.jMarker
                     Bi = joint.iBody
                     Bj = joint.jBody
 
@@ -1070,9 +1066,9 @@ class PlanarMultibodyModel:
                 case "tran":
                     Bi = joint.iBody
                     Bj = joint.jBody
-                    iPt = joint.iPoint
-                    jPt = joint.jPoint
-                    ujd = joint.jUvec._du
+                    iPt = joint.iMarker
+                    jPt = joint.jMarker
+                    ujd = joint.jMarker._du
                     ujdr = s_rot(ujd)
 
                     if Bi is Ground:
@@ -1107,8 +1103,8 @@ class PlanarMultibodyModel:
                         f = np.vstack([f, [[f3]]])
                     
                 case "rev-rev":
-                    iPt = joint.iPoint
-                    jPt = joint.jPoint
+                    iPt = joint.iMarker
+                    jPt = joint.jMarker
                     Bi = joint.iBody
                     Bj = joint.jBody
                     
@@ -1132,13 +1128,13 @@ class PlanarMultibodyModel:
                     )
 
                 case "rev-tran":
-                    iPt = joint.iPoint
-                    jPt = joint.jPoint
+                    iPt = joint.iMarker
+                    jPt = joint.jMarker
                     Bi = joint.iBody
                     Bj = joint.jBody
 
-                    ui = joint.iUvec._u
-                    ui_d = joint.iUvec._du
+                    ui = joint.iMarker._u
+                    ui_d = joint.iMarker._du
                     d = iPt._rP - jPt._rP
                     dd = iPt._drP - jPt._drP
 
@@ -1170,8 +1166,8 @@ class PlanarMultibodyModel:
                     f = fun_dd
 
                 case "rel-tran":
-                    iPt = joint.iPoint
-                    jPt = joint.jPoint
+                    iPt = joint.iMarker
+                    jPt = joint.jMarker
                     Bi = joint.iBody
                     Bj = joint.jBody
 
@@ -1196,7 +1192,7 @@ class PlanarMultibodyModel:
         
         return rhsa
 
-    def __bodies2u(self):
+    def _bodies2u(self):
         """ 
         Pack coordinates and velocities into the u array.
         """
@@ -1211,7 +1207,7 @@ class PlanarMultibodyModel:
         
         return u
 
-    def __bodies2ud(self):
+    def _bodies2ud(self):
         """ 
         Pack velocities and accelerations into ud. 
         """
@@ -1226,7 +1222,7 @@ class PlanarMultibodyModel:
 
         return ud
     
-    def __u2bodies(self, u):
+    def _u2bodies(self, u):
         """
         Unpack u into coordinate and velocity sub-arrays.
         """ 
@@ -1243,7 +1239,7 @@ class PlanarMultibodyModel:
             self.Bodies[Bi].dr = u[ird:ird+2]
             self.Bodies[Bi].dp = u[ird+2][0]
 
-    def __compute_force(self):
+    def _compute_force(self):
         """
         Compute and return the array of forces acting on the system at time t.
         """
@@ -1251,9 +1247,6 @@ class PlanarMultibodyModel:
             body._f = colvect([0.0, 0.0]) # initialize body force vectors
             body._n = 0.0                 # initialize body torque (moment) scalar
 
-        #! the below code used to build the force array need to be optimized, 
-        #! the class Force should keep inside all the method required to build
-        #! the specific type of force -> code easier and more readable.
         # loop over all forces and apply them to the appropriate bodies
         for Fi, force in enumerate(self.Forces):
             match force.type:
@@ -1262,8 +1255,8 @@ class PlanarMultibodyModel:
                         body._f += body._wgt
 
                 case 'ptp':
-                    iPt = force.iPoint
-                    jPt = force.jPoint
+                    iPt = force.iMarker
+                    jPt = force.jMarker
                     Bi = force.iBody
                     Bj = force.jBody
                     d = iPt._rP - jPt._rP
@@ -1330,17 +1323,17 @@ class PlanarMultibodyModel:
 
         return g
 
-    def __ic_correct(self):
+    def _ic_correct(self):
         """
         Corrects initial conditions on the body coordinates and velocities.
         """
         flag = False
 
         # position correction
-        for _ in range(50): #! 20 is an arbitrary value ... could be a parameter!
-            self.__update_position()            # update position entities
-            Phi = self.__compute_constraints()  # evaluate constraints
-            D = self.__compute_jacobian()       # evaluate Jacobian
+        for _ in range(50):
+            self._update_position()            # update position entities
+            Phi = self._compute_constraints()  # evaluate constraints
+            D = self._compute_jacobian()       # evaluate Jacobian
             ff = np.sqrt(Phi.T @ Phi)           # are the constraints violated?
 
             if ff < 1.0e-10:
@@ -1355,7 +1348,7 @@ class PlanarMultibodyModel:
             for Bi in range(nB):
                 ir = 3 * Bi
                 self.Bodies[Bi].r = self.Bodies[Bi].r + delta_c[ir:ir + 2]
-                self.Bodies[Bi].p = self.Bodies[Bi].p + delta_c[ir + 2][0] # [0] because I need to extract the single value
+                self.Bodies[Bi].p = self.Bodies[Bi].p + delta_c[ir + 2][0]
 
         if not flag:
             raise ValueError("Convergence failed in Newton-Raphson!")
@@ -1368,7 +1361,7 @@ class PlanarMultibodyModel:
             Phi[ir:ir + 2] = self.Bodies[Bi].dr
             Phi[ir + 2] = self.Bodies[Bi].dp
 
-        rhsv = self.__rhs_velocity()
+        rhsv = self._rhs_velocity()
         
         # solve for corrections
         delta_v = -D.T @ np.linalg.solve(D @ D.T, D @ Phi - rhsv)  
@@ -1377,7 +1370,7 @@ class PlanarMultibodyModel:
         for Bi in range(nB):
             ir = 3 * Bi
             self.Bodies[Bi].dr = self.Bodies[Bi].dr + delta_v[ir:ir + 2]
-            self.Bodies[Bi].dp = self.Bodies[Bi].dp + delta_v[ir + 2][0] # [0] because I need to extract the single value
+            self.Bodies[Bi].dp = self.Bodies[Bi].dp + delta_v[ir + 2][0]
 
         coords = np.zeros((nB, 3))
         vels = np.zeros((nB, 3))
@@ -1385,9 +1378,6 @@ class PlanarMultibodyModel:
             coords[Bi, :] = np.hstack((self.Bodies[Bi].r.T, np.array(self.Bodies[Bi].p).reshape(-1, 1)))
             vels[Bi, :] = np.hstack((self.Bodies[Bi].dr.T, np.array(self.Bodies[Bi].dp).reshape(-1, 1)))
 
-        # // ---
-        # // ... some check if required ...
-        # // ---
         if self.verbose:
             print("\t... initial conditions corrected ...")
             print(f"-----")
@@ -1409,38 +1399,27 @@ class PlanarMultibodyModel:
                 print(f"\t... weight: {', '.join(map(str, body._wgt.flatten()))}")
                 print(f"\t... force: {', '.join(map(str, body._f.flatten()))}")
                 print(f"\t... torque: {body._n}")
-                print(f"\t... points: {', '.join(map(str, body._pts))}")
+                print(f"\t... markers: {body._markers}")
                 print(f"\t... irc: {body._irc}")
                 print(f"\t... irv: {body._irv}")
                 print(f"\t... ira: {body._ira}")
                 print("\n")
             
             print(f"-----")
-            print(f"points ")
+            print(f"markers ")
             print(f"-----")
-            for i, point in enumerate(self.Points):
-                print(f"\t... point: {i}")
-                print(f"\t... body: {point.body}")
-                print(f"\t... local coordinates: {', '.join(map(str, point.sPlocal.flatten()))}")
-                print(f"\t... global coordinates: {', '.join(map(str, point._rP.flatten()))}")
-                print(f"\t... sP: {', '.join(map(str, point._sP.flatten()))}")
-                print(f"\t... sPr: {', '.join(map(str, point._sPr.flatten()))}")
-                print(f"\t... dsP: {', '.join(map(str, point._dsP.flatten()))}")
-                print(f"\t... drP: {', '.join(map(str, point._drP.flatten()))}")
-                print(f"\t... ddrP: {', '.join(map(str, point._ddrP.flatten()))}")
-                print("\n")
-            
-            print(f"-----")
-            print(f"vectors ")
-            print(f"-----")
-            for i, uvector in enumerate(self.uVectors, start=1):
-                print(f"\t... uVector: {i}")
-                print(f"\t... body: {uvector.body}")
-                print(f"\t... local vector: {', '.join(map(str, uvector.ulocal.flatten()))}")
-                print(f"\t... global vector: {', '.join(map(str, uvector._u.flatten()))}")
-                print(f"\t... ur: {', '.join(map(str, uvector._ur.flatten()))}")
-                print(f"\t... du: {', '.join(map(str, uvector._du.flatten()))}")
-                print("\n")
+            for i, body in enumerate(self.Bodies, start=1):
+                for j, marker in enumerate(body._markers):
+                    print(f"\t... body {i}, marker {j}: {marker.name}")
+                    print(f"\t... position (local): {marker.position}")
+                    print(f"\t... theta: {marker.theta}")
+                    print(f"\t... _rP: {', '.join(map(str, marker._rP.flatten()))}")
+                    print(f"\t... _sP: {', '.join(map(str, marker._sP.flatten()))}")
+                    print(f"\t... _sPr: {', '.join(map(str, marker._sPr.flatten()))}")
+                    if marker.has_orientation:
+                        print(f"\t... _u: {', '.join(map(str, marker._u.flatten()))}")
+                        print(f"\t... _ur: {', '.join(map(str, marker._ur.flatten()))}")
+                    print("\n")
             
             print(f"-----")
             print(f"forces ")
@@ -1448,8 +1427,8 @@ class PlanarMultibodyModel:
             for i, force in enumerate(self.Forces, start=1):
                 print(f"\t... force: {i}")
                 print(f"\t... type: {force.type}")
-                print(f"\t... head point: {force.iPoint}")
-                print(f"\t... tail point: {force.jPoint}")
+                print(f"\t... head marker: {force.iMarker}")
+                print(f"\t... tail marker: {force.jMarker}")
                 print(f"\t... head body: {force.iBody}")
                 print(f"\t... tail body: {force.jBody}")
                 print(f"\t... spring stiffness: {force.k}")
@@ -1474,16 +1453,15 @@ class PlanarMultibodyModel:
                 print(f"\t... type: {joint.type}")
                 print(f"\t... body i: {joint.iBody}")
                 print(f"\t... body j: {joint.jBody}")
-                print(f"\t... point i: {joint.iPoint}")
-                print(f"\t... point j: {joint.jPoint}")
-                print(f"\t... unit vector i: {joint.iUvec}")
-                print(f"\t... unit vector j: {joint.jUvec}")
+                print(f"\t... iMarker: {joint.iMarker}")
+                print(f"\t... jMarker: {joint.jMarker}")
                 print(f"\t... function index: {joint.iFunct}")
                 print(f"\t... length: {joint.L}")
                 print(f"\t... radius: {joint.R}")
                 print(f"\t... initial condition x: {joint.x0}")
-                print(f"\t... initial condition d: {', '.join(map(str, joint.d0))}")
+                print(f"\t... initial condition d: {', '.join(map(str, joint.d0)) if hasattr(joint.d0, '__iter__') else joint.d0}")
                 print(f"\t... fix: {joint.fix}")
+                print(f"\t... q0: {joint.q0}")
                 print(f"\t... initial condition phi: {joint._p0}")
                 print(f"\t... number of bodies: {joint._nbody}")
                 print(f"\t... number of rows: {joint._mrows}")
@@ -1507,26 +1485,26 @@ class PlanarMultibodyModel:
                 print(f"\t {row[0]:^12.5f}{row[1]:^12.5f}{row[2]:^12.5f}")
             print("\n")
 
-    def __analysis(self, t, u):
+    def _analysis(self, t, u):
         """
         Solve the constrained equations of motion at time t with the standard
         Lagrange multiplier method.
         """        
-        self.__num += 1                 # increment the number of function evaluations
+        self._num += 1                  # increment the number of function evaluations
         self.t = t                      # store current time for force/constraint callbacks
         nB3 = 3 * len(self.Bodies)
         nConst = self.Joints[-1]._rowe if self.Joints else 0
-        self.__u2bodies(u)              # unpack u into coordinate and velocity sub-arrays
-        self.__update_position()
-        self.__update_velocity()
-        h_a = self.__compute_force()    # array of applied forces
+        self._u2bodies(u)               # unpack u into coordinate and velocity sub-arrays
+        self._update_position()
+        self._update_velocity()
+        h_a = self._compute_force()     # array of applied forces
 
         if nConst == 0:
             ddc = self.invM_array.reshape(-1, 1) * h_a  # solve for accelerations
             Lambda = np.array([])  # no constraints, no multipliers
         else:
-            D = self.__compute_jacobian()
-            rhsA = self.__rhs_acceleration()  # right-hand side of acceleration constraints (gamma)
+            D = self._compute_jacobian()
+            rhsA = self._rhs_acceleration()  # right-hand side of acceleration constraints (gamma)
 
             # GGL regularization: replace zero block with (1/μ)·I
             if self._ggl_mu > 0:
@@ -1541,7 +1519,7 @@ class PlanarMultibodyModel:
 
             # Baumgarte stabilization: add -2α·dΦ - β²·Φ to RHS
             if self._baumgarte_alpha > 0 or self._baumgarte_beta > 0:
-                Phi = np.asarray(self.__compute_constraints()).flatten()
+                Phi = np.asarray(self._compute_constraints()).flatten()
                 dq = u[nB3:]  # velocity part of state vector
                 dPhi = np.asarray(D @ dq).flatten()
                 gamma_stab = (rhsA.flatten()
@@ -1570,24 +1548,24 @@ class PlanarMultibodyModel:
             body.ddr = ddc[ir:i2]
             body.ddp = ddc[i3][0]
 
-        ud = self.__bodies2ud()             # pack velocities and accelerations into ud
+        ud = self._bodies2ud()              # pack velocities and accelerations into ud
         return ud.flatten()
 
-    def __taqaddum(self, t_initial, t_final, pbar):
+    def _taqaddum(self, t_initial, t_final, pbar):
         """
-        Restituisce una funzione wrapper per __analysis con progresso ottimizzato
+        Restituisce una funzione wrapper per _analysis con progresso ottimizzato
         """
-        last_progress = 0  # Ora è un intero invece di un dizionario
+        last_progress = 0
         
-        def __wrapp_analysis(t, u):
+        def _wrapp_analysis(t, u):
             nonlocal last_progress
             progress = min(100, int(100 * (t - t_initial) / (t_final - t_initial)))
             if progress > last_progress:
                 pbar.n = progress
                 pbar.refresh()
                 last_progress = progress
-            return self.__analysis(t, u)
-        return __wrapp_analysis
+            return self._analysis(t, u)
+        return _wrapp_analysis
 
     def solve(self, method="LSODA", t_final=None, dt=None, ic_correct=False,
               t_eval=None, t_span=None,
@@ -1632,7 +1610,7 @@ class PlanarMultibodyModel:
         """
         self.method = method
 
-        # Store stabilization parameters for __analysis and _post_process
+        # Store stabilization parameters for _analysis and _post_process
         self._baumgarte_alpha = baumgarte_alpha
         self._baumgarte_beta = baumgarte_beta
         self._ggl_mu = ggl_penalty
@@ -1652,15 +1630,15 @@ class PlanarMultibodyModel:
             ans = 'y' if ic_correct else 'n'
 
         if nConst != 0:
-            self.t = 0.0  # needed by __compute_constraints / __rhs_velocity when ic_correct runs
+            self.t = 0.0  # needed by _compute_constraints / _rhs_velocity when ic_correct runs
             if ans == 'y':
-                self.__ic_correct()
-            D = self.__compute_jacobian()
+                self._ic_correct()
+            D = self._compute_jacobian()
             redund = np.linalg.matrix_rank(D)
             if redund < nConst:
                 print("\n\t...Redundancy in the constraints")
 
-        u = self.__bodies2u()
+        u = self._bodies2u()
         if self.verbose:
             header = "... initial u vector ..."
             print(f"\n\t{header}")
@@ -1672,14 +1650,14 @@ class PlanarMultibodyModel:
             raise ValueError("\t ... check initial conditions, \"u\" vector contains NaN or Inf values.")
 
         t_initial = 0.0
-        self.__num = 0  # initialize the number of function evaluations
+        self._num = 0  # initialize the number of function evaluations
 
         if t_final is None:
             t_final = float(input("\n\t ...Final time = ? "))
 
         dense_sol = None
         if t_final == 0:
-            self.__analysis(0, u)
+            self._analysis(0, u)
             T = np.array([0.0])
             uT = u.T
         else:
@@ -1699,10 +1677,10 @@ class PlanarMultibodyModel:
                         bar_format="{l_bar}{bar}| [Elapsed time: {elapsed}, Remaining time: {remaining}]",
                         colour="green")
 
-            __wrapp_analysis = self.__taqaddum(t_initial, t_final, pbar)
+            _wrapp_analysis = self._taqaddum(t_initial, t_final, pbar)
 
             try:
-                _sol = solve_ivp(__wrapp_analysis,
+                _sol = solve_ivp(_wrapp_analysis,
                                  [t_initial, t_final],
                                  u0,
                                  t_eval=Tspan,
@@ -1717,7 +1695,7 @@ class PlanarMultibodyModel:
             dense_sol = _sol.sol
 
         print(f"\n ")
-        print(f"\t ...Number of function evaluations: {self.__num}")
+        print(f"\t ...Number of function evaluations: {self._num}")
         print(f"\t ...Simulation completed successfully!")
         print(f"\n ")
         return SolResult(T, uT, model=self, dense_sol=dense_sol)
@@ -1752,17 +1730,17 @@ class PlanarMultibodyModel:
             u_i = uT[i]
 
             self.t = t_i
-            self.__u2bodies(u_i)
-            self.__update_position()
-            self.__update_velocity()
-            h_a = self.__compute_force()
+            self._u2bodies(u_i)
+            self._update_position()
+            self._update_velocity()
+            h_a = self._compute_force()
 
             if nConst == 0:
                 ddc = self.invM_array.reshape(-1, 1) * h_a
                 Lambda = np.array([])
             else:
-                D = self.__compute_jacobian()
-                rhsA = self.__rhs_acceleration()
+                D = self._compute_jacobian()
+                rhsA = self._rhs_acceleration()
 
                 # GGL regularization: replace zero block with (1/μ)·I
                 if self._ggl_mu > 0:
@@ -1777,7 +1755,7 @@ class PlanarMultibodyModel:
 
                 # Baumgarte stabilization: add -2α·dΦ - β²·Φ to RHS
                 if self._baumgarte_alpha > 0 or self._baumgarte_beta > 0:
-                    Phi = np.asarray(self.__compute_constraints()).flatten()
+                    Phi = np.asarray(self._compute_constraints()).flatten()
                     dq_i = u_i[nB3:]
                     dPhi = np.asarray(D @ dq_i).flatten()
                     gamma_stab = (rhsA.flatten()

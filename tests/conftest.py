@@ -16,6 +16,20 @@ EXAMPLES_DIR = os.path.join(PMD_ROOT, 'examples')
 NPY_REF_DIR = os.path.join(EXAMPLES_DIR, 'results', 'npy_ref')
 WORKING_DIR = os.path.dirname(PMD_ROOT)  # C:\Users\Giaco\anaconda3\envs\GiacoEnv\
 
+
+@pytest.fixture(autouse=True)
+def _reset_ground_markers():
+    """Reset Ground._markers to just [origin] between tests.
+
+    Prevents marker accumulation when multiple models are imported
+    inside the same process (e.g. direct-import tests).
+    """
+    from PMD.src.model import _GroundType
+    yield
+    gt = _GroundType._instance
+    if gt is not None:
+        _GroundType._markers = [gt.origin]
+
 # List of all models to test (exclude _test_Rod which has known issues)
 ALL_MODELS = [
     '_test_AA',

@@ -30,9 +30,7 @@ Forces:
 
 import numpy as np
 import os
-from PMD.src.builder import *
-from PMD.src.solver import *
-from PMD.src.mechanics import *
+from PMD.src import *
 from PMD.examples._plot_utils import plot_comparison
 
 # =============================================================================
@@ -42,19 +40,18 @@ from PMD.examples._plot_utils import plot_comparison
 #%% Bodies
 B1 = Body(m=1.0, J=1.0, r=[1.0, 0.2], p=0.0, dr=[0.0, 0.0])
 
-#%% Points
-pt0 = Point(body=Ground, sPlocal=np.array([0.0, 0.2]))  # wall anchor on ground
-pt1 = Point(body=B1, sPlocal=np.array([0.0, 0.0]))  # body reference on B1
+#%% Markers (merge Point + uVector into single Marker with theta for tran joint)
+# pt0 was Point(body=Ground, [0,0.2]) and u0 was uVector(body=Ground, [1,0]) -> theta=0.0
+pt0 = Ground.add_marker([0.0, 0.2], theta=0.0)  # wall anchor + horizontal direction on ground
 
-#%% Unit Vectors
-u0 = uVector(body=Ground, ulocal=np.array([1.0, 0.0]))  # horizontal ground vector
-u1 = uVector(body=B1, ulocal=np.array([1.0, 0.0]))  # horizontal body vector
+# pt1 was Point(body=B1, [0,0]) and u1 was uVector(body=B1, [1,0]) -> theta=0.0
+pt1 = B1.add_marker([0.0, 0.0], theta=0.0)  # body reference + horizontal direction on B1
 
 #%% Joints
-j0 = Joint(type='tran', iPoint=pt1, jPoint=pt0, iUvec=u1, jUvec=u0)
+j0 = Joint(type='tran', iMarker=pt1, jMarker=pt0)
 
 #%% Forces
-f0 = Force(type='ptp', iPoint=pt1, jPoint=pt0, k=10.0, L0=0.8, dc=0.0)
+f0 = Force(type='ptp', iMarker=pt1, jMarker=pt0, k=10.0, L0=0.8, dc=0.0)
 f1 = Force(type='weight')
 
 def my_force():
@@ -79,9 +76,7 @@ f2.callback = my_force
 model = PlanarMultibodyModel(
     bodies=[B1],
     joints=[j0],
-    forces=[f0, f1, f2],
-    points=[pt0, pt1],
-    uvectors=[u0, u1])
+    forces=[f0, f1, f2])
 T, uT = model.solve(method='Radau', t_final=10.0, t_eval=np.linspace(0, 10, 10001))
 
 if __name__ == '__main__':

@@ -1,8 +1,6 @@
 import numpy as np
 import scipy as sc
-from PMD.src.builder import *
-from PMD.src.mechanics import *
-from PMD.src.solver import *
+from PMD.src import *
 import matplotlib.pyplot as plt
 from PMD.examples._plot_utils import plot_comparison
 
@@ -20,33 +18,20 @@ b2.J = 0.2
 b2.r = np.array([1.25, -0.233])
 b2.p = np.pi/6
 
-#%% points ...
-p0 = Point() #// 0 is always the ground ...
-p0.body = Ground
-p0.sPlocal = np.array([0., 0.2])
+#%% markers (merge Point + uVector into single Marker with theta for tran joint)
+# p0 was Point(Ground, [0,0.2]) and u0 was uVector(Ground, [1,0]) -> theta=0.0
+p0 = Ground.add_marker([0., 0.2], theta=0.0)
 
-p1 = Point()
-p1.body = b1
-p1.sPlocal = np.array([0., 0.])
+# p1 was Point(b1, [0,0]) and u1 was uVector(b1, [1,0]) -> theta=0.0
+p1 = b1.add_marker([0., 0.], theta=0.0)
 
-p2 = Point()
-p2.body = b2
-p2.sPlocal = np.array([0., 0.5])
-
-#%% unit vectors ...
-u0 = uVector()
-u0.body = Ground
-u0.ulocal = np.array([1., 0.]) # parallel to the x-axis
-
-u1 = uVector()
-u1.body = b1
-u1.ulocal = np.array([1., 0.]) # parallel to the x-axis
+p2 = b2.add_marker([0., 0.5])
 
 #%% forces ...
 f0_1 = Force()
 f0_1.type = "ptp"
-f0_1.iPoint = p1
-f0_1.jPoint = p0
+f0_1.iMarker = p1
+f0_1.jMarker = p0
 f0_1.k = 20.0
 f0_1.L0 = 0.6
 
@@ -56,23 +41,19 @@ fw.type = "weight"
 #%% joints ...
 j0_1 = Joint()
 j0_1.type = "tran"
-j0_1.iPoint = p1
-j0_1.jPoint = p0
-j0_1.iUvec = u1
-j0_1.jUvec = u0
+j0_1.iMarker = p1
+j0_1.jMarker = p0
 
 j1_2 = Joint()
 j1_2.type = "rev"
-j1_2.iPoint = p1
-j1_2.jPoint = p2
+j1_2.iMarker = p1
+j1_2.jMarker = p2
 
 #%% model simulation
 my_dynamic_model = PlanarMultibodyModel(
     bodies=[b1, b2],
     joints=[j0_1, j1_2],
-    forces=[f0_1, fw],
-    points=[p0, p1, p2],
-    uvectors=[u0, u1])
+    forces=[f0_1, fw])
 T, uT = my_dynamic_model.solve(method='Radau', t_final=10.0, t_eval=np.linspace(0, 10, 10001))
 
 if __name__ == '__main__':

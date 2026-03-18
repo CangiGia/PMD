@@ -41,9 +41,7 @@ Forces:
 
 import numpy as np
 import os
-from PMD.src.builder import *
-from PMD.src.solver import *
-from PMD.src.mechanics import *
+from PMD.src import *
 from PMD.examples._plot_utils import plot_comparison
 
 # =============================================================================
@@ -55,28 +53,24 @@ B1 = Body(m=20.0, J=2.5, r=[0.5840, 0.3586], p=6.0819)
 B2 = Body(m=2.0,  J=0.5, r=[0.3450, 0.2900], p=0.0)
 B3 = Body(m=0.5,  J=0.2, r=[0.4528, 0.6862], p=5.0019)
 
-#%% Points  (MATLAB P1..8 -> Python 0..7)
-pt_A1  = Point(body=B1, sPlocal=np.array([ 0.00, -0.07]))  # [0]
-pt_B1  = Point(body=B1, sPlocal=np.array([-0.17,  0.25]))  # [1]
-pt_C1  = Point(body=B1, sPlocal=np.array([ 0.11, -0.02]))  # [2]  <- contact point
-pt_O0  = Point(body=Ground, sPlocal=np.array([ 0.41,  0.83]))  # [3]
-pt_Q0  = Point(body=Ground, sPlocal=np.array([ 0.12,  0.29]))  # [4]
-pt_Q2  = Point(body=B2, sPlocal=np.array([-0.225, 0.00]))  # [5]
-pt_A2  = Point(body=B2, sPlocal=np.array([ 0.225, 0.00]))  # [6]
-pt_O3  = Point(body=B3, sPlocal=np.array([-0.15,  0.00]))  # [7]
-
-#%% Unit Vectors  (MATLAB V1->[0], V2->[1])
-v1 = uVector(body=B1, ulocal=np.array([0.47, -0.88]))  # [0]  body 1 direction
-v2 = uVector(body=B3, ulocal=np.array([1.0,   0.0]))   # [1]  body 3 horizontal
+#%% Markers
+pt_A1  = B1.add_marker([ 0.00, -0.07])                          # [0]
+pt_B1  = B1.add_marker([-0.17,  0.25], theta=np.arctan2(-0.88, 0.47))  # [1] + V1 orientation
+pt_C1  = B1.add_marker([ 0.11, -0.02])                          # [2] <- contact point
+pt_O0  = Ground.add_marker([ 0.41,  0.83])                      # [3]
+pt_Q0  = Ground.add_marker([ 0.12,  0.29])                      # [4]
+pt_Q2  = B2.add_marker([-0.225, 0.00])                          # [5]
+pt_A2  = B2.add_marker([ 0.225, 0.00])                          # [6]
+pt_O3  = B3.add_marker([-0.15,  0.00], theta=0.0)               # [7] + V2 orientation
 
 #%% Joints  (MATLAB J1..4 -> Python j0..j3)
-j0 = Joint(type='rev',  iPoint=pt_A1, jPoint=pt_A2)                         # A1 <-> A2
-j1 = Joint(type='rev',  iPoint=pt_Q0, jPoint=pt_Q2)                         # Q0 <-> Q2
-j2 = Joint(type='rev',  iPoint=pt_O0, jPoint=pt_O3)                         # O0 <-> O3
-j3 = Joint(type='tran', iPoint=pt_B1, jPoint=pt_O3, iUvec=v1, jUvec=v2)     # B1pt tran O3
+j0 = Joint(type='rev',  iMarker=pt_A1, jMarker=pt_A2)                    # A1 <-> A2
+j1 = Joint(type='rev',  iMarker=pt_Q0, jMarker=pt_Q2)                    # Q0 <-> Q2
+j2 = Joint(type='rev',  iMarker=pt_O0, jMarker=pt_O3)                    # O0 <-> O3
+j3 = Joint(type='tran', iMarker=pt_B1, jMarker=pt_O3)                    # B1pt tran O3
 
 #%% Forces
-s0 = Force(type='ptp', iPoint=pt_B1, jPoint=pt_O0, k=20000.0, L0=0.34, dc=1100.0)
+s0 = Force(type='ptp', iMarker=pt_B1, jMarker=pt_O0, k=20000.0, L0=0.34, dc=1100.0)
 
 s1 = Force(type='user', k=100000.0, L0=0.30, dc=1000.0)
 
@@ -101,9 +95,7 @@ s2 = Force(type='weight')
 model = PlanarMultibodyModel(
     bodies=[B1, B2, B3],
     joints=[j0, j1, j2, j3],
-    forces=[s0, s1, s2],
-    points=[pt_A1, pt_B1, pt_C1, pt_O0, pt_Q0, pt_Q2, pt_A2, pt_O3],
-    uvectors=[v1, v2])
+    forces=[s0, s1, s2])
 T, uT = model.solve(method='Radau', t_final=10.0, t_eval=np.linspace(0, 10, 10001),
                     ic_correct=True)
 

@@ -36,9 +36,7 @@ NOTE: MATLAB uses the Lankarani-Nikravesh model with K=1e11, e=0.95 which
 
 import numpy as np
 import os
-from PMD.src.builder import *
-from PMD.src.solver import *
-from PMD.src.mechanics import *
+from PMD.src import *
 from PMD.examples._plot_utils import plot_comparison
 
 # =============================================================================
