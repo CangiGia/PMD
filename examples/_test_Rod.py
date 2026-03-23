@@ -44,38 +44,42 @@ from PMD.examples._plot_utils import plot_comparison
 # =============================================================================
 
 #%% Bodies
-B1 = Body(m=1.0, J=0.01, r=[0.0, 1.0], p=np.pi/4, dr=[0.0, -6.0])
+B1 = Body(mass=1.0, inertia=0.01, position=[0.0, 1.0], orientation=np.pi/4, velocity=[0.0, -6.0])
 
 #%% Forces
-f0 = Force(type='weight')   # gravity
+f0 = Weight()   # gravity
 
 _k_c = 1e4   # contact stiffness (N/m)
 _c_c = 200.0 # contact damping (N*s/m; critically-damped: 2*sqrt(k_c*m))
 
-def my_force():
+def penalty_contact():
     """Damped penalty contact at both rod endpoints (ground at y=0).
 
     Velocity of endpoint P on a rigid body:
         v_P_y = v_CM_y + omega * sp_glob_x      (2D rigid body formula)
     where sp_glob = A(phi) @ sp_local.
     """
-    A_phi  = A_matrix(B1.p)
-    omega  = B1.dp
-    vy_cm  = B1.dr[1, 0]
+    A_phi  = A_matrix(B1.orientation)
+    omega  = B1.angular_velocity
+    vy_cm  = B1.velocity[1, 0]
+    results = []
     for sp_local in [np.array([0., -1.]), np.array([0., 1.])]:
         sp_glob = A_phi @ sp_local                    # global offset from CM
-        p_y      = B1.r[1, 0] + sp_glob[1]        # global y of endpoint
+        p_y      = B1.position[1, 0] + sp_glob[1]        # global y of endpoint
         if p_y < 0:
             v_y  = vy_cm + omega * float(sp_glob[0])  # vertical vel of endpoint
             depth = -p_y
             Fn    = _k_c * depth - _c_c * v_y         # upward contact force
             if Fn < 0:
                 Fn = 0.0                               # no tensile contact
-            B1._f[1] += Fn
-            B1._n    += float(sp_glob[0]) * Fn         # torque: r_x * F_y
+            results.append({
+                'body': B1,
+                'force': [0, Fn],
+                'torque': float(sp_glob[0]) * Fn,
+            })
+    return results
 
-f1 = Force(type='user')
-f1.callback = my_force
+f1 = UserForce(callback=penalty_contact)
 
 # =============================================================================
 # SIMULATION

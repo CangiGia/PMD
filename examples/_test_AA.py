@@ -5,9 +5,9 @@ import matplotlib.pyplot as plt
 from PMD.examples._plot_utils import plot_comparison
 
 #%% bodies
-B1 = Body(m=2, J=0.5, r=[0.4398, 0.2512], p=-0.0367)   # lower suspension arm
-B2 = Body(m=30, J=2.5, r=[0.6817, 0.3498], p=0.0783)  # wheel assembly
-B3 = Body(m=1, J=0.5, r=[0.4463, 0.4308], p=6.5222)   # upper suspension arm
+B1 = Body(mass=2, inertia=0.5, position=[0.4398, 0.2512], orientation=-0.0367)   # lower suspension arm
+B2 = Body(mass=30, inertia=2.5, position=[0.6817, 0.3498], orientation=0.0783)  # wheel assembly
+B3 = Body(mass=1, inertia=0.5, position=[0.4463, 0.4308], orientation=6.5222)   # upper suspension arm
 
 #%% markers
 q1 = B1.add_marker([-0.24, 0.0])       # Q point - lower suspension arm side
@@ -22,28 +22,30 @@ e1 = B1.add_marker([0.0, 0.0])         # E point - Lower suspension arm side
 f0 = Ground.add_marker([0.38, 0.43])   # F point - Ground
 
 #%% joints
-j1 = Joint(type='rev', iMarker=q1, jMarker=q0)  # Revolute joint in Q
-j2 = Joint(type='rev', iMarker=a1, jMarker=a2)  # Revolute joint in A
-j3 = Joint(type='rev', iMarker=b2, jMarker=b3)  # Revolute joint in B
-j4 = Joint(type='rev', iMarker=o3, jMarker=o0)  # Revolute joint in O
+j1 = RevJoint(iMarker=q1, jMarker=q0)  # Revolute joint in Q
+j2 = RevJoint(iMarker=a1, jMarker=a2)  # Revolute joint in A
+j3 = RevJoint(iMarker=b2, jMarker=b3)  # Revolute joint in B
+j4 = RevJoint(iMarker=o3, jMarker=o0)  # Revolute joint in O
 
 #%% forces
-s1 = Force(type='ptp', iMarker=e1, jMarker=f0, k=90000, L0=0.23, dc=1100)  # spring-damper force
+s1 = PtpForce(iMarker=e1, jMarker=f0, k=90000, L0=0.23, dc=1100)  # spring-damper force
 
 # custom wheel contact force
-s2 = Force(type='user', k=50000, L0=0.35, dc=1000)  # wheel contact force
+_k_wh = 50000
+_L0_wh = 0.35
+_dc_wh = 1000
 
-def my_force():
+def wheel_contact():
     """Custom force used to define the wheel contact condition."""
-    dely = B2.r[1] - s2.L0
+    dely = B2.position[1] - _L0_wh
     if dely < 0:
-        fy = (s2.k * dely + s2.dc * B2.dr[1]).item()
-        fsd = np.array([0, -fy])
-        B2._f = B2._f + fsd.reshape(2,1)
+        fy = (_k_wh * dely + _dc_wh * B2.velocity[1]).item()
+        return [{'body': B2, 'force': [0, -fy], 'torque': 0}]
+    return []
 
-s2.callback = my_force
+s2 = UserForce(callback=wheel_contact)
 
-s3 = Force(type='weight')  # gravity force
+s3 = Weight()  # gravity force
 
 #%% solution
 quarter_car = PlanarMultibodyModel(

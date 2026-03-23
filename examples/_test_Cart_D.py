@@ -24,9 +24,9 @@ from PMD.examples._plot_utils import plot_comparison
 # =============================================================================
 
 #%% Bodies
-B1 = Body(m=20.0, J=5.0, r=[0.5, 0.2], p=0.0)
-B2 = Body(m=2.0,  J=0.5, r=[0.2, 0.1], p=0.0)
-B3 = Body(m=2.0,  J=0.5, r=[0.8, 0.1], p=0.0)
+B1 = Body(mass=20.0, inertia=5.0, position=[0.5, 0.2], orientation=0.0)
+B2 = Body(mass=2.0,  inertia=0.5, position=[0.2, 0.1], orientation=0.0)
+B3 = Body(mass=2.0,  inertia=0.5, position=[0.8, 0.1], orientation=0.0)
 
 #%% Markers
 pt0 = B1.add_marker([-0.3, -0.1])
@@ -35,33 +35,33 @@ pt2 = B2.add_marker([ 0.0,  0.0])
 pt3 = B3.add_marker([ 0.0,  0.0])
 
 #%% Joints
-j0 = Joint(type='rev',  iMarker=pt0, jMarker=pt2)
-j1 = Joint(type='rev',  iMarker=pt1, jMarker=pt3)
-j2 = Joint(type='disc', iBody=B2, R=0.1, x0=0.2)
-j3 = Joint(type='disc', iBody=B3, R=0.1, x0=0.8)
+j0 = RevJoint(iMarker=pt0, jMarker=pt2)
+j1 = RevJoint(iMarker=pt1, jMarker=pt3)
+j2 = DiscJoint(iBody=B2, R=0.1, x0=0.2)
+j3 = DiscJoint(iBody=B3, R=0.1, x0=0.8)
 
 #%% Forces
-fw = Force(type='weight')
+fw = Weight()
 
-def my_force():
+def dc_motor_and_drag():
     """DC motor torque on B2 (reaction on B1) + aerodynamic drag on cart B1."""
     # Motor (DC model capped at T_max)
     omega_max = 4.0 * np.pi
     T_max = 20.0
-    omega = abs(B2.dp)
+    omega = abs(B2.angular_velocity)
     T_motor = T_max * (1.0 - omega / omega_max)
     if T_motor > T_max:
         T_motor = T_max
-    B2._n -= T_motor
-    B1._n += T_motor
     # Aerodynamic drag  F = damp_aero * v_x^2  (opposes motion)
     damp_aero = 10.0
-    x_d = B1.dr[0, 0]
+    x_d = B1.velocity[0, 0]
     f_aero = damp_aero * x_d ** 2
-    B1._f[0] -= f_aero   # drag always opposes motion direction
+    return [
+        {'body': B2, 'force': [0, 0], 'torque': -T_motor},
+        {'body': B1, 'force': [-f_aero, 0], 'torque': T_motor},
+    ]
 
-fu = Force(type='user')
-fu.callback = my_force
+fu = UserForce(callback=dc_motor_and_drag)
 
 # =============================================================================
 # SIMULATION

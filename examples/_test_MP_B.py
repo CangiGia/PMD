@@ -43,8 +43,8 @@ from PMD.examples._plot_utils import plot_comparison
 # =============================================================================
 
 #%% Bodies
-B1 = Body(m=20.0, J=2.5, r=[0.5840, 0.3586], p=6.0819)
-B2 = Body(m=2.0,  J=0.5, r=[0.3450, 0.2900], p=0.0)
+B1 = Body(mass=20.0, inertia=2.5, position=[0.5840, 0.3586], orientation=6.0819)
+B2 = Body(mass=2.0,  inertia=0.5, position=[0.3450, 0.2900], orientation=0.0)
 
 #%% Markers
 pt_A1  = B1.add_marker([ 0.00, -0.07])                          # [0]
@@ -56,27 +56,30 @@ pt_Q2  = B2.add_marker([-0.225, 0.00])                          # [5]
 pt_A2  = B2.add_marker([ 0.225, 0.00])                          # [6]
 
 #%% Joints  (MATLAB J1..3 -> Python j0..j2)
-j0 = Joint(type='rev',      iMarker=pt_A1, jMarker=pt_A2)              # A1 <-> A2
-j1 = Joint(type='rev-tran', iMarker=pt_B1, jMarker=pt_O0)              # B1pt ~> O0 along V1
-j2 = Joint(type='rev',      iMarker=pt_Q0, jMarker=pt_Q2)              # Q0 <-> Q2
+j0 = RevJoint(iMarker=pt_A1, jMarker=pt_A2)              # A1 <-> A2
+j1 = RevTranJoint(iMarker=pt_B1, jMarker=pt_O0)              # B1pt ~> O0 along V1
+j2 = RevJoint(iMarker=pt_Q0, jMarker=pt_Q2)              # Q0 <-> Q2
 
 #%% Forces
-s0 = Force(type='ptp', iMarker=pt_B1, jMarker=pt_O0, k=20000.0, L0=0.34, dc=1100.0)
+s0 = PtpForce(iMarker=pt_B1, jMarker=pt_O0, k=20000.0, L0=0.34, dc=1100.0)
 
-s1 = Force(type='user', k=100000.0, L0=0.30, dc=1000.0)
+_k_tire = 100000.0
+_L0_tire = 0.30
+_dc_tire = 1000.0
 
-def my_force():
+def tire_contact():
     """Unilateral tire contact -- same model as MP_A."""
-    del_y = B1.r[1, 0] - s1.L0
+    del_y = B1.position[1, 0] - _L0_tire
     if del_y < 0:
-        fy = s1.k * del_y + s1.dc * B1.dr[1, 0]
+        fy = _k_tire * del_y + _dc_tire * B1.velocity[1, 0]
         fsd = np.array([[0.0], [-fy]])
-        B1._f += fsd
-        B1._n += (s_rot(pt_C1._sP).T @ fsd).item()
+        torque = (s_rot(pt_C1._sP).T @ fsd).item()
+        return [{'body': B1, 'force': [0.0, -fy], 'torque': torque}]
+    return []
 
-s1.callback = my_force
+s1 = UserForce(callback=tire_contact)
 
-s2 = Force(type='weight')
+s2 = Weight()
 
 # =============================================================================
 # SIMULATION

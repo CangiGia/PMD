@@ -38,7 +38,7 @@ from PMD.examples._plot_utils import plot_comparison
 # =============================================================================
 
 #%% Bodies
-B1 = Body(m=1.0, J=1.0, r=[1.0, 0.2], p=0.0, dr=[0.0, 0.0])
+B1 = Body(mass=1.0, inertia=1.0, position=[1.0, 0.2], orientation=0.0, velocity=[0.0, 0.0])
 
 #%% Markers (merge Point + uVector into single Marker with theta for tran joint)
 # pt0 was Point(body=Ground, [0,0.2]) and u0 was uVector(body=Ground, [1,0]) -> theta=0.0
@@ -48,25 +48,24 @@ pt0 = Ground.add_marker([0.0, 0.2], theta=0.0)  # wall anchor + horizontal direc
 pt1 = B1.add_marker([0.0, 0.0], theta=0.0)  # body reference + horizontal direction on B1
 
 #%% Joints
-j0 = Joint(type='tran', iMarker=pt1, jMarker=pt0)
+j0 = TranJoint(iMarker=pt1, jMarker=pt0)
 
 #%% Forces
-f0 = Force(type='ptp', iMarker=pt1, jMarker=pt0, k=10.0, L0=0.8, dc=0.0)
-f1 = Force(type='weight')
+f0 = PtpForce(iMarker=pt1, jMarker=pt0, k=10.0, L0=0.8, dc=0.0)
+f1 = Weight()
 
-def my_force():
+def anderson_friction():
     """Anderson friction model -- body slides against conveyor belt at v_conv=0.1 m/s."""
     mu_d = 0.15; mu_s = 0.2; mu_v = 0.0
     v_s = 0.001; p = 2; k_t = 10000
     fy_normal = 9.81          # normal force (body weight on horizontal surface)
     v_conv = 0.1
-    v = v_conv - B1.dr[0, 0]   # relative sliding velocity
+    v = v_conv - B1.velocity[0, 0]   # relative sliding velocity
     ff = friction_A(mu_s, mu_d, v_s, p, k_t, v, fy_normal)
     fx = ff + mu_v * v * fy_normal
-    B1._f[0] += fx
+    return [{'body': B1, 'force': [fx, 0], 'torque': 0}]
 
-f2 = Force(type='user')
-f2.callback = my_force
+f2 = UserForce(callback=anderson_friction)
 
 # =============================================================================
 # SIMULATION

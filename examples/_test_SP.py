@@ -7,16 +7,9 @@ from PMD.examples._plot_utils import plot_comparison
 
 #* Multi-Body model creation - Bodies, Joints, Forces
 #%% bodies ...
-b1 = Body()
-b1.m = 5.
-b1.J = 4.
-b1.r = np.array([1., 0.2])
+b1 = Body(mass=5., inertia=4., position=[1., 0.2])
 
-b2 = Body()
-b2.m = 2.
-b2.J = 0.2
-b2.r = np.array([1.25, -0.233])
-b2.p = np.pi/6
+b2 = Body(mass=2., inertia=0.2, position=[1.25, -0.233], orientation=np.pi/6)
 
 #%% markers (merge Point + uVector into single Marker with theta for tran joint)
 # p0 was Point(Ground, [0,0.2]) and u0 was uVector(Ground, [1,0]) -> theta=0.0
@@ -28,26 +21,14 @@ p1 = b1.add_marker([0., 0.], theta=0.0)
 p2 = b2.add_marker([0., 0.5])
 
 #%% forces ...
-f0_1 = Force()
-f0_1.type = "ptp"
-f0_1.iMarker = p1
-f0_1.jMarker = p0
-f0_1.k = 20.0
-f0_1.L0 = 0.6
+f0_1 = PtpForce(iMarker=p1, jMarker=p0, k=20.0, L0=0.6)
 
-fw = Force()
-fw.type = "weight"
+fw = Weight()
 
 #%% joints ...
-j0_1 = Joint()
-j0_1.type = "tran"
-j0_1.iMarker = p1
-j0_1.jMarker = p0
+j0_1 = TranJoint(iMarker=p1, jMarker=p0)
 
-j1_2 = Joint()
-j1_2.type = "rev"
-j1_2.iMarker = p1
-j1_2.jMarker = p2
+j1_2 = RevJoint(iMarker=p1, jMarker=p2)
 
 #%% model simulation
 my_dynamic_model = PlanarMultibodyModel(

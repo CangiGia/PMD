@@ -1,5 +1,4 @@
-"""
-Planar Multi-Body Dynamics Model Components
+"""Planar Multi-Body Dynamics Model Components.
 
 This module provides the core model components: Ground (singleton),
 Base (counter), Body (rigid body), and Marker (body-fixed reference frame).
@@ -7,41 +6,40 @@ Base (counter), Body (rigid body), and Marker (body-fixed reference frame).
 Author: Giacomo Cangi
 """
 
-
+import logging
 import warnings
+
 import numpy as np
 from numpy.typing import *
+
 from .utils import *
 from .mechanics import s_rot
+
+logger = logging.getLogger(__name__)
 
 
 # ── Base class ────────────────────────────────────────────────────
 
 class Base:
-    """
-    Base class for all multi-body simulation objects.
+    """Base class for all multi-body simulation objects.
 
-    This class provides a foundation for objects in the multi-body dynamic 
-    simulation framework.
+    Provides automatic instance counting for each subclass.
+
+    Attributes:
+        COUNT: Class variable tracking the number of instances created.
     """
-    COUNT = 0  # class variable to track the number of instances
+
+    COUNT = 0
 
     def __new__(cls, *args, **kwargs):
-        """
-        Create a new instance of a subclass of `Base` and increment the 
-        instance count.
+        """Create a new instance and increment the instance count.
 
-        Parameters
-        ----------
-        args (tuple)
-            Positional arguments passed to the constructor.
-        kwargs (dict)
-            Keyword arguments passed to the constructor.
+        Args:
+            *args: Positional arguments passed to the constructor.
+            **kwargs: Keyword arguments passed to the constructor.
 
-        Returns
-        -------
-        instance
-            A new instance of the class calling this method.
+        Returns:
+            A new instance of the class.
         """
         instance = super().__new__(cls)
         cls.COUNT += 1
@@ -49,24 +47,18 @@ class Base:
 
     @classmethod
     def get_count(cls):
-        """
-        Retrieve the current count of instances.
+        """Retrieve the current count of instances.
 
-        Returns
-        -------
-        int
-            The total count of instances derived from `Base`.
+        Returns:
+            int: The total count of instances.
         """
         return cls.COUNT
-    
-    def get_type(self):
-        """
-        Get the name of the class of the instance.
 
-        Returns
-        -------
-        str
-            The class name of the instance.
+    def get_type(self):
+        """Get the class name of this instance.
+
+        Returns:
+            str: The class name.
         """
         return self.__class__.__name__
 
@@ -74,8 +66,29 @@ class Base:
 # ── Marker class ──────────────────────────────────────────────────
 
 class Marker:
-    def __init__(self, body, position, theta=None, name=None):
-        pos = np.asarray(position, dtype=float).flatten()
+    """Body-fixed reference frame (point + optional orientation).
+
+    Attributes:
+        body: The body this marker is attached to.
+        local_position: Flat (2,) array of local coordinates [xi, eta].
+        theta: Optional orientation angle in the local frame.
+        name: Optional human-readable name.
+    """
+
+    def __init__(self, body, local_position, theta=None, name=None):
+        """Initialize a Marker.
+
+        Args:
+            body: The body this marker is attached to.
+            local_position: 2-element array-like of local coordinates.
+            theta: Optional orientation angle (radians) in the local frame.
+            name: Optional human-readable name.
+
+        Raises:
+            ValueError: If local_position is not a 2-element array.
+            TypeError: If theta is not a float or None.
+        """
+        pos = np.asarray(local_position, dtype=float).flatten()
         if pos.shape != (2,):
             raise ValueError(
                 f"Marker position must be a 2-element array, got shape {pos.shape}")
@@ -84,37 +97,45 @@ class Marker:
             raise TypeError(
                 f"Marker theta must be a float or None, got {type(theta)}")
 
-        self.body     = body
-        self.position = pos        # flat (2,) array, local coords [xi, eta]
-        self.theta    = theta
-        self.name     = name
+        self.body = body
+        self.local_position = pos
+        self.theta = theta
+        self.name = name
 
         # solver-internal: position kinematics
-        self._sP   = np.zeros((2, 1))
-        self._sPr  = np.zeros((2, 1))
-        self._rP   = np.zeros((2, 1))
-        self._dsP  = np.zeros((2, 1))
-        self._drP  = np.zeros((2, 1))
+        self._sP = np.zeros((2, 1))
+        self._sPr = np.zeros((2, 1))
+        self._rP = np.zeros((2, 1))
+        self._dsP = np.zeros((2, 1))
+        self._drP = np.zeros((2, 1))
         self._ddrP = np.zeros((2, 1))
 
         # solver-internal: orientation kinematics (only when theta is given)
         if theta is not None:
             self._ulocal = np.array([[np.cos(theta)], [np.sin(theta)]])
-            self._u  = np.zeros((2, 1))
+            self._u = np.zeros((2, 1))
             self._ur = np.zeros((2, 1))
             self._du = np.zeros((2, 1))
 
     @property
     def has_orientation(self):
+        """bool: True if this marker has an orientation (theta is not None)."""
         return self.theta is not None
 
     @property
     def global_position(self):
+        """ndarray: Global position of this marker, shape (2, 1)."""
         return self._rP
 
     @property
     def global_velocity(self):
+        """ndarray: Global velocity of this marker, shape (2, 1)."""
         return self._drP
+
+    def __repr__(self):
+        label = f"'{self.name}'" if self.name else "unnamed"
+        body_label = repr(self.body) if hasattr(self.body, '__repr__') else str(self.body)
+        return f"Marker({label}, body={body_label}, local_position={self.local_position})"
 
 
 # ── Ground singleton ──────────────────────────────────────────────
@@ -125,14 +146,15 @@ class _GroundType:
     Ground is the immovable reference body with zero state.  Use the
     module-level ``Ground`` instance instead of instantiating this class.
     """
+
     _instance = None
 
     def __new__(cls):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-            # auto-create an origin marker
-            origin = Marker(body=cls._instance, position=[0, 0], theta=0.0, name='origin')
-            pos_col = origin.position.reshape(2, 1)
+            origin = Marker(body=cls._instance, local_position=[0, 0],
+                            theta=0.0, name='origin')
+            pos_col = origin.local_position.reshape(2, 1)
             origin._sP = pos_col.copy()
             origin._sPr = s_rot(pos_col)
             origin._rP = pos_col.copy()
@@ -143,20 +165,31 @@ class _GroundType:
         return cls._instance
 
     # Fixed zero state — mirrors the Body interface that the solver reads.
-    r   = np.zeros((2, 1))
-    p   = 0.0
-    dr  = np.zeros((2, 1))
-    dp  = 0.0
-    ddr = np.zeros((2, 1))
-    ddp = 0.0
-    _A  = np.eye(2)
-    _bidx = 0          # internal body index: 0 ≡ ground
+    position = np.zeros((2, 1))
+    orientation = 0.0
+    velocity = np.zeros((2, 1))
+    angular_velocity = 0.0
+    acceleration = np.zeros((2, 1))
+    angular_acceleration = 0.0
+    _rotation_matrix = np.eye(2)
+    _body_index = 0
 
     _markers = []
 
-    def add_marker(self, position, theta=None, name=None):
-        marker = Marker(body=self, position=position, theta=theta, name=name)
-        pos_col = marker.position.reshape(2, 1)
+    def add_marker(self, local_position, theta=None, name=None):
+        """Create and attach a new Marker to Ground.
+
+        Args:
+            local_position: 2-element array-like of local coordinates.
+            theta: Optional orientation angle (radians).
+            name: Optional human-readable name.
+
+        Returns:
+            Marker: The newly created marker.
+        """
+        marker = Marker(body=self, local_position=local_position,
+                        theta=theta, name=name)
+        pos_col = marker.local_position.reshape(2, 1)
         marker._sP = pos_col.copy()
         marker._sPr = s_rot(pos_col)
         marker._rP = pos_col.copy()
@@ -180,95 +213,85 @@ Ground = _GroundType()
 # ── Body class ────────────────────────────────────────────────────
 
 class Body(Base):
-    """
-    Create a `rigid body` in a planar multi-body dynamic simulation.
+    """Rigid body in a planar multi-body dynamic simulation.
 
-    Attributes
-    ----------
-    m (float) 
-        Mass of the body.
-    J (float) 
-        Moment of inertia of the body.
-    r (NDArray) 
-        Position vector (x, y) of the body.
-    p (float) 
-        Orientation angle (phi) of the body.
-    dr (NDArray) 
-        Time derivative of position (x, y).
-    dp (float) 
-        Time derivative of the orientation angle (phi).
-    ddr (NDArray) 
-        Second derivative of position (x, y).
-    ddp (float) 
-        Second time derivative of the orientation angle (phi).
-
-    Notes
-    -----
-    _A (NDArray) 
-        Rotational transformation matrix.
-    _bidx (int)
-        Internal body index (1-based), set by the solver during initialization.
-    _irc (int) 
-        Index of the first element of r in u.
-    _irv (int) 
-        Index of the first element of r_dot in u.
-    _ira (int) 
-        Index of the first element of r_dot2 in v.
-    _invm (float) 
-        Inverse of the mass.
-    _invJ (float) 
-        Inverse of the moment of inertia.
-    _wgt (NDArray) 
-        Weight of the body as a force vector.
-    _f (NDArray) 
-        Sum of forces acting on the body.
-    _n (float) 
-        Sum of moments acting on the body.
-    _markers (list) 
-        List of Marker objects associated with this body.
+    Attributes:
+        name: Optional human-readable name.
+        mass: Mass of the body (kg).
+        inertia: Moment of inertia of the body (kg*m^2).
+        position: Position vector (x, y), shape (2, 1).
+        orientation: Orientation angle phi (rad).
+        velocity: Velocity vector (dx, dy), shape (2, 1).
+        angular_velocity: Angular velocity dphi (rad/s).
+        acceleration: Acceleration vector (ddx, ddy), shape (2, 1).
+        angular_acceleration: Angular acceleration ddphi (rad/s^2).
     """
 
-    def __init__(self, m=1, J=1, r=None, p=None, dr=None, dp=0, ddr=None, ddp=0):
-        super().__init__()  # call to the Base class constructor
-        if m <= 0:
-            raise ValueError(f"Body {self.COUNT}: mass must be positive, got {m}")
-        if J < 0:
-            raise ValueError(f"Body {self.COUNT}: moment of inertia cannot be negative, got {J}")
-        self.m = m
-        self.J = J
-        self.r = r if r is not None else colvect(0, 0)
-        self.p = p if p is not None else 0.0
+    def __init__(self, mass=1, inertia=1, position=None, orientation=None,
+                 velocity=None, angular_velocity=0, acceleration=None,
+                 angular_acceleration=0, name=None):
+        """Initialize a Body.
+
+        Args:
+            mass: Mass (must be positive).
+            inertia: Moment of inertia (must be non-negative).
+            position: Initial position [x, y] or None for default [0, 0].
+            orientation: Initial orientation angle phi or None for default 0.
+            velocity: Initial velocity [dx, dy] or None for default [0, 0].
+            angular_velocity: Initial angular velocity dphi.
+            acceleration: Initial acceleration [ddx, ddy] or None.
+            angular_acceleration: Initial angular acceleration ddphi.
+            name: Optional human-readable name.
+
+        Raises:
+            ValueError: If mass is not positive or inertia is negative.
+        """
+        super().__init__()
+        if mass <= 0:
+            raise ValueError(
+                f"Body {self.COUNT}: mass must be positive, got {mass}")
+        if inertia < 0:
+            raise ValueError(
+                f"Body {self.COUNT}: moment of inertia cannot be negative, "
+                f"got {inertia}")
+
+        self.name = name
+        self.mass = mass
+        self.inertia = inertia
+        self.position = position if position is not None else colvect(0, 0)
+        self.orientation = orientation if orientation is not None else 0.0
         # Set the _given flags AFTER initial assignment to avoid
         # the setter marking defaults as user-provided.
-        self._r_given = r is not None
-        self._p_given = p is not None
-        self.dr = dr if dr is not None else colvect(0, 0)
-        self.dp = dp
-        self.ddr = ddr if ddr is not None else colvect(0, 0)
-        self.ddp = ddp
-        self._A = np.eye(2)
-        self._bidx = 0
-        self._irc = 0
-        self._irv = 0
-        self._ira = 0
-        self._invm = 1.0 / m
-        self._invJ = 1.0 / J if J != 0 else float('inf')
-        self._wgt = colvect(0, 0)
-        self._f = colvect(0, 0)
-        self._n = 0
+        self._position_given = position is not None
+        self._orientation_given = orientation is not None
+        self.velocity = velocity if velocity is not None else colvect(0, 0)
+        self.angular_velocity = angular_velocity
+        self.acceleration = (acceleration if acceleration is not None
+                             else colvect(0, 0))
+        self.angular_acceleration = angular_acceleration
+        self._rotation_matrix = np.eye(2)
+        self._body_index = 0
+        self._index_position = 0
+        self._index_velocity = 0
+        self._index_acceleration = 0
+        self._inv_mass = 1.0 / mass
+        self._inv_inertia = 1.0 / inertia if inertia != 0 else float('inf')
+        self._weight = colvect(0, 0)
+        self._force = colvect(0, 0)
+        self._torque = 0
         self._markers = []
 
-    # new values will be automatically treated as column vectors, 
-    # even if the user defines them as row vectors or lists!
-    dr = as_column_property("dr")
-    ddr = as_column_property("ddr")
+    # Ensure assigned values are stored as column vectors
+    velocity = as_column_property("velocity")
+    acceleration = as_column_property("acceleration")
 
     @property
-    def r(self):
-        return self.__r
+    def position(self):
+        """ndarray: Position vector (x, y), shape (2, 1)."""
+        return self.__position
 
-    @r.setter
-    def r(self, value):
+    @position.setter
+    def position(self, value):
         if isinstance(value, list):
             value = np.array(value)
         if isinstance(value, np.ndarray):
@@ -276,37 +299,68 @@ class Body(Base):
                 value = value.reshape(-1, 1)
             elif value.ndim == 2 and value.shape[0] == 1:
                 value = value.T
-        self.__r = value
-        # Mark as explicitly provided so auto-assembly won't overwrite it
-        if hasattr(self, '_r_given'):
-            self._r_given = True
+        self.__position = value
+        if hasattr(self, '_position_given'):
+            self._position_given = True
 
     @property
-    def p(self):
-        return self.__p
+    def orientation(self):
+        """float: Orientation angle phi (rad)."""
+        return self.__orientation
 
-    @p.setter
-    def p(self, value):
+    @orientation.setter
+    def orientation(self, value):
         if isinstance(value, np.ndarray):
             value = float(value.flat[0])
-        self.__p = value
-        if hasattr(self, '_p_given'):
-            self._p_given = True
+        self.__orientation = value
+        if hasattr(self, '_orientation_given'):
+            self._orientation_given = True
 
-    def add_marker(self, position, theta=None, name=None):
-        marker = Marker(body=self, position=position, theta=theta, name=name)
-        # V3: warn if duplicate position on same body
+    def add_marker(self, local_position, theta=None, name=None):
+        """Create and attach a new Marker to this body.
+
+        Args:
+            local_position: 2-element array-like of local coordinates.
+            theta: Optional orientation angle (radians) in the local frame.
+            name: Optional human-readable name.
+
+        Returns:
+            Marker: The newly created marker.
+        """
+        marker = Marker(body=self, local_position=local_position,
+                        theta=theta, name=name)
         for existing in self._markers:
-            if np.linalg.norm(existing.position - marker.position) < 1e-10:
+            if np.linalg.norm(existing.local_position - marker.local_position) < 1e-10:
                 warnings.warn(
-                    f"Body already has a marker at position {marker.position}")
+                    f"Body already has a marker at position "
+                    f"{marker.local_position}")
                 break
         self._markers.append(marker)
         return marker
 
-    def add_marker_at(self, reference_marker, offset=(0, 0), theta=None, name=None):
-        marker = Marker(body=self, position=[0, 0], theta=theta, name=name)
+    def add_marker_at(self, reference_marker, offset=(0, 0), theta=None,
+                      name=None):
+        """Create a marker whose position is deferred until assembly.
+
+        The marker's local position will be computed from a reference marker
+        on another body plus a local offset.
+
+        Args:
+            reference_marker: A Marker on another body to use as reference.
+            offset: 2-element offset in the reference body's local frame.
+            theta: Optional orientation angle (radians).
+            name: Optional human-readable name.
+
+        Returns:
+            Marker: The newly created (deferred) marker.
+        """
+        marker = Marker(body=self, local_position=[0, 0], theta=theta,
+                        name=name)
         marker._deferred_ref = reference_marker
         marker._deferred_offset = offset
         self._markers.append(marker)
         return marker
+
+    def __repr__(self):
+        label = f"'{self.name}'" if self.name else f"#{self.COUNT}"
+        return f"Body({label}, mass={self.mass}, inertia={self.inertia})"
