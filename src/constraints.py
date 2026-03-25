@@ -33,10 +33,20 @@ class Joint(ABC, Base):
         jMarker: Marker on body j (or None).
         iBody: Body i (derived from iMarker or explicit).
         jBody: Body j (derived from jMarker or explicit).
+        name: Optional human-readable name for identification and legends.
     """
 
     def __init__(self, *, iMarker=None, jMarker=None,
-                 iBody=None, jBody=None):
+                 iBody=None, jBody=None, name=None):
+        """Initialize a Joint.
+
+        Args:
+            iMarker: Marker on body i.
+            jMarker: Marker on body j.
+            iBody: Explicit body i (used if iMarker is None).
+            jBody: Explicit body j (used if jMarker is None).
+            name: Optional human-readable name.
+        """
         super().__init__()
         self.iMarker = iMarker
         self.jMarker = jMarker
@@ -60,6 +70,7 @@ class Joint(ABC, Base):
         self._colje = 0
         self._lagrange = np.zeros([3, 1])
         self._result_container = None
+        self.name = name
 
     # ── Abstract interface ────────────────────────────────────────
 
@@ -177,8 +188,11 @@ class Joint(ABC, Base):
         return self._result_container['reactions']
 
     def __repr__(self):
-        return (f"{self.__class__.__name__}("
-                f"iBody={self.iBody!r}, jBody={self.jBody!r})")
+        label = f"'{self.name}'" if self.name else ""
+        body_info = f"iBody={self.iBody!r}, jBody={self.jBody!r}"
+        if label:
+            return f"{self.__class__.__name__}({label}, {body_info})"
+        return f"{self.__class__.__name__}({body_info})"
 
 
 # ── Revolute Joint ────────────────────────────────────────────────
@@ -192,9 +206,9 @@ class RevJoint(Joint):
     """
 
     def __init__(self, *, iMarker=None, jMarker=None, fix=0, q0=0,
-                 iBody=None, jBody=None):
+                 iBody=None, jBody=None, name=None):
         super().__init__(iMarker=iMarker, jMarker=jMarker,
-                         iBody=iBody, jBody=jBody)
+                         iBody=iBody, jBody=jBody, name=name)
         self.fix = fix
         self.q0 = q0
         self._p0 = 0
@@ -290,9 +304,9 @@ class TranJoint(Joint):
     """
 
     def __init__(self, *, iMarker=None, jMarker=None, fix=0, q0=0,
-                 iBody=None, jBody=None):
+                 iBody=None, jBody=None, name=None):
         super().__init__(iMarker=iMarker, jMarker=jMarker,
-                         iBody=iBody, jBody=jBody)
+                         iBody=iBody, jBody=jBody, name=name)
         self.fix = fix
         self.q0 = q0
         self._p0 = 0
@@ -450,9 +464,9 @@ class RevRevJoint(Joint):
     """
 
     def __init__(self, *, iMarker=None, jMarker=None, L=0, q0=0,
-                 iBody=None, jBody=None):
+                 iBody=None, jBody=None, name=None):
         super().__init__(iMarker=iMarker, jMarker=jMarker,
-                         iBody=iBody, jBody=jBody)
+                         iBody=iBody, jBody=jBody, name=name)
         self.L = L
         self.q0 = q0
 
@@ -538,9 +552,9 @@ class RevTranJoint(Joint):
     """
 
     def __init__(self, *, iMarker=None, jMarker=None, L=0, q0=0,
-                 iBody=None, jBody=None):
+                 iBody=None, jBody=None, name=None):
         super().__init__(iMarker=iMarker, jMarker=jMarker,
-                         iBody=iBody, jBody=jBody)
+                         iBody=iBody, jBody=jBody, name=name)
         self.L = L
         self.q0 = q0
 
@@ -610,9 +624,9 @@ class RigidJoint(Joint):
     """
 
     def __init__(self, *, iBody=None, jBody=None, d0=None,
-                 iMarker=None, jMarker=None):
+                 iMarker=None, jMarker=None, name=None):
         super().__init__(iMarker=iMarker, jMarker=jMarker,
-                         iBody=iBody, jBody=jBody)
+                         iBody=iBody, jBody=jBody, name=name)
         self.d0 = d0 if d0 is not None else []
         self._p0 = 0
 
@@ -687,9 +701,9 @@ class DiscJoint(Joint):
     """
 
     def __init__(self, *, iBody=None, R=1, x0=0,
-                 iMarker=None, jMarker=None, jBody=None):
+                 iMarker=None, jMarker=None, jBody=None, name=None):
         super().__init__(iMarker=iMarker, jMarker=jMarker,
-                         iBody=iBody, jBody=jBody)
+                         iBody=iBody, jBody=jBody, name=name)
         self.R = R
         self.x0 = x0
         self._p0 = 0
@@ -731,9 +745,9 @@ class RelRotJoint(Joint):
     """
 
     def __init__(self, *, iBody=None, jBody=None, iFunct=None,
-                 iMarker=None, jMarker=None):
+                 iMarker=None, jMarker=None, name=None):
         super().__init__(iMarker=iMarker, jMarker=jMarker,
-                         iBody=iBody, jBody=jBody)
+                         iBody=iBody, jBody=jBody, name=name)
         self.iFunct = iFunct
 
     def initialize(self, model):
@@ -776,9 +790,9 @@ class RelTranJoint(Joint):
     """
 
     def __init__(self, *, iMarker=None, jMarker=None, iFunct=None,
-                 iBody=None, jBody=None):
+                 iBody=None, jBody=None, name=None):
         super().__init__(iMarker=iMarker, jMarker=jMarker,
-                         iBody=iBody, jBody=jBody)
+                         iBody=iBody, jBody=jBody, name=name)
         self.iFunct = iFunct
 
     def initialize(self, model):
@@ -841,15 +855,26 @@ class Force(ABC, Base):
         jMarker: Marker on body j (or None).
         iBody: Body i.
         jBody: Body j.
+        name: Optional human-readable name for identification and legends.
     """
 
     def __init__(self, *, iMarker=None, jMarker=None,
-                 iBody=None, jBody=None):
+                 iBody=None, jBody=None, name=None):
+        """Initialize a Force.
+
+        Args:
+            iMarker: Marker on body i.
+            jMarker: Marker on body j.
+            iBody: Explicit body i (used if iMarker is None).
+            jBody: Explicit body j (used if jMarker is None).
+            name: Optional human-readable name.
+        """
         super().__init__()
         self.iMarker = iMarker
         self.jMarker = jMarker
         self.iBody = iMarker.body if iMarker is not None else (iBody or Ground)
         self.jBody = jMarker.body if jMarker is not None else (jBody or Ground)
+        self.name = name
 
     @abstractmethod
     def apply(self, bodies):
@@ -860,7 +885,11 @@ class Force(ABC, Base):
         """
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(iBody={self.iBody!r}, jBody={self.jBody!r})"
+        label = f"'{self.name}'" if self.name else ""
+        body_info = f"iBody={self.iBody!r}, jBody={self.jBody!r}"
+        if label:
+            return f"{self.__class__.__name__}({label}, {body_info})"
+        return f"{self.__class__.__name__}({body_info})"
 
 
 # ── Weight ────────────────────────────────────────────────────────
@@ -876,8 +905,8 @@ class Weight(Force):
     DEFAULT_GRAVITY = 9.81
     DEFAULT_GRAVITY_VECTOR = colvect([0, -1])
 
-    def __init__(self, gravity=None, gravity_direction=None):
-        super().__init__()
+    def __init__(self, gravity=None, gravity_direction=None, name=None):
+        super().__init__(name=name)
         self.gravity = gravity if gravity is not None else self.DEFAULT_GRAVITY
         self.gravity_direction = (gravity_direction if gravity_direction is not None
                                   else self.DEFAULT_GRAVITY_VECTOR.copy())
@@ -901,7 +930,8 @@ class Weight(Force):
             body._force += body._weight
 
     def __repr__(self):
-        return f"Weight(gravity={self.gravity})"
+        label = f"'{self.name}', " if self.name else ""
+        return f"Weight({label}gravity={self.gravity})"
 
 
 # ── Point-to-Point Force ─────────────────────────────────────────
@@ -917,8 +947,8 @@ class PtpForce(Force):
     """
 
     def __init__(self, *, iMarker=None, jMarker=None, k=0, L0=0, dc=0,
-                 f_a=0):
-        super().__init__(iMarker=iMarker, jMarker=jMarker)
+                 f_a=0, name=None):
+        super().__init__(iMarker=iMarker, jMarker=jMarker, name=name)
         self.k = k
         self.L0 = L0
         self.dc = dc
@@ -945,7 +975,8 @@ class PtpForce(Force):
             Bj._torque += (jPt._sPr.T @ fi).item()
 
     def __repr__(self):
-        return f"PtpForce(k={self.k}, L0={self.L0}, dc={self.dc})"
+        label = f"'{self.name}', " if self.name else ""
+        return f"PtpForce({label}k={self.k}, L0={self.L0}, dc={self.dc})"
 
 
 # ── Rotational Spring-Damper-Actuator ─────────────────────────────
@@ -961,9 +992,9 @@ class RotSdaForce(Force):
     """
 
     def __init__(self, *, iBody=None, jBody=None, k=0, theta0=0, dc=0,
-                 T_a=0, iMarker=None, jMarker=None):
+                 T_a=0, iMarker=None, jMarker=None, name=None):
         super().__init__(iMarker=iMarker, jMarker=jMarker,
-                         iBody=iBody, jBody=jBody)
+                         iBody=iBody, jBody=jBody, name=name)
         self.k = k
         self.theta0 = theta0
         self.dc = dc
@@ -1000,9 +1031,9 @@ class LocalForce(Force):
     """
 
     def __init__(self, *, iBody=None, force_local=None, iMarker=None,
-                 jMarker=None, jBody=None):
+                 jMarker=None, jBody=None, name=None):
         super().__init__(iMarker=iMarker, jMarker=jMarker,
-                         iBody=iBody, jBody=jBody)
+                         iBody=iBody, jBody=jBody, name=name)
         self.force_local = (force_local if force_local is not None
                             else colvect([0, 0]))
 
@@ -1023,9 +1054,9 @@ class GlobalForce(Force):
     """
 
     def __init__(self, *, iBody=None, force_global=None, iMarker=None,
-                 jMarker=None, jBody=None):
+                 jMarker=None, jBody=None, name=None):
         super().__init__(iMarker=iMarker, jMarker=jMarker,
-                         iBody=iBody, jBody=jBody)
+                         iBody=iBody, jBody=jBody, name=name)
         self.force_global = (force_global if force_global is not None
                              else colvect([0, 0]))
 
@@ -1046,9 +1077,9 @@ class Torque(Force):
     """
 
     def __init__(self, *, iBody=None, torque_value=0, iMarker=None,
-                 jMarker=None, jBody=None):
+                 jMarker=None, jBody=None, name=None):
         super().__init__(iMarker=iMarker, jMarker=jMarker,
-                         iBody=iBody, jBody=jBody)
+                         iBody=iBody, jBody=jBody, name=name)
         self.torque_value = torque_value
 
     def apply(self, bodies):
@@ -1069,9 +1100,9 @@ class UserForce(Force):
     """
 
     def __init__(self, *, callback=None, iMarker=None, jMarker=None,
-                 iBody=None, jBody=None, **kwargs):
+                 iBody=None, jBody=None, name=None, **kwargs):
         super().__init__(iMarker=iMarker, jMarker=jMarker,
-                         iBody=iBody, jBody=jBody)
+                         iBody=iBody, jBody=jBody, name=name)
         self.callback = callback
         # Store any extra kwargs for user convenience (e.g. k, L0, dc)
         for key, value in kwargs.items():
@@ -1092,7 +1123,8 @@ class UserForce(Force):
                         body._torque += float(torque)
 
     def __repr__(self):
-        return f"UserForce(callback={self.callback!r})"
+        label = f"'{self.name}', " if self.name else ""
+        return f"UserForce({label}callback={self.callback!r})"
 
 
 # ═══════════════════════════════════════════════════════════════════

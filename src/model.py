@@ -225,11 +225,13 @@ class Body(Base):
         angular_velocity: Angular velocity dphi (rad/s).
         acceleration: Acceleration vector (ddx, ddy), shape (2, 1).
         angular_acceleration: Angular acceleration ddphi (rad/s^2).
+        name: Optional human-readable name.
+        shape: Optional shape descriptor for visualization.
     """
 
     def __init__(self, mass=1, inertia=1, position=None, orientation=None,
                  velocity=None, angular_velocity=0, acceleration=None,
-                 angular_acceleration=0, name=None):
+                 angular_acceleration=0, name=None, shape=None):
         """Initialize a Body.
 
         Args:
@@ -242,6 +244,8 @@ class Body(Base):
             acceleration: Initial acceleration [ddx, ddy] or None.
             angular_acceleration: Initial angular acceleration ddphi.
             name: Optional human-readable name.
+            shape: Optional shape descriptor (Rectangle, Circle, or Polygon)
+                for visualization.
 
         Raises:
             ValueError: If mass is not positive or inertia is negative.
@@ -256,6 +260,7 @@ class Body(Base):
                 f"got {inertia}")
 
         self.name = name
+        self.shape = shape
         self.mass = mass
         self.inertia = inertia
         self.position = position if position is not None else colvect(0, 0)
