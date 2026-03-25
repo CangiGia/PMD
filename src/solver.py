@@ -44,320 +44,6 @@ from .utils import *
 logger = logging.getLogger(__name__)
 
 
-class SolResult:
-    """Simulation result container with lazy post-processing and plot methods.
-
-    Supports both tuple unpacking (``T, uT = result``) and attribute access
-    (``result.t``, ``result.y`` for a scipy-like interface).
-
-    Attributes:
-        t: Time points, shape (n,).
-        y: State matrix (positions + velocities), shape (2*nB3, n).
-        uT: State matrix, legacy convention, shape (n, 2*nB3).
-        nB: Number of moving bodies.
-    """
-
-    def __init__(self, t, uT, model=None, dense_sol=None):
-        self.t = t
-        self.y = uT.T
-        self.uT = uT
-        self._model = model
-        self._dense_sol = dense_sol
-        self._accelerations = None
-        self._reactions = None
-
-        if model is not None:
-            self.nB = model.nB
-            self._nB3 = 3 * model.nB
-            self._body_names = [
-                (b.name if b.name else f'Body {i+1}')
-                for i, b in enumerate(model.Bodies)
-            ]
-        else:
-            self.nB = 0
-            self._nB3 = 0
-            self._body_names = []
-
-    def __iter__(self):
-        return iter((self.t, self.uT))
-
-    def __repr__(self):
-        return f"SolResult(t: {self.t.shape}, y: {self.y.shape})"
-
-    # ── Lazy post-processing properties ────────────────────────────
-
-    @property
-    def accelerations(self):
-        """Generalized accelerations, shape (nSteps, nB3). Computed lazily."""
-        if self._accelerations is None:
-            if self._model is None:
-                raise RuntimeError("No model reference available for post-processing.")
-            self._accelerations, self._reactions = self._model._post_process(self.t, self.uT)
-        return self._accelerations
-
-    @property
-    def reactions(self):
-        """Lagrange multipliers, shape (nSteps, nConstraints). Computed lazily."""
-        if self._reactions is None:
-            if self._model is None:
-                raise RuntimeError("No model reference available for post-processing.")
-            self._accelerations, self._reactions = self._model._post_process(self.t, self.uT)
-        return self._reactions
-
-    # ── Data access helpers ────────────────────────────────────────
-
-    def get_body_states(self, body_index):
-        """Extract x, y, phi, dx, dy, dphi for a specific body.
-
-        Args:
-            body_index: 1-based body index.
-
-        Returns:
-            dict with keys 'x', 'y', 'phi', 'dx', 'dy', 'dphi'.
-        """
-        i = body_index - 1
-        nB3 = self._nB3
-        return {
-            'x':    self.uT[:, 3*i],
-            'y':    self.uT[:, 3*i + 1],
-            'phi':  self.uT[:, 3*i + 2],
-            'dx':   self.uT[:, nB3 + 3*i],
-            'dy':   self.uT[:, nB3 + 3*i + 1],
-            'dphi': self.uT[:, nB3 + 3*i + 2],
-        }
-
-    def get_body_accelerations(self, body_index):
-        """Extract ddx, ddy, ddphi for a specific body.
-
-        Args:
-            body_index: 1-based body index.
-
-        Returns:
-            dict with keys 'ddx', 'ddy', 'ddphi'.
-        """
-        i = body_index - 1
-        acc = self.accelerations
-        return {
-            'ddx':   acc[:, 3*i],
-            'ddy':   acc[:, 3*i + 1],
-            'ddphi': acc[:, 3*i + 2],
-        }
-
-    # ── Dense output resampling ────────────────────────────────────
-
-    def resample(self, t_start=None, t_end=None, dt=None):
-        """Create a new SolResult on a different time grid using dense output.
-
-        Args:
-            t_start: Start time (default: self.t[0]).
-            t_end: End time (default: self.t[-1]).
-            dt: Time step (default: same as original).
-
-        Returns:
-            New SolResult on the resampled grid.
-
-        Raises:
-            RuntimeError: If dense_output was not enabled during solve().
-        """
-        if self._dense_sol is None:
-            raise RuntimeError(
-                "Dense output not available. Call solve() with dense_output=True "
-                "to enable resampling.")
-        if t_start is None:
-            t_start = self.t[0]
-        if t_end is None:
-            t_end = self.t[-1]
-        if dt is None:
-            dt = self.t[1] - self.t[0]
-
-        T_new = np.arange(t_start, t_end + dt / 2, dt)
-        uT_new = self._dense_sol(T_new).T
-        return SolResult(T_new, uT_new, self._model, dense_sol=self._dense_sol)
-
-    # ── Plot methods ───────────────────────────────────────────────
-
-    def plot_displacements(self, bodies=None, figsize=(12, 4)):
-        """Plot x, y, phi for selected bodies.
-
-        Args:
-            bodies: List of 1-based body indices. None = all bodies.
-            figsize: Figure size per body row.
-        """
-        import matplotlib.pyplot as plt
-
-        if bodies is None:
-            bodies = list(range(1, self.nB + 1))
-
-        fig, axes = plt.subplots(len(bodies), 3,
-                                 figsize=(figsize[0], figsize[1] * len(bodies)),
-                                 squeeze=False)
-
-        labels = ['x [m]', 'y [m]', '\u03c6 [rad]']
-        keys = ['x', 'y', 'phi']
-
-        for row, bi in enumerate(bodies):
-            states = self.get_body_states(bi)
-            for col, (key, label) in enumerate(zip(keys, labels)):
-                axes[row, col].plot(self.t, states[key], 'b-', linewidth=1.0)
-                axes[row, col].set_xlabel('t [s]')
-                axes[row, col].set_ylabel(label)
-                axes[row, col].set_title(f'{self._body_names[bi-1]} \u2014 {key}')
-                axes[row, col].grid(True, alpha=0.3)
-
-        fig.suptitle('Displacements', fontsize=14, fontweight='bold')
-        fig.tight_layout()
-        plt.show()
-
-    def plot_velocities(self, bodies=None, figsize=(12, 4)):
-        """Plot dx, dy, dphi for selected bodies.
-
-        Args:
-            bodies: List of 1-based body indices. None = all bodies.
-            figsize: Figure size per body row.
-        """
-        import matplotlib.pyplot as plt
-
-        if bodies is None:
-            bodies = list(range(1, self.nB + 1))
-
-        fig, axes = plt.subplots(len(bodies), 3,
-                                 figsize=(figsize[0], figsize[1] * len(bodies)),
-                                 squeeze=False)
-
-        labels = ['\u1e8b [m/s]', '\u1e8f [m/s]', '\u03c6\u0307 [rad/s]']
-        keys = ['dx', 'dy', 'dphi']
-
-        for row, bi in enumerate(bodies):
-            states = self.get_body_states(bi)
-            for col, (key, label) in enumerate(zip(keys, labels)):
-                axes[row, col].plot(self.t, states[key], 'b-', linewidth=1.0)
-                axes[row, col].set_xlabel('t [s]')
-                axes[row, col].set_ylabel(label)
-                axes[row, col].set_title(f'{self._body_names[bi-1]} \u2014 {key}')
-                axes[row, col].grid(True, alpha=0.3)
-
-        fig.suptitle('Velocities', fontsize=14, fontweight='bold')
-        fig.tight_layout()
-        plt.show()
-
-    def plot_accelerations(self, bodies=None, figsize=(12, 4)):
-        """Plot ddx, ddy, ddphi for selected bodies. Triggers lazy computation.
-
-        Args:
-            bodies: List of 1-based body indices. None = all bodies.
-            figsize: Figure size per body row.
-        """
-        import matplotlib.pyplot as plt
-
-        if bodies is None:
-            bodies = list(range(1, self.nB + 1))
-
-        fig, axes = plt.subplots(len(bodies), 3,
-                                 figsize=(figsize[0], figsize[1] * len(bodies)),
-                                 squeeze=False)
-
-        labels = ['\u1e8d [m/s\u00b2]', '\u00ff [m/s\u00b2]', '\u03c6\u0308 [rad/s\u00b2]']
-        keys = ['ddx', 'ddy', 'ddphi']
-
-        for row, bi in enumerate(bodies):
-            acc = self.get_body_accelerations(bi)
-            for col, (key, label) in enumerate(zip(keys, labels)):
-                axes[row, col].plot(self.t, acc[key], 'b-', linewidth=1.0)
-                axes[row, col].set_xlabel('t [s]')
-                axes[row, col].set_ylabel(label)
-                axes[row, col].set_title(f'{self._body_names[bi-1]} \u2014 {key}')
-                axes[row, col].grid(True, alpha=0.3)
-
-        fig.suptitle('Accelerations', fontsize=14, fontweight='bold')
-        fig.tight_layout()
-        plt.show()
-
-    def plot_reactions(self, joints=None, figsize=(12, 3)):
-        """Plot Lagrange multipliers for selected constraint rows.
-
-        Args:
-            joints: List of 0-based constraint row indices. None = all.
-            figsize: Figure size per row.
-        """
-        import matplotlib.pyplot as plt
-
-        reactions = self.reactions
-        nConst = reactions.shape[1]
-
-        if joints is None:
-            indices = list(range(nConst))
-        else:
-            indices = [j for j in joints if j < nConst]
-
-        nPlots = len(indices)
-        fig, axes = plt.subplots(nPlots, 1,
-                                 figsize=(figsize[0], figsize[1] * nPlots),
-                                 squeeze=False)
-        for row, k in enumerate(indices):
-            axes[row, 0].plot(self.t, reactions[:, k], 'r-', linewidth=1.0)
-            axes[row, 0].set_xlabel('t [s]')
-            axes[row, 0].set_ylabel(f'\u03bb_{k+1} [N or N\u00b7m]')
-            axes[row, 0].set_title(f'Constraint reaction {k+1}')
-            axes[row, 0].grid(True, alpha=0.3)
-
-        fig.suptitle('Constraint Reactions', fontsize=14, fontweight='bold')
-        fig.tight_layout()
-        plt.show()
-
-    def plot_phase(self, body_index, dof='x', figsize=(6, 6)):
-        """Phase portrait (q vs dq) for a specific DOF.
-
-        Args:
-            body_index: 1-based body index.
-            dof: 'x', 'y', or 'phi'.
-            figsize: Figure size.
-        """
-        import matplotlib.pyplot as plt
-
-        states = self.get_body_states(body_index)
-        q_key = dof
-        dq_key = 'd' + dof
-
-        q_labels = {'x': 'x [m]', 'y': 'y [m]', 'phi': '\u03c6 [rad]'}
-        dq_labels = {'x': '\u1e8b [m/s]', 'y': '\u1e8f [m/s]', 'phi': '\u03c6\u0307 [rad/s]'}
-
-        fig, ax = plt.subplots(1, 1, figsize=figsize)
-        ax.plot(states[q_key], states[dq_key], 'b-', linewidth=0.8)
-        ax.set_xlabel(q_labels[dof])
-        ax.set_ylabel(dq_labels[dof])
-        ax.set_title(f'{self._body_names[body_index-1]} \u2014 Phase portrait ({dof})')
-        ax.grid(True, alpha=0.3)
-        ax.set_aspect('equal', adjustable='datalim')
-        fig.tight_layout()
-        plt.show()
-
-    def plot_energy(self, figsize=(10, 4)):
-        """Plot total kinetic energy vs time.
-
-        Args:
-            figsize: Figure size.
-        """
-        import matplotlib.pyplot as plt
-
-        nB3 = self._nB3
-        dq = self.uT[:, nB3:]
-
-        mass_vec = []
-        for b in self._model.Bodies:
-            mass_vec.extend([b.mass, b.mass, b.inertia])
-        mass_vec = np.array(mass_vec)
-
-        KE = 0.5 * np.sum(mass_vec * dq**2, axis=1)
-
-        fig, ax = plt.subplots(1, 1, figsize=figsize)
-        ax.plot(self.t, KE, 'g-', linewidth=1.0)
-        ax.set_xlabel('t [s]')
-        ax.set_ylabel('T [J]')
-        ax.set_title('Total Kinetic Energy')
-        ax.grid(True, alpha=0.3)
-        fig.tight_layout()
-        plt.show()
-
 
 class PlanarMultibodyModel:
     """Planar multi-body dynamics model and solver.
@@ -413,7 +99,7 @@ class PlanarMultibodyModel:
             body._index_acceleration = nB3 + 3 * Bi  # same offset in accel vector
             body._inv_mass = 1 / body.mass
             body._inv_inertia = 1 / body.inertia
-            body._rotation_matrix = A_matrix(body.orientation)
+            body._rotation_matrix = rotation_matrix(body.orientation)
 
         # Mass (inertia) array and pre-computed diagonal matrix
         self.M_array = np.zeros(nB3)
@@ -429,22 +115,22 @@ class PlanarMultibodyModel:
         for marker in Ground._markers:
             pos_col = marker.local_position.reshape(2, 1)
             marker._sP = pos_col.copy()
-            marker._sPr = s_rot(pos_col)
+            marker._sPr = rotate_90(pos_col)
             marker._rP = pos_col.copy()
             if marker.has_orientation:
                 marker._u = marker._ulocal.copy()
-                marker._ur = s_rot(marker._ulocal)
+                marker._ur = rotate_90(marker._ulocal)
 
         # Body markers
         for body in self.Bodies:
             for marker in body._markers:
                 pos_col = marker.local_position.reshape(2, 1)
                 marker._sP = body._rotation_matrix @ pos_col
-                marker._sPr = s_rot(marker._sP)
+                marker._sPr = rotate_90(marker._sP)
                 marker._rP = body.position + marker._sP
                 if marker.has_orientation:
                     marker._u = body._rotation_matrix @ marker._ulocal
-                    marker._ur = s_rot(marker._u)
+                    marker._ur = rotate_90(marker._u)
 
         # Force elements — initialize weights
         for force in self.Forces:
@@ -492,17 +178,17 @@ class PlanarMultibodyModel:
     def _update_position(self):
         """Update position-dependent kinematic quantities."""
         for body in self.Bodies:
-            body._rotation_matrix = A_matrix(body.orientation)
+            body._rotation_matrix = rotation_matrix(body.orientation)
 
         for body in self.Bodies:
             for marker in body._markers:
                 pos_col = marker.local_position.reshape(2, 1)
                 marker._sP = body._rotation_matrix @ pos_col
-                marker._sPr = s_rot(marker._sP)
+                marker._sPr = rotate_90(marker._sP)
                 marker._rP = body.position + marker._sP
                 if marker.has_orientation:
                     marker._u = body._rotation_matrix @ marker._ulocal
-                    marker._ur = s_rot(marker._u)
+                    marker._ur = rotate_90(marker._u)
 
     def _update_velocity(self):
         """Update velocity-dependent kinematic quantities."""
@@ -810,6 +496,39 @@ class PlanarMultibodyModel:
             return self._analysis(t, u)
         return _wrapp_analysis
 
+    def _distribute_results(self, T, uT):
+        """Push simulation results into Body and Joint _result_container dicts.
+
+        Args:
+            T: Time vector, shape (nSteps,).
+            uT: State matrix, shape (nSteps, 2*nB3).
+        """
+        nB3 = 3 * self.nB
+        accelerations, reactions = self._post_process(T, uT)
+        for Bi, body in enumerate(self.Bodies):
+            i = 3 * Bi
+            body._result_container = {
+                'positions': {
+                    'x': uT[:, i],
+                    'y': uT[:, i + 1],
+                    'phi': uT[:, i + 2],
+                },
+                'velocities': {
+                    'dx': uT[:, nB3 + i],
+                    'dy': uT[:, nB3 + i + 1],
+                    'dphi': uT[:, nB3 + i + 2],
+                },
+                'accelerations': {
+                    'ddx': accelerations[:, i],
+                    'ddy': accelerations[:, i + 1],
+                    'ddphi': accelerations[:, i + 2],
+                },
+            }
+        for joint in self.Joints:
+            rs = joint._rows
+            re = joint._rowe
+            joint._result_container = {'reactions': reactions[:, rs:re]}
+
     def solve(self, method="LSODA", t_final=None, dt=None, ic_correct=False,
               t_eval=None, t_span=None,
               baumgarte_alpha=5.0, baumgarte_beta=5.0, ggl_penalty=1e8):
@@ -827,7 +546,9 @@ class PlanarMultibodyModel:
             ggl_penalty: GGL regularization parameter (default 1e8).
 
         Returns:
-            SolResult supporting tuple unpacking and attribute access.
+            Tuple (T, uT): time vector (nSteps,) and state matrix (nSteps, 2*nB3).
+            Results are also distributed into each Body and Joint via
+            ``_result_container``; use ``body.get_position()`` etc. to retrieve them.
         """
         self.method = method
         self._baumgarte_alpha = baumgarte_alpha
@@ -908,7 +629,8 @@ class PlanarMultibodyModel:
         print(f"\t ...Number of function evaluations: {self._num}")
         print(f"\t ...Simulation completed successfully!")
         print(f"\n ")
-        return SolResult(T, uT, model=self, dense_sol=dense_sol)
+        self._distribute_results(T, uT)
+        return T, uT
 
     def _post_process(self, T, uT):
         """Recalculate accelerations and Lagrange multipliers on t_eval grid.
@@ -974,22 +696,3 @@ class PlanarMultibodyModel:
 
         return accelerations, reactions
 
-    # ── Deprecated methods ─────────────────────────────────────────
-
-    def get_reactions(self):
-        """DEPRECATED: Use SolResult.reactions property instead."""
-        import warnings
-        warnings.warn(
-            "get_reactions() is deprecated. Use the .reactions property "
-            "on the SolResult object returned by solve().",
-            DeprecationWarning, stacklevel=2)
-        return None
-
-    def get_accelerations(self):
-        """DEPRECATED: Use SolResult.accelerations property instead."""
-        import warnings
-        warnings.warn(
-            "get_accelerations() is deprecated. Use the .accelerations property "
-            "on the SolResult object returned by solve().",
-            DeprecationWarning, stacklevel=2)
-        return None

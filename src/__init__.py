@@ -29,4 +29,4 @@ from .constraints import (
     Function,
 )
 from .builder import *
-from .solver import SolResult, PlanarMultibodyModel
+from .solver import PlanarMultibodyModel

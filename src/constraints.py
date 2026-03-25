@@ -14,7 +14,7 @@ from numpy.typing import *
 
 from .utils import *
 from .model import Base, Ground
-from .mechanics import s_rot, functEval
+from .mechanics import rotate_90, functEval
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +59,7 @@ class Joint(ABC, Base):
         self._coljs = 0
         self._colje = 0
         self._lagrange = np.zeros([3, 1])
+        self._result_container = None
 
     # ── Abstract interface ────────────────────────────────────────
 
@@ -138,6 +139,43 @@ class Joint(ABC, Base):
             child: The child body.
         """
 
+    def get_reaction(self, index=None):
+        """Get reaction force time history for a single constraint row.
+
+        Args:
+            index: 0-based local row index within this joint's constraint rows.
+                If None and the joint has exactly 1 constraint row, returns that row.
+
+        Returns:
+            NDArray: 1-D array of Lagrange multipliers over time steps.
+
+        Raises:
+            RuntimeError: If no results are available.
+            IndexError: If index is out of range or ambiguous.
+        """
+        if self._result_container is None:
+            raise RuntimeError("No results available. Run solve() first.")
+        reactions = self._result_container['reactions']
+        if index is None:
+            if reactions.shape[1] == 1:
+                return reactions[:, 0]
+            raise IndexError(
+                f"Joint has {reactions.shape[1]} constraint rows; specify index.")
+        return reactions[:, index]
+
+    def get_reactions(self):
+        """Get all reaction force time histories for this joint.
+
+        Returns:
+            NDArray: Array of shape (nSteps, mrows) with Lagrange multipliers.
+
+        Raises:
+            RuntimeError: If no results are available.
+        """
+        if self._result_container is None:
+            raise RuntimeError("No results available. Run solve() first.")
+        return self._result_container['reactions']
+
     def __repr__(self):
         return (f"{self.__class__.__name__}("
                 f"iBody={self.iBody!r}, jBody={self.jBody!r})")
@@ -213,18 +251,18 @@ class RevJoint(Joint):
         Bi = self.iBody
         Bj = self.jBody
         if Bi is Ground:
-            f = s_rot(jPt._dsP) * Bj.angular_velocity
+            f = rotate_90(jPt._dsP) * Bj.angular_velocity
         elif Bj is Ground:
-            f = -s_rot(iPt._dsP) * Bi.angular_velocity
+            f = -rotate_90(iPt._dsP) * Bi.angular_velocity
         else:
-            f = (-s_rot(iPt._dsP) * Bi.angular_velocity
-                 + s_rot(jPt._dsP) * Bj.angular_velocity)
+            f = (-rotate_90(iPt._dsP) * Bi.angular_velocity
+                 + rotate_90(jPt._dsP) * Bj.angular_velocity)
         if self.fix == 1:
             f = np.vstack([f, [0]])
         return f
 
     def fk_step(self, parent, child):
-        from .mechanics import A_matrix
+        from .mechanics import rotation_matrix
         q0 = self.q0
         im = self.iMarker
         jm = self.jMarker
@@ -232,11 +270,11 @@ class RevJoint(Joint):
             parent_marker, child_marker = im, jm
         else:
             parent_marker, child_marker = jm, im
-        parent._rotation_matrix = A_matrix(parent.orientation)
+        parent._rotation_matrix = rotation_matrix(parent.orientation)
         parent_sP = parent._rotation_matrix @ parent_marker.local_position.reshape(2, 1)
         r_joint = parent.position + parent_sP
         child.orientation = parent.orientation + q0
-        child._rotation_matrix = A_matrix(child.orientation)
+        child._rotation_matrix = rotation_matrix(child.orientation)
         child_sP = child._rotation_matrix @ child_marker.local_position.reshape(2, 1)
         child.position = r_joint - child_sP
 
@@ -344,7 +382,7 @@ class TranJoint(Joint):
         iPt = self.iMarker
         jPt = self.jMarker
         ujd = self.jMarker._du
-        ujdr = s_rot(ujd)
+        ujdr = rotate_90(ujd)
 
         if Bi is Ground:
             f2 = 0.0
@@ -367,20 +405,20 @@ class TranJoint(Joint):
             f3 = -(du.T @ dd).item()
 
             if Bi is Ground:
-                f3 += (u.T @ (s_rot(jPt._dsP) * Bj.angular_velocity)).item()
+                f3 += (u.T @ (rotate_90(jPt._dsP) * Bj.angular_velocity)).item()
             elif Bj is Ground:
-                f3 -= (u.T @ (s_rot(iPt._dsP) * Bi.angular_velocity)).item()
+                f3 -= (u.T @ (rotate_90(iPt._dsP) * Bi.angular_velocity)).item()
             else:
                 term1 = iPt._dsP * Bi.angular_velocity
                 term2 = jPt._dsP * Bj.angular_velocity
-                f3 -= (u.T @ s_rot(term1 - term2)).item()
+                f3 -= (u.T @ rotate_90(term1 - term2)).item()
 
             f = np.vstack([f, [[f3]]])
 
         return f
 
     def fk_step(self, parent, child):
-        from .mechanics import A_matrix
+        from .mechanics import rotation_matrix
         q0 = self.q0
         im = self.iMarker
         jm = self.jMarker
@@ -388,9 +426,9 @@ class TranJoint(Joint):
             parent_marker, child_marker = im, jm
         else:
             parent_marker, child_marker = jm, im
-        parent._rotation_matrix = A_matrix(parent.orientation)
+        parent._rotation_matrix = rotation_matrix(parent.orientation)
         child.orientation = parent.orientation
-        child._rotation_matrix = A_matrix(child.orientation)
+        child._rotation_matrix = rotation_matrix(child.orientation)
         if parent_marker.has_orientation:
             slide_dir = parent._rotation_matrix @ parent_marker._ulocal
         else:
@@ -461,17 +499,17 @@ class RevRevJoint(Joint):
         ud = dd / L
         f = -ud.T @ dd
         if Bi is Ground:
-            f = f + u.T @ s_rot(jPt._dsP) * Bj.angular_velocity
+            f = f + u.T @ rotate_90(jPt._dsP) * Bj.angular_velocity
         elif Bj is Ground:
-            f = f - u.T @ s_rot(iPt._dsP) * Bi.angular_velocity
+            f = f - u.T @ rotate_90(iPt._dsP) * Bi.angular_velocity
         else:
-            f = f - u.T @ s_rot(
+            f = f - u.T @ rotate_90(
                 iPt._dsP * Bi.angular_velocity -
                 jPt._dsP * Bj.angular_velocity)
         return f
 
     def fk_step(self, parent, child):
-        from .mechanics import A_matrix
+        from .mechanics import rotation_matrix
         q0 = self.q0
         im = self.iMarker
         jm = self.jMarker
@@ -479,10 +517,10 @@ class RevRevJoint(Joint):
             parent_marker, child_marker = im, jm
         else:
             parent_marker, child_marker = jm, im
-        parent._rotation_matrix = A_matrix(parent.orientation)
+        parent._rotation_matrix = rotation_matrix(parent.orientation)
         parent_sP = parent._rotation_matrix @ parent_marker.local_position.reshape(2, 1)
         r_joint = parent.position + parent_sP
-        child._rotation_matrix = A_matrix(child.orientation)
+        child._rotation_matrix = rotation_matrix(child.orientation)
         child_sP = child._rotation_matrix @ child_marker.local_position.reshape(2, 1)
         L = self.L
         r_child_pivot = r_joint + L * np.array([[np.cos(q0)], [np.sin(q0)]])
@@ -553,10 +591,10 @@ class RevTranJoint(Joint):
         if Bi is Ground:
             f = ui.T @ jPt._dsP * Bj.angular_velocity
         elif Bj is Ground:
-            f = (ui_d.T @ (d * Bi.angular_velocity + 2 * s_rot(dd))
+            f = (ui_d.T @ (d * Bi.angular_velocity + 2 * rotate_90(dd))
                  - ui.T @ iPt._dsP * Bi.angular_velocity)
         else:
-            f = (ui_d.T @ (d * Bi.angular_velocity + 2 * s_rot(dd))
+            f = (ui_d.T @ (d * Bi.angular_velocity + 2 * rotate_90(dd))
                  - ui.T @ (iPt._dsP * Bi.angular_velocity
                            - jPt._dsP * Bj.angular_velocity))
         return f
@@ -619,7 +657,7 @@ class RigidJoint(Joint):
         Bj = self.jBody
         if Bj is not Ground:
             return np.block([
-                [-np.eye(2), -s_rot(Bj._rotation_matrix @ self.d0)],
+                [-np.eye(2), -rotate_90(Bj._rotation_matrix @ self.d0)],
                 [np.array([0, 0, -1])]
             ])
         return np.zeros((3, 3))
@@ -780,12 +818,12 @@ class RelTranJoint(Joint):
         fun, fun_d, fun_dd = functEval(self.iFunct, model.t)
         f = fun * fun_dd + fun_d ** 2
         if Bi is Ground:
-            f = f + d.T @ s_rot(jPt._dsP).T @ Bj.angular_velocity
+            f = f + d.T @ rotate_90(jPt._dsP).T @ Bj.angular_velocity
         elif Bj is Ground:
-            f = f - d.T @ s_rot(iPt._dsP).T @ Bi.angular_velocity - dd.T @ dd
+            f = f - d.T @ rotate_90(iPt._dsP).T @ Bi.angular_velocity - dd.T @ dd
         else:
-            f = (f + d.T @ s_rot(jPt._dsP).T @ Bj.angular_velocity
-                 - d.T @ s_rot(iPt._dsP).T @ Bi.angular_velocity - dd.T @ dd)
+            f = (f + d.T @ rotate_90(jPt._dsP).T @ Bj.angular_velocity
+                 - d.T @ rotate_90(iPt._dsP).T @ Bi.angular_velocity - dd.T @ dd)
         return f
 
 

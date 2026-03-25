@@ -73,7 +73,7 @@ def tire_contact():
     if del_y < 0:
         fy = _k_tire * del_y + _dc_tire * B1.velocity[1, 0]
         fsd = np.array([[0.0], [-fy]])
-        torque = (s_rot(pt_C1._sP).T @ fsd).item()
+        torque = (rotate_90(pt_C1._sP).T @ fsd).item()
         return [{'body': B1, 'force': [0.0, -fy], 'torque': torque}]
     return []
 

@@ -59,7 +59,7 @@ def penalty_contact():
         v_P_y = v_CM_y + omega * sp_glob_x      (2D rigid body formula)
     where sp_glob = A(phi) @ sp_local.
     """
-    A_phi  = A_matrix(B1.orientation)
+    A_phi  = rotation_matrix(B1.orientation)
     omega  = B1.angular_velocity
     vy_cm  = B1.velocity[1, 0]
     results = []

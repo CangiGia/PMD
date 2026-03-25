@@ -10,7 +10,7 @@ import numpy as np
 from collections import deque
 
 from .model import Ground, Marker
-from .mechanics import A_matrix, s_rot
+from .mechanics import rotation_matrix, rotate_90
 
 
 def _assemble(bodies, joints):
@@ -82,14 +82,14 @@ def _resolve_deferred_markers(bodies):
                 ref_rP = ref.local_position.reshape(2, 1)
                 ref_A = np.eye(2)
             else:
-                ref_body._rotation_matrix = A_matrix(ref_body.orientation)
+                ref_body._rotation_matrix = rotation_matrix(ref_body.orientation)
                 ref_sP = ref_body._rotation_matrix @ ref.local_position.reshape(2, 1)
                 ref_rP = ref_body.position + ref_sP
                 ref_A = ref_body._rotation_matrix
             offset_global = ref_A @ np.asarray(offset, dtype=float).reshape(2, 1)
             new_rP_global = ref_rP + offset_global
             child_body = m.body
-            child_body._rotation_matrix = A_matrix(child_body.orientation)
+            child_body._rotation_matrix = rotation_matrix(child_body.orientation)
             local_col = child_body._rotation_matrix.T @ (new_rP_global - child_body.position)
             m.local_position = local_col.flatten()
             del m._deferred_ref
@@ -111,8 +111,8 @@ def _eval_loop_phi(loop_joints):
         jm = joint.jMarker
         bi = im.body
         bj = jm.body
-        bi_A = np.eye(2) if bi is Ground else A_matrix(bi.orientation)
-        bj_A = np.eye(2) if bj is Ground else A_matrix(bj.orientation)
+        bi_A = np.eye(2) if bi is Ground else rotation_matrix(bi.orientation)
+        bj_A = np.eye(2) if bj is Ground else rotation_matrix(bj.orientation)
         ri = ((bi.position if bi is not Ground else np.zeros((2, 1)))
               + bi_A @ im.local_position.reshape(2, 1))
         rj = ((bj.position if bj is not Ground else np.zeros((2, 1)))
@@ -148,18 +148,18 @@ def _eval_loop_jacobian(loop_joints, bodies):
         row_y = np.zeros(nq)
         if bi is not Ground and id(bi) in body_idx:
             ci = body_idx[id(bi)]
-            bi_A = A_matrix(bi.orientation)
+            bi_A = rotation_matrix(bi.orientation)
             si = bi_A @ im.local_position.reshape(2, 1)
-            sir = s_rot(si)
+            sir = rotate_90(si)
             row_x[3*ci] += 1
             row_x[3*ci+2] += sir[0, 0]
             row_y[3*ci+1] += 1
             row_y[3*ci+2] += sir[1, 0]
         if bj is not Ground and id(bj) in body_idx:
             cj = body_idx[id(bj)]
-            bj_A = A_matrix(bj.orientation)
+            bj_A = rotation_matrix(bj.orientation)
             sj = bj_A @ jm.local_position.reshape(2, 1)
-            sjr = s_rot(sj)
+            sjr = rotate_90(sj)
             row_x[3*cj] -= 1
             row_x[3*cj+2] -= sjr[0, 0]
             row_y[3*cj+1] -= 1
@@ -188,7 +188,7 @@ def _close_loops(loop_joints, bodies):
         for Bi, body in enumerate(bodies):
             body.position = body.position + dq[3*Bi:3*Bi+2].reshape(2, 1)
             body.orientation = body.orientation + float(dq[3*Bi+2])
-            body._rotation_matrix = A_matrix(body.orientation)
+            body._rotation_matrix = rotation_matrix(body.orientation)
         _resolve_deferred_markers(bodies)
     raise RuntimeError(
         "Assembly Newton-Raphson did not converge. "

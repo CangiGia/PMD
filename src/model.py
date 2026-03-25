@@ -13,7 +13,7 @@ import numpy as np
 from numpy.typing import *
 
 from .utils import *
-from .mechanics import s_rot
+from .mechanics import rotate_90
 
 logger = logging.getLogger(__name__)
 
@@ -156,10 +156,10 @@ class _GroundType:
                             theta=0.0, name='origin')
             pos_col = origin.local_position.reshape(2, 1)
             origin._sP = pos_col.copy()
-            origin._sPr = s_rot(pos_col)
+            origin._sPr = rotate_90(pos_col)
             origin._rP = pos_col.copy()
             origin._u = origin._ulocal.copy()
-            origin._ur = s_rot(origin._ulocal)
+            origin._ur = rotate_90(origin._ulocal)
             cls._markers = [origin]
             cls._instance.origin = origin
         return cls._instance
@@ -191,11 +191,11 @@ class _GroundType:
                         theta=theta, name=name)
         pos_col = marker.local_position.reshape(2, 1)
         marker._sP = pos_col.copy()
-        marker._sPr = s_rot(pos_col)
+        marker._sPr = rotate_90(pos_col)
         marker._rP = pos_col.copy()
         if marker.has_orientation:
             marker._u = marker._ulocal.copy()
-            marker._ur = s_rot(marker._ulocal)
+            marker._ur = rotate_90(marker._ulocal)
         self._markers.append(marker)
         return marker
 
@@ -280,6 +280,7 @@ class Body(Base):
         self._force = colvect(0, 0)
         self._torque = 0
         self._markers = []
+        self._result_container = None
 
     # Ensure assigned values are stored as column vectors
     velocity = as_column_property("velocity")
@@ -364,3 +365,93 @@ class Body(Base):
     def __repr__(self):
         label = f"'{self.name}'" if self.name else f"#{self.COUNT}"
         return f"Body({label}, mass={self.mass}, inertia={self.inertia})"
+
+    def get_position(self, component):
+        """Get a single position component time history.
+
+        Args:
+            component: One of 'x', 'y', 'phi'.
+
+        Returns:
+            NDArray: 1-D array over time steps.
+
+        Raises:
+            RuntimeError: If no results are available (solve() not called).
+            KeyError: If component is invalid.
+        """
+        if self._result_container is None:
+            raise RuntimeError("No results available. Run solve() first.")
+        return self._result_container['positions'][component]
+
+    def get_positions(self):
+        """Get all position component time histories.
+
+        Returns:
+            dict: {'x': NDArray, 'y': NDArray, 'phi': NDArray}.
+
+        Raises:
+            RuntimeError: If no results are available.
+        """
+        if self._result_container is None:
+            raise RuntimeError("No results available. Run solve() first.")
+        return dict(self._result_container['positions'])
+
+    def get_velocity(self, component):
+        """Get a single velocity component time history.
+
+        Args:
+            component: One of 'dx', 'dy', 'dphi'.
+
+        Returns:
+            NDArray: 1-D array over time steps.
+
+        Raises:
+            RuntimeError: If no results are available.
+            KeyError: If component is invalid.
+        """
+        if self._result_container is None:
+            raise RuntimeError("No results available. Run solve() first.")
+        return self._result_container['velocities'][component]
+
+    def get_velocities(self):
+        """Get all velocity component time histories.
+
+        Returns:
+            dict: {'dx': NDArray, 'dy': NDArray, 'dphi': NDArray}.
+
+        Raises:
+            RuntimeError: If no results are available.
+        """
+        if self._result_container is None:
+            raise RuntimeError("No results available. Run solve() first.")
+        return dict(self._result_container['velocities'])
+
+    def get_acceleration(self, component):
+        """Get a single acceleration component time history.
+
+        Args:
+            component: One of 'ddx', 'ddy', 'ddphi'.
+
+        Returns:
+            NDArray: 1-D array over time steps.
+
+        Raises:
+            RuntimeError: If no results are available.
+            KeyError: If component is invalid.
+        """
+        if self._result_container is None:
+            raise RuntimeError("No results available. Run solve() first.")
+        return self._result_container['accelerations'][component]
+
+    def get_accelerations(self):
+        """Get all acceleration component time histories.
+
+        Returns:
+            dict: {'ddx': NDArray, 'ddy': NDArray, 'ddphi': NDArray}.
+
+        Raises:
+            RuntimeError: If no results are available.
+        """
+        if self._result_container is None:
+            raise RuntimeError("No results available. Run solve() first.")
+        return dict(self._result_container['accelerations'])
