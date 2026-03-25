@@ -21,16 +21,12 @@ def s_rot(vect: NDArray) -> NDArray:
     Given a 2D vector `vect` represented as a NumPy array, returns a new
     vector that is rotated 90 degrees counterclockwise.
 
-    Args
-    ----
-    vect (ndarray)
-        A NumPy array with two elements representing the vector to be 
-        rotated. Can be shape (2,), (2,1), or (1,2).
+    Args:
+        vect (ndarray): A NumPy array with two elements representing the vector to be
+            rotated. Can be shape (2,), (2,1), or (1,2).
 
-    Returns
-    -------
-    s_r (ndarray)
-        A NumPy array containing the rotated vector, same shape as input.
+    Returns:
+        ndarray: A NumPy array containing the rotated vector, same shape as input.
     """
     result = np.array([-vect[1], vect[0]])
     if vect.ndim == 2:
@@ -45,15 +41,11 @@ def A_matrix(phi: float) -> NDArray:
     The rotation matrix is used to rotate a vector in 2D space 
     by an angle `phi` (in radians).
 
-    Args
-    ----
-    phi (float)
-        Angle of rotation in radians.
+    Args:
+        phi (float): Angle of rotation in radians.
 
-    Returns
-    -------
-    A (NDArray)
-        A 2x2 rotation matrix.
+    Returns:
+        NDArray: A 2x2 rotation matrix.
     """
     cp = np.cos(phi)
     sp = np.sin(phi)
@@ -65,15 +57,11 @@ def unit_vector(u: NDArray) -> NDArray:
     """
     Create a unit vector along the provided one.
 
-    Args
-    ----
-    u (NDArray)
-        Vector along which create the unit vector.
+    Args:
+        u (NDArray): Vector along which to create the unit vector.
 
-    Returns
-    -------
-    u_hat (NDArray)
-        Unit vector required.
+    Returns:
+        NDArray: Unit vector required.
     """
     u_hat = u / np.linalg.norm(u)
     return u_hat
@@ -95,32 +83,18 @@ def my_r_Point(r: NDArray, s_P_local: NDArray, A: NDArray, s_P: NDArray = None) 
     it must first be transformed into global coordinates using the rotation 
     matrix `A`, and then added to the vector `r`.
 
-    Args
-    ----
-    r (NDArray) 
-        A vector representing the position of the body's reference point 
-        (e.g., the origin of the local reference frame) in the global 
-        coordinate system. This defines where the local reference frame is 
-        situated in global coordinates.
-    s_P_local (NDArray)
-        A vector representing the position of point `P` relative to the 
-        body's reference point, expressed in the local reference frame.
-        This defines the position of `P` within the local frame before 
-        any transformation.
-    A (NDArray)
-        The rotation matrix that transforms vectors from the local reference 
-        frame to the global reference frame. It is used to express `s_P_local` 
-        in global coordinates.
-    s_P (NDArray, optional)
-        A vector representing the position of point `P`, already expressed 
-        in the global reference frame. If this is provided, it is used directly 
-        to compute the global position of `P` without the need for transformation.
+    Args:
+        r (NDArray): Position of the body's reference point (e.g., origin of the
+            local reference frame) in global coordinates.
+        s_P_local (NDArray): Position of point `P` relative to the body's reference
+            point, expressed in the local reference frame.
+        A (NDArray): Rotation matrix that transforms vectors from the local reference
+            frame to the global reference frame.
+        s_P (NDArray, optional): Position of point `P` already expressed in global
+            coordinates. If provided, used directly without transformation.
 
-    Returns
-    -------
-    r_P (NDArray)
-        A vector representing the global coordinates of point `P` with 
-        respect to the global reference frame.
+    Returns:
+        NDArray: Global coordinates of point `P`.
     """
     if s_P is None:
         s_P = A @ s_P_local
@@ -154,33 +128,19 @@ def my_r_Point_d(r_d: NDArray, s_P_local: NDArray, A: NDArray, phi_d: float, s_P
     - `ω`: angular velocity of the body (expressed in radians per second)
     - `r_{P/O}`: position vector of `P` relative to `O` in global coordinates.
 
-    Args
-    ----
-    r_d (NDArray)
-        The velocity vector of the reference point (e.g., the center of 
-        mass or the origin of the local reference frame) of the body, 
-        expressed in global coordinates.
-    s_P_local (NDArray)
-        A vector representing the position of point `P` expressed in the 
-        local reference frame. This defines the position of `P` within 
-        the local frame.
-    A (NDArray)
-        The rotation matrix that transforms vectors from the local reference 
-        frame to the global reference frame. It is used to express `s_P_local` 
-        in global coordinates.
-    phi_d (float) 
-        The angular velocity of the body around the axis of rotation, 
-        expressed in radians per second.
-    s_P (NDArray, optional)
-        A vector representing the position of point `P` in global coordinates. 
-        If this is provided, the function uses this value directly to 
-        compute the velocity of `P`. If `None`, `s_P` will be calculated 
-        using the rotation matrix `A` and the local position `s_P_local`.
+    Args:
+        r_d (NDArray): Velocity vector of the reference point (e.g., center of mass
+            or origin of the local reference frame), in global coordinates.
+        s_P_local (NDArray): Position of point `P` expressed in the local reference
+            frame.
+        A (NDArray): Rotation matrix that transforms vectors from the local reference
+            frame to the global reference frame.
+        phi_d (float): Angular velocity of the body around the axis of rotation (rad/s).
+        s_P (NDArray, optional): Position of point `P` in global coordinates. If
+            provided, used directly; otherwise computed from `A` and `s_P_local`.
 
-    Returns
-    -------
-    r_P_d (NDArray)
-        The velocity vector of point `P`, expressed in global coordinates.
+    Returns:
+        NDArray: Velocity vector of point `P`, expressed in global coordinates.
     """
     if s_P is None:
         s_P = A @ s_P_local
@@ -212,36 +172,20 @@ def my_r_Point_dd(r_dd: NDArray, s_P_local: NDArray, A: NDArray, phi_d: float, p
     - `r_{P/O}`: position vector of `P` relative to `O`, expressed in 
     global coordinates.
 
-    Args
-    ----
-    r_dd (NDArray) 
-        The acceleration vector of the reference point (e.g., the center 
-        of mass or the local reference frame's origin) of the body, 
-        expressed in global coordinates.
-    s_P_local (NDArray)
-        The position vector of point `P` relative to the reference point,
-        expressed in the local reference frame. This defines the position
-        of `P` within the local frame.
-    A (NDArray)
-        The rotation matrix that transforms vectors from the local 
-        reference frame to the global reference frame. It is used to 
-        express `s_P_local` in global coordinates.
-    phi_d (float)
-        The angular velocity of the body around the axis of rotation, 
-        expressed in radians per second.
-    phi_dd (float)
-        The angular acceleration of the body around the axis of rotation, 
-        expressed in radians per second squared.
-    s_P (NDArray, optional)
-        The position vector of point `P` relative to the reference point, 
-        expressed in global coordinates. If not provided, it will be computed 
-        from the local reference frame.
+    Args:
+        r_dd (NDArray): Acceleration vector of the reference point (e.g., center of
+            mass or origin of the local reference frame), in global coordinates.
+        s_P_local (NDArray): Position of point `P` relative to the reference point,
+            expressed in the local reference frame.
+        A (NDArray): Rotation matrix that transforms vectors from the local reference
+            frame to the global reference frame.
+        phi_d (float): Angular velocity of the body (rad/s).
+        phi_dd (float): Angular acceleration of the body (rad/s²).
+        s_P (NDArray, optional): Position of point `P` in global coordinates. If not
+            provided, computed from `A` and `s_P_local`.
 
-    Returns
-    -------
-    r_P_dd (NDArray)
-        The acceleration vector of point `P`, expressed in global 
-        coordinates.
+    Returns:
+        NDArray: Acceleration vector of point `P`, expressed in global coordinates.
     """
     if s_P is None:
         s_P = A @ s_P_local
@@ -259,12 +203,9 @@ def functData(Ci, Functs):
     This function populates the `coeff` and `ncoeff` attributes of 
     the Function object at index `Ci` in the `Functs` list.
 
-    Args
-    ----
-    Ci (int)
-        Index of the function in the Functs list.
-    Functs (list)
-        List of Function objects.
+    Args:
+        Ci (int): Index of the function in the Functs list.
+        Functs (list): List of Function objects.
     """
     funct = Functs[Ci]
     funct_type = funct.type
@@ -327,21 +268,14 @@ def functEval(funct, t):
     derivatives — suitable for use in ``rel-rot`` / ``rel-tran`` joint
     constraint equations.
 
-    Args
-    ----
-    funct : Function
-        A ``Function`` object previously processed by ``functData``.
-    t : float
-        Current simulation time.
+    Args:
+        funct (Function): A Function object previously processed by ``functData``.
+        t (float): Current simulation time.
 
-    Returns
-    -------
-    f : float
-        Function value at time ``t``.
-    f_d : float
-        First time derivative at time ``t``.
-    f_dd : float
-        Second time derivative at time ``t``.
+    Returns:
+        tuple[float, float, float]: A tuple ``(f, f_d, f_dd)`` where ``f`` is the
+            function value at time ``t``, ``f_d`` is the first time derivative,
+            and ``f_dd`` is the second time derivative.
     """
     ftype = funct.type
     c = funct.coeff
@@ -399,23 +333,16 @@ def pp_s(d: NDArray, k: float, L0: float):
     Calculate the force generated by a spring element in a planar 
     multibody system.
 
-    Args
-    ----
-    d (ndarray) 
-        Displacement vector between two points in the system.
-        It represents the relative position of the endpoints of the spring.
-    k (float) 
-        Stiffness coefficient of the spring, representing its resistance 
-        to deformation (N/m).
-    L0 (float) 
-        Rest length of the spring when no force is applied (m).
+    Args:
+        d (NDArray): Displacement vector between two points in the system,
+            representing the relative position of the spring endpoints.
+        k (float): Stiffness coefficient of the spring (N/m).
+        L0 (float): Rest length of the spring when no force is applied (m).
 
-    Returns
-    -------
-    f_s (ndarray) 
-        Force vector applied by the spring element, oriented along the 
-        direction of displacement and with a magnitude proportional 
-        to the deformation from the rest length (N).
+    Returns:
+        NDArray: Force vector applied by the spring element, oriented along the
+            direction of displacement with magnitude proportional to deformation
+            from rest length (N).
     """
     L = np.linalg.norm(d)
     u = d / L
@@ -429,23 +356,15 @@ def pp_sd(d: np.ndarray, d_d: np.ndarray, k: float, L0: float, dc: float) -> np.
     Calculate the force generated by a spring-damper element in a planar 
     multibody system.
 
-    Args
-    ----
-    d (ndarray) 
-        Displacement vector between two points in the system.
-    d_d (ndarray) 
-        Relative velocity vector between the two points (m/s).
-    k (float) 
-        Stiffness coefficient of the spring (N/m).
-    L0 (float) 
-        Rest length of the spring when no force is applied (m).
-    dc (float) 
-        Damping coefficient (Ns/m).
+    Args:
+        d (ndarray): Displacement vector between two points in the system.
+        d_d (ndarray): Relative velocity vector between the two points (m/s).
+        k (float): Stiffness coefficient of the spring (N/m).
+        L0 (float): Rest length of the spring when no force is applied (m).
+        dc (float): Damping coefficient (Ns/m).
 
-    Returns
-    -------
-    f_sd (ndarray) 
-        Force vector applied by the spring-damper element (N).
+    Returns:
+        ndarray: Force vector applied by the spring-damper element (N).
     """
     L = np.linalg.norm(d)
     u = d / L
@@ -460,25 +379,16 @@ def pp_sda(d: NDArray, d_d: NDArray, k: float, L0: float, dc: float, fa: float) 
     Calculate the force generated by a spring-damper-actuator element in 
     a planar multibody system.
 
-    Args
-    ----
-    d (ndarray) 
-        Displacement vector between two points in the system.
-    d_d (ndarray) 
-        Relative velocity vector between the two points (m/s).
-    k (float) 
-        Stiffness coefficient of the spring (N/m).
-    L0 (float) 
-        Rest length of the spring when no force is applied (m).
-    dc (float) 
-        Damping coefficient (Ns/m).
-    fa (float) 
-        Actuator force (N).
+    Args:
+        d (NDArray): Displacement vector between two points in the system.
+        d_d (NDArray): Relative velocity vector between the two points (m/s).
+        k (float): Stiffness coefficient of the spring (N/m).
+        L0 (float): Rest length of the spring when no force is applied (m).
+        dc (float): Damping coefficient (Ns/m).
+        fa (float): Actuator force (N).
 
-    Returns
-    -------
-    f_sda (ndarray)
-        Force vector applied by the spring-damper-actuator element (N).
+    Returns:
+        NDArray: Force vector applied by the spring-damper-actuator element (N).
     """
     L = np.linalg.norm(d)
     u = d / L
@@ -494,19 +404,13 @@ def r_s(theta: float, k: float, theta0: float):
     """
     Calculate the torque generated by a torsional spring.
 
-    Args
-    ----
-    theta (float) 
-        Current angle (radians) of the torsional spring.
-    k (float) 
-        Stiffness of the torsional spring (Nm/rad).
-    theta0 (float) 
-        Rest angle of the torsional spring (radians).
+    Args:
+        theta (float): Current angle of the torsional spring (rad).
+        k (float): Stiffness of the torsional spring (Nm/rad).
+        theta0 (float): Rest angle of the torsional spring (rad).
 
-    Returns
-    -------
-    T_s (float)
-        The torque generated by the torsional spring (Nm).
+    Returns:
+        float: Torque generated by the torsional spring (Nm).
     """
     T_s = k * (theta - theta0)
     return T_s
@@ -516,23 +420,15 @@ def r_sd(theta: float, theta_d: float, k: float, theta0: float, dc: float):
     """
     Calculate the torque generated by a torsional spring and damper.
 
-    Args
-    ----
-    theta (float) 
-        Current angle (radians).
-    theta_d (float) 
-        Angular velocity (radians/second).
-    k (float) 
-        Stiffness of the torsional spring (Nm/rad).
-    theta0 (float) 
-        Rest angle (radians).
-    dc (float) 
-        Damping coefficient (Nm·s/rad).
+    Args:
+        theta (float): Current angle (rad).
+        theta_d (float): Angular velocity (rad/s).
+        k (float): Stiffness of the torsional spring (Nm/rad).
+        theta0 (float): Rest angle (rad).
+        dc (float): Damping coefficient (Nm·s/rad).
 
-    Returns
-    -------
-    T_sd (float) 
-        The torque generated by the combined spring and damper (Nm).
+    Returns:
+        float: Torque generated by the combined spring and damper (Nm).
     """
     T_sd = k * (theta - theta0) + dc * theta_d
     return T_sd
@@ -542,26 +438,16 @@ def r_sda(theta: float, theta_d: float, k: float, theta0: float, dc: float, Ta: 
     """
     Calculate the torque generated by a torsional actuator system.
 
-    Args
-    ----
-    theta (float) 
-        Current angle (radians).
-    theta_d (float) 
-        Angular velocity (radians/second).
-    k (float) 
-        Stiffness of the torsional spring (Nm/rad).
-    theta0 (float) 
-        Rest angle (radians).
-    dc (float) 
-        Damping coefficient (Nm·s/rad).
-    Ta (float) 
-        Constant torque provided by the actuator (Nm).
+    Args:
+        theta (float): Current angle (rad).
+        theta_d (float): Angular velocity (rad/s).
+        k (float): Stiffness of the torsional spring (Nm/rad).
+        theta0 (float): Rest angle (rad).
+        dc (float): Damping coefficient (Nm·s/rad).
+        Ta (float): Constant torque provided by the actuator (Nm).
 
-    Returns
-    -------
-    T_sda (float) 
-        The torque generated by the combined spring, damper, and 
-        actuator (Nm).
+    Returns:
+        float: Torque generated by the combined spring, damper, and actuator (Nm).
     """
     T_sda = k * (theta - theta0) + dc * theta_d + Ta
     return T_sda
@@ -579,32 +465,17 @@ def friction_A(mu_s: float, mu_d: float, v_s: float, p: float, k_t: float, v: fl
     controlled by the slip velocity `v` relative to a reference slip 
     velocity `v_s`.
 
-    Args
-    ----
-    mu_s (float)
-        The coefficient of static friction.
-    mu_d (float)
-        The coefficient of dynamic friction.
-    v_s (float)
-        The reference slip velocity for friction transition.
-    p (float)
-        The exponent parameter controlling exponential decay rate.
-    k_t (float)
-        A parameter scaling the hyperbolic tangent function.
-    v (float)
-        The relative slip velocity between contacting surfaces.
-    fN (float)
-        The normal force perpendicular to the contact surface.
+    Args:
+        mu_s (float): Coefficient of static friction.
+        mu_d (float): Coefficient of dynamic friction.
+        v_s (float): Reference slip velocity for friction transition (typical: 0.001 m/s).
+        p (float): Exponent parameter controlling exponential decay rate (typical: 2).
+        k_t (float): Parameter scaling the hyperbolic tangent function (typical: 10).
+        v (float): Relative slip velocity between contacting surfaces.
+        fN (float): Normal force perpendicular to the contact surface.
 
-    Returns
-    -------
-    friction_force (float)
-        The computed friction force.
-
-    Note
-    ----
-    Typical values for `v_s`, `p` and `k_t` are: `0.001` (m/s), `2` and 
-    `10` respectively.
+    Returns:
+        float: The computed friction force.
     """
     friction_force = fN * (mu_d + (mu_s - mu_d) * np.exp(-(abs(v) / v_s) ** p)) * np.tanh(k_t * v)
     return friction_force
@@ -617,27 +488,17 @@ def friction_B(mu_s: float, mu_d: float, mu_v: float, v_t: float, fnt: float, v:
     This function computes the friction force using the Brown-McPhee model, 
     which includes the effects of viscous friction.
 
-    Args
-    ----
-    mu_s (float)
-        The coefficient of static friction.
-    mu_d (float)
-        The coefficient of dynamic friction.
-    mu_v (float)
-        The coefficient of viscous friction.
-    v_t (float)
-        A reference velocity for friction transition.
-    fnt (float)
-        A threshold normal force for friction regime transition.
-    v (float)
-        The relative slip velocity between contacting surfaces.
-    fN (float)
-        The normal force perpendicular to the contact surface.
+    Args:
+        mu_s (float): Coefficient of static friction.
+        mu_d (float): Coefficient of dynamic friction.
+        mu_v (float): Coefficient of viscous friction.
+        v_t (float): Reference velocity for friction transition.
+        fnt (float): Threshold normal force for friction regime transition.
+        v (float): Relative slip velocity between contacting surfaces.
+        fN (float): Normal force perpendicular to the contact surface.
 
-    Returns
-    -------
-    friction_force (float)
-        The computed friction force.
+    Returns:
+        float: The computed friction force.
     """
     vr = v / v_t
     friction_force = (fN * (mu_d * np.tanh(4 * vr) +

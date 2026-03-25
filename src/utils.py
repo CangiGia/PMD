@@ -24,16 +24,12 @@ def as_column_property(name):
     shape (n, 1), regardless of whether the input is a list, a 1D numpy 
     array, or a 2D numpy array.
 
-    Parameters
-    ----------
-    name (str)
-        The name of the property to define. The actual value is stored in a 
-        private attribute named with an underscore prefix.
+    Args:
+        name (str): The name of the property to define. The actual value is stored
+            in a private attribute named with an underscore prefix.
 
-    Returns
-    -------
-    property
-        A property object that enforces column-vector format on assignment.
+    Returns:
+        property: A property object that enforces column-vector format on assignment.
     """
     # Determine the private attribute name based on the input
     if name.startswith("_"):
@@ -68,29 +64,23 @@ def colvect(*args):
     """
     Create a column vector from the provided values.
 
-    Args
-    ----
-    *args : float or int
-        A variable number of arguments or a list representing the elements 
-        of the column vector. If a list is provided, it will be used 
-        to create the column vector.
+    Args:
+        *args (float | int | list): A variable number of scalar arguments, or a
+            single list whose elements become the column vector entries.
 
-    Returns
-    -------
-    numpy.ndarray
-        A column vector with shape (n, 1), where n is the number of provided elements.
+    Returns:
+        numpy.ndarray: A column vector with shape (n, 1).
 
-    Examples
-    --------
-    >>> colvect(1, 2, 3)
-    array([[1],
-           [2],
-           [3]])
+    Examples:
+        >>> colvect(1, 2, 3)
+        array([[1],
+               [2],
+               [3]])
 
-    >>> colvect([4, 5, 6])
-    array([[4],
-           [5],
-           [6]])
+        >>> colvect([4, 5, 6])
+        array([[4],
+               [5],
+               [6]])
     """
     # if a single list is passed, use it; otherwise, use *args
     if len(args) == 1 and isinstance(args[0], list):
@@ -103,25 +93,19 @@ def rowvect(*args):
     """
     Create a row vector from the provided values.
 
-    Args
-    ----
-    *args : float or int
-        A variable number of arguments or a list representing the elements 
-        of the row vector. If a list is provided, it will be used 
-        to create the row vector.
+    Args:
+        *args (float | int | list): A variable number of scalar arguments, or a
+            single list whose elements become the row vector entries.
 
-    Returns
-    -------
-    numpy.ndarray
-        A row vector with shape (1, n), where n is the number of provided elements.
+    Returns:
+        numpy.ndarray: A row vector with shape (1, n).
 
-    Examples
-    --------
-    >>> rowvect(1, 2, 3)
-    array([[1, 2, 3]])
+    Examples:
+        >>> rowvect(1, 2, 3)
+        array([[1, 2, 3]])
 
-    >>> rowvect([4, 5, 6])
-    array([[4, 5, 6]])
+        >>> rowvect([4, 5, 6])
+        array([[4, 5, 6]])
     """
     # if a single list is passed, use it; otherwise, use *args
     if len(args) == 1 and isinstance(args[0], list):
@@ -134,14 +118,12 @@ def validate_shape(vec: NDArray):
     """
     Check if the input vector is a column vector with 2 rows.
     
-    Args
-    ----
-    vec (np.ndarray)
-        The input vector to be checked.
+    Args:
+        vec (numpy.ndarray): The input vector to be checked.
 
-    Raises
-    ------
-    ValueError: if the input is not a column vector with 2 rows.
+    Raises:
+        TypeError: If the input is not a numpy ndarray.
+        ValueError: If the input is not a column vector with shape (2, 1).
     """
     if not isinstance(vec, np.ndarray):
         raise TypeError("Input must be a numpy ndarray.")
@@ -167,42 +149,31 @@ def resample(x_source: NDArray,
     The result is a new matrix (or vector) with the same number of columns
     as `y_source` but resampled along `x_target`.
 
-    Parameters
-    ----------
-    x_source : NDArray
-        1D array of original time or sample points corresponding to `y_source`.
-    y_source : NDArray
-        2D array (shape: [n_samples, n_channels]) of data values to be downsampled.
-    x_target : NDArray
-        1D array of new time or sample points at which to evaluate the downsampled data.
-    fill_value : bool, optional
-        If True, allows extrapolation outside the bounds of `x_source`.
-    kind : str, optional
-        The type of interpolation to use. Default is 'linear'. Other options include 
-        'nearest', 'zero', 'slinear', 'quadratic', 'cubic', etc. 
-        See `scipy.interpolate.interp1d` for more options.
+    Args:
+        x_source (NDArray): 1D array of original time or sample points corresponding
+            to `y_source`.
+        y_source (NDArray): 2D array of shape (n_samples, n_channels) of data values
+            to be resampled.
+        x_target (NDArray): 1D array of new time or sample points at which to evaluate
+            the resampled data.
+        fill_value (bool, optional): If True, allows extrapolation outside the bounds
+            of `x_source`.
+        kind (str, optional): Type of interpolation to use. Default is ``'linear'``.
+            Other options include ``'nearest'``, ``'zero'``, ``'slinear'``,
+            ``'quadratic'``, ``'cubic'``. See ``scipy.interpolate.interp1d`` for more.
 
-    Returns
-    -------
-    y_target : NDArray
-        2D array of shape (len(x_target), n_channels), containing the downsampled values.
+    Returns:
+        NDArray: 2D array of shape (len(x_target), n_channels) containing the
+            resampled values.
 
-    Examples
-    --------
-    >>> import numpy as np
-
-    >>> # original time vector and signal (2 channels)
-    >>> x_source = np.linspace(0, 10, 100)
-    >>> y_source = np.vstack([np.sin(x_source), np.cos(x_source)]).T  # shape (100, 2)
-
-    >>> # new time vector with fewer points
-    >>> x_target = np.linspace(0, 10, 20)
-
-    >>> # downsample the signal with interpolation
-    >>> y_target = downsampling(x_source, y_source, x_target)
-
-    >>> y_target.shape()
-    (20, 2)
+    Examples:
+        >>> import numpy as np
+        >>> x_source = np.linspace(0, 10, 100)
+        >>> y_source = np.vstack([np.sin(x_source), np.cos(x_source)]).T  # (100, 2)
+        >>> x_target = np.linspace(0, 10, 20)
+        >>> y_target = resample(x_source, y_source, x_target)
+        >>> y_target.shape
+        (20, 2)
     """
 
     PARALLEL_COL_THRESHOLD = 50  # minimum number of columns to enable parallel processing
