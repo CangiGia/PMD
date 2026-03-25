@@ -8,6 +8,7 @@ sys.path.append(os.path.dirname(__file__))
 from .utils import *
 from .mechanics import *
 from .model import Base, Ground, _GroundType, Body, Marker
+from .shapes import Rectangle, Circle, Polygon
 from .constraints import (
     Joint,
     RevJoint,
