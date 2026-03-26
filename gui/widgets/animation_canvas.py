@@ -1,0 +1,342 @@
+"""AnimationCanvas — 2-D model animation with shape rendering."""
+
+import numpy as np
+
+import matplotlib
+matplotlib.use("qtagg")
+
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg, NavigationToolbar2QT
+from matplotlib.figure import Figure
+from matplotlib.patches import Circle as MplCircle, FancyBboxPatch, Polygon as MplPolygon
+from matplotlib.transforms import Affine2D
+
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtWidgets import (
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QSlider,
+    QVBoxLayout,
+    QWidget,
+)
+
+from PMD.src.shapes import Rectangle, Circle, Polygon
+from PMD.src.constraints import RevJoint, TranJoint, PtpForce
+from PMD.src.mechanics import rotation_matrix
+
+# Colour palette for bodies (tab10)
+_BODY_COLORS = [
+    "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd",
+    "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf",
+]
+
+
+def _body_pos(body, step):
+    """Return (x, y, phi) of *body* at *step*."""
+    rc = body._result_container
+    return (
+        float(rc["positions"]["x"][step]),
+        float(rc["positions"]["y"][step]),
+        float(rc["positions"]["phi"][step]),
+    )
+
+
+def _marker_global(marker, step):
+    """Return global (x, y) ndarray of *marker* at *step*."""
+    body = marker.body
+    if not body:                         # Ground
+        return marker.local_position.ravel()[:2].copy()
+    x, y, phi = _body_pos(body, step)
+    return np.array([x, y]) + rotation_matrix(phi) @ marker.local_position.ravel()[:2]
+
+
+class AnimationCanvas(QWidget):
+    """2-D animation of the multi-body model at each time step.
+
+    Parameters
+    ----------
+    sessions : list[Session]
+        Solved simulation sessions.
+    parent : QWidget or None
+        Optional parent widget.
+    """
+
+    time_changed = Signal(int)
+
+    def __init__(self, sessions, parent=None):
+        super().__init__(parent)
+        self._sessions = sessions
+        self._T = sessions[0].T
+        self._n_steps = len(self._T)
+        self._step = 0
+        self._playing = False
+
+        # --- matplotlib widgets ---
+        self._figure = Figure(tight_layout=True)
+        self._ax = self._figure.add_subplot(111)
+        self._ax.set_aspect("equal")
+        self._canvas = FigureCanvasQTAgg(self._figure)
+        self._toolbar = NavigationToolbar2QT(self._canvas, self)
+
+        # --- transport controls ---
+        self._play_btn = QPushButton("\u25b6")        # ▶
+        self._play_btn.setFixedWidth(36)
+        self._play_btn.clicked.connect(self._on_play_pause)
+
+        self._slider = QSlider(Qt.Orientation.Horizontal)
+        self._slider.setRange(0, self._n_steps - 1)
+        self._slider.setValue(0)
+        self._slider.valueChanged.connect(self._on_slider_changed)
+
+        self._time_lbl = QLabel(self._time_text(0))
+
+        ctrl = QHBoxLayout()
+        ctrl.addWidget(self._play_btn)
+        ctrl.addWidget(self._slider, stretch=1)
+        ctrl.addWidget(self._time_lbl)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self._toolbar)
+        layout.addWidget(self._canvas, stretch=1)
+        layout.addLayout(ctrl)
+
+        # --- artist storage ---
+        self._body_patches = []
+        self._body_info = []       # list of (body, session_idx)
+        self._marker_dots = []
+        self._marker_info = []     # (marker, session_idx)
+        self._joint_markers = []
+        self._joint_info = []      # (joint, session_idx)
+        self._force_lines = []
+        self._force_info = []      # (force, session_idx)
+
+        self._init_artists()
+
+        # --- animation timer ---
+        self._timer = self._canvas.new_timer(interval=30)
+        self._timer.add_callback(self._advance_frame)
+
+    # ------------------------------------------------------------------
+    # helpers
+    # ------------------------------------------------------------------
+
+    def _time_text(self, step):
+        return f"t = {self._T[step]:.4f} s"
+
+    # ------------------------------------------------------------------
+    # _init_artists  — draw everything at frame 0
+    # ------------------------------------------------------------------
+
+    def _init_artists(self):
+        ax = self._ax
+        color_idx = 0
+
+        for si, session in enumerate(self._sessions):
+            model = session.model
+
+            # ---- Bodies ----
+            for body in model.Bodies:
+                if not body:
+                    continue                 # skip Ground
+                col = _BODY_COLORS[color_idx % len(_BODY_COLORS)]
+                color_idx += 1
+
+                x, y, phi = _body_pos(body, 0)
+                shape = body.shape
+
+                if isinstance(shape, Rectangle):
+                    w, h = shape.width, shape.height
+                    # FancyBboxPatch anchor is lower-left corner
+                    patch = FancyBboxPatch(
+                        (-w / 2, -h / 2), w, h,
+                        boxstyle="round,pad=0.01",
+                        facecolor=col, edgecolor=col,
+                        alpha=0.30, linewidth=1.5,
+                    )
+                    patch.set_edgecolor(col)
+                    patch.set_alpha(None)            # let face/edge alphas rule
+                    patch.set_facecolor((*matplotlib.colors.to_rgb(col), 0.30))
+                    patch.set_edgecolor((*matplotlib.colors.to_rgb(col), 1.0))
+                    t = Affine2D().rotate(phi).translate(x, y) + ax.transData
+                    patch.set_transform(t)
+                    ax.add_patch(patch)
+                    self._body_patches.append(patch)
+
+                elif isinstance(shape, Circle):
+                    patch = MplCircle(
+                        (x, y), shape.radius,
+                        facecolor=(*matplotlib.colors.to_rgb(col), 0.30),
+                        edgecolor=(*matplotlib.colors.to_rgb(col), 1.0),
+                        linewidth=1.5,
+                    )
+                    ax.add_patch(patch)
+                    self._body_patches.append(patch)
+
+                elif isinstance(shape, Polygon):
+                    verts = shape.vertices.copy()
+                    patch = MplPolygon(
+                        verts, closed=True,
+                        facecolor=(*matplotlib.colors.to_rgb(col), 0.30),
+                        edgecolor=(*matplotlib.colors.to_rgb(col), 1.0),
+                        linewidth=1.5,
+                    )
+                    t = Affine2D().rotate(phi).translate(x, y) + ax.transData
+                    patch.set_transform(t)
+                    ax.add_patch(patch)
+                    self._body_patches.append(patch)
+
+                else:
+                    # No shape → small circle at CoM
+                    patch = MplCircle(
+                        (x, y), 0.05,
+                        facecolor=(*matplotlib.colors.to_rgb(col), 0.30),
+                        edgecolor=(*matplotlib.colors.to_rgb(col), 1.0),
+                        linewidth=1.5,
+                    )
+                    ax.add_patch(patch)
+                    self._body_patches.append(patch)
+
+                self._body_info.append((body, si))
+
+                # markers attached to this body
+                for mk in body._markers:
+                    gp = _marker_global(mk, 0)
+                    dot, = ax.plot(gp[0], gp[1], "k.", markersize=3)
+                    self._marker_dots.append(dot)
+                    self._marker_info.append((mk, si))
+
+            # ---- Joints ----
+            for joint in model.Joints:
+                mk = joint.iMarker or joint.jMarker
+                if mk is None:
+                    continue
+                gp = _marker_global(mk, 0)
+
+                if isinstance(joint, RevJoint):
+                    dot, = ax.plot(gp[0], gp[1], "o", color="#333333",
+                                   markersize=8, markerfacecolor="none",
+                                   markeredgewidth=1.5)
+                elif isinstance(joint, TranJoint):
+                    dot, = ax.plot(gp[0], gp[1], "s", color="#333333",
+                                   markersize=8, markerfacecolor="none",
+                                   markeredgewidth=1.5)
+                else:
+                    dot, = ax.plot(gp[0], gp[1], ".", color="#333333",
+                                   markersize=6)
+
+                self._joint_markers.append(dot)
+                self._joint_info.append((joint, si))
+
+            # ---- Forces ----
+            for force in model.Forces:
+                if isinstance(force, PtpForce) and force.iMarker and force.jMarker:
+                    p1 = _marker_global(force.iMarker, 0)
+                    p2 = _marker_global(force.jMarker, 0)
+                    line, = ax.plot(
+                        [p1[0], p2[0]], [p1[1], p2[1]],
+                        "--", color="#555555", linewidth=1.0,
+                    )
+                    self._force_lines.append(line)
+                    self._force_info.append((force, si))
+
+        # ---- axis limits from first + last frame ----
+        self._auto_limits()
+        self._canvas.draw_idle()
+
+    # ------------------------------------------------------------------
+    # auto limits
+    # ------------------------------------------------------------------
+
+    def _auto_limits(self):
+        xs, ys = [], []
+        for body, si in self._body_info:
+            rc = body._result_container
+            xs.append(rc["positions"]["x"][0])
+            xs.append(rc["positions"]["x"][-1])
+            ys.append(rc["positions"]["y"][0])
+            ys.append(rc["positions"]["y"][-1])
+            # also first/last of full arrays for bodies that move a lot
+            xs.extend([rc["positions"]["x"].min(), rc["positions"]["x"].max()])
+            ys.extend([rc["positions"]["y"].min(), rc["positions"]["y"].max()])
+
+        if not xs:
+            return
+        x_min, x_max = min(xs), max(xs)
+        y_min, y_max = min(ys), max(ys)
+        mx = max((x_max - x_min), (y_max - y_min), 0.1) * 0.20
+        self._ax.set_xlim(x_min - mx, x_max + mx)
+        self._ax.set_ylim(y_min - mx, y_max + mx)
+
+    # ------------------------------------------------------------------
+    # _update_artists — move everything to *step*
+    # ------------------------------------------------------------------
+
+    def _update_artists(self, step):
+        ax = self._ax
+
+        # bodies
+        for patch, (body, _si) in zip(self._body_patches, self._body_info):
+            x, y, phi = _body_pos(body, step)
+            shape = body.shape
+
+            if isinstance(shape, (Rectangle, Polygon)):
+                t = Affine2D().rotate(phi).translate(x, y) + ax.transData
+                patch.set_transform(t)
+            elif isinstance(shape, Circle):
+                patch.set_center((x, y))
+            else:
+                patch.set_center((x, y))
+
+        # marker dots
+        for dot, (mk, _si) in zip(self._marker_dots, self._marker_info):
+            gp = _marker_global(mk, step)
+            dot.set_data([gp[0]], [gp[1]])
+
+        # joints
+        for dot, (joint, _si) in zip(self._joint_markers, self._joint_info):
+            mk = joint.iMarker or joint.jMarker
+            if mk is not None:
+                gp = _marker_global(mk, step)
+                dot.set_data([gp[0]], [gp[1]])
+
+        # forces
+        for line, (force, _si) in zip(self._force_lines, self._force_info):
+            p1 = _marker_global(force.iMarker, step)
+            p2 = _marker_global(force.jMarker, step)
+            line.set_data([p1[0], p2[0]], [p1[1], p2[1]])
+
+        self._canvas.draw_idle()
+
+    # ------------------------------------------------------------------
+    # public API
+    # ------------------------------------------------------------------
+
+    def set_step(self, step):
+        """Jump to the given time step and refresh all artists."""
+        self._step = step
+        self._slider.blockSignals(True)
+        self._slider.setValue(step)
+        self._slider.blockSignals(False)
+        self._time_lbl.setText(self._time_text(step))
+        self._update_artists(step)
+        self.time_changed.emit(step)
+
+    # ------------------------------------------------------------------
+    # slots
+    # ------------------------------------------------------------------
+
+    def _on_slider_changed(self, value):
+        self.set_step(value)
+
+    def _on_play_pause(self):
+        if self._playing:
+            self._timer.stop()
+            self._play_btn.setText("\u25b6")   # ▶
+        else:
+            self._timer.start()
+            self._play_btn.setText("\u23f8")   # ⏸
+        self._playing = not self._playing
+
+    def _advance_frame(self):
+        self.set_step((self._step + 1) % self._n_steps)

@@ -12,7 +12,7 @@ from PySide6.QtWidgets import (
 
 from .models import build_curves
 from .panels import FilterPanel, ResultSetPanel, SimulationPanel
-from .widgets import PlotCanvas
+from .widgets import AnimationCanvas, PlotCanvas
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +62,7 @@ class MainWindow(QMainWindow):
         self._sim_panel.setMaximumWidth(350)
         self._sim_panel.selection_changed.connect(self._on_selection_changed)
 
-        # Right side — FilterPanel on top, plot placeholder centre, ResultSetPanel bottom
+        # Right side — FilterPanel on top, vertical splitter (plot | animation), ResultSetPanel bottom
         right_widget = QWidget()
         right_layout = QVBoxLayout(right_widget)
         right_layout.setContentsMargins(0, 0, 0, 0)
@@ -71,8 +71,14 @@ class MainWindow(QMainWindow):
         self._filter_panel.add_curves_requested.connect(self._on_add_curves)
         right_layout.addWidget(self._filter_panel)
 
+        viz_splitter = QSplitter(Qt.Orientation.Vertical)
         self._plot_canvas = PlotCanvas()
-        right_layout.addWidget(self._plot_canvas, stretch=1)
+        viz_splitter.addWidget(self._plot_canvas)
+        self._anim_canvas = AnimationCanvas(self._sessions)
+        viz_splitter.addWidget(self._anim_canvas)
+        viz_splitter.setStretchFactor(0, 1)
+        viz_splitter.setStretchFactor(1, 1)
+        right_layout.addWidget(viz_splitter, stretch=1)
 
         self._result_set_panel = ResultSetPanel()
         self._result_set_panel.setMaximumHeight(200)
