@@ -46,7 +46,7 @@ class CurveItem:
 
 
 def build_curves(category: str, component: str,
-                 selection: list[dict], T: NDArray) -> list[CurveItem]:
+                 selection: list[dict]) -> list[CurveItem]:
     """Build CurveItem instances from a FilterPanel request.
 
     Parameters
@@ -56,9 +56,8 @@ def build_curves(category: str, component: str,
     component : str
         Component key (``"x"`` … ``"ddphi"`` for bodies, ``"0"`` … for reactions).
     selection : list[dict]
-        Descriptor dicts from SimulationPanel (keys: kind, index, label, object).
-    T : NDArray
-        Time vector from the Session.
+        Descriptor dicts from SimulationPanel (keys: kind, index, label,
+        object, session).
 
     Returns
     -------
@@ -67,10 +66,18 @@ def build_curves(category: str, component: str,
     """
     curves: list[CurveItem] = []
 
+    # Detect multi-session to prefix labels
+    sessions = {id(d["session"]) for d in selection}
+    multi = len(sessions) > 1
+
     for desc in selection:
         kind = desc["kind"]
         obj = desc["object"]
         lbl = desc["label"]
+        T = desc["session"].T
+
+        if multi:
+            lbl = f"{desc['session'].name} / {lbl}"
 
         if kind == "body" and category in ("positions", "velocities", "accelerations"):
             rc = obj._result_container

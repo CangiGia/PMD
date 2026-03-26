@@ -22,15 +22,15 @@ class MainWindow(QMainWindow):
 
     Parameters
     ----------
-    session : Session
-        The loaded simulation session to display.
+    sessions : list[Session]
+        One or more loaded simulation sessions to display.
     parent : QWidget or None
         Optional parent widget.
     """
 
-    def __init__(self, session, parent=None):
+    def __init__(self, sessions, parent=None):
         super().__init__(parent)
-        self._session = session
+        self._sessions = sessions
         self._selection = []
 
         self.setWindowTitle("PMD PostProcessor")
@@ -57,7 +57,7 @@ class MainWindow(QMainWindow):
         splitter = QSplitter(Qt.Orientation.Horizontal, self)
 
         # Left panel — SimulationPanel
-        self._sim_panel = SimulationPanel(self._session)
+        self._sim_panel = SimulationPanel(self._sessions)
         self._sim_panel.setMinimumWidth(200)
         self._sim_panel.setMaximumWidth(350)
         self._sim_panel.selection_changed.connect(self._on_selection_changed)
@@ -91,17 +91,21 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------
 
     def _build_status_bar(self):
-        model = self._session.model
-        T = self._session.T
-        n_bodies = len(model.Bodies)
-        n_joints = len(model.Joints)
-        n_steps = len(T)
-        t_range = f"{T[0]:.4g} – {T[-1]:.4g} s"
+        n_bodies = sum(len(s.model.Bodies) for s in self._sessions)
+        n_joints = sum(len(s.model.Joints) for s in self._sessions)
+        n_sessions = len(self._sessions)
 
-        self._status_base = (
-            f"Bodies: {n_bodies}  |  Joints: {n_joints}  |  "
-            f"Steps: {n_steps}  |  T: {t_range}"
-        )
+        parts = [f"Sessions: {n_sessions}",
+                 f"Bodies: {n_bodies}",
+                 f"Joints: {n_joints}"]
+
+        if n_sessions == 1:
+            T = self._sessions[0].T
+            n_steps = len(T)
+            t_range = f"{T[0]:.4g} – {T[-1]:.4g} s"
+            parts += [f"Steps: {n_steps}", f"T: {t_range}"]
+
+        self._status_base = "  |  ".join(parts)
         self.statusBar().showMessage(self._status_base)
 
     # ------------------------------------------------------------------
@@ -118,7 +122,7 @@ class MainWindow(QMainWindow):
 
     def _on_add_curves(self, category, component, selection):
         """Build CurveItems and add them to the ResultSetPanel."""
-        curves = build_curves(category, component, selection, self._session.T)
+        curves = build_curves(category, component, selection)
         if curves:
             self._result_set_panel.add_curves(curves)
         logger.debug(

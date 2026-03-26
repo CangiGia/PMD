@@ -1,4 +1,4 @@
-"""SimulationPanel — left-sidebar result browser for a PMD Session."""
+"""SimulationPanel — left-sidebar result browser for PMD Sessions."""
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
@@ -10,28 +10,35 @@ from PySide6.QtWidgets import (
 
 
 class SimulationPanel(QWidget):
-    """Tree-based browser of Bodies, Joints, and Forces for a Session.
+    """Tree-based browser of Bodies, Joints, and Forces across Sessions.
+
+    Supports one or more sessions.  When a single session is loaded the
+    tree reads ``Session_name / Bodies / …``.  With multiple sessions each
+    top-level node is a session.
 
     Emits ``selection_changed`` whenever a checkbox is toggled.
     Each item in the payload list is a dict with keys:
-        kind   : "body" | "joint" | "force"
-        index  : 0-based index into the model list
-        label  : display label
-        object : reference to the actual model object
+        kind    : "body" | "joint" | "force"
+        index   : 0-based index into the model list
+        label   : display label
+        object  : reference to the actual model object
+        session : the Session this item belongs to
     """
 
     selection_changed = Signal(object)
 
-    def __init__(self, session, parent=None):
+    def __init__(self, sessions, parent=None):
         super().__init__(parent)
-        self._session = session
+        if not isinstance(sessions, list):
+            sessions = [sessions]
+        self._sessions = sessions
         self._leaves: list[QTreeWidgetItem] = []
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
 
         self._tree = QTreeWidget()
-        self._tree.setHeaderLabel(session.name)
+        self._tree.setHeaderLabel("Simulations")
         self._tree.setAnimated(True)
         layout.addWidget(self._tree)
 
@@ -44,31 +51,38 @@ class SimulationPanel(QWidget):
 
     def _populate(self):
         self._tree.blockSignals(True)
-        model = self._session.model
 
-        root_bodies = self._make_root("Bodies")
-        for i, body in enumerate(model.Bodies, start=1):
-            label = body.name or f"Body_{i}"
-            desc = {"kind": "body", "index": i - 1, "label": label, "object": body}
-            self._add_leaf(root_bodies, label, desc)
+        for session in self._sessions:
+            model = session.model
+            session_root = self._make_root(session.name)
 
-        root_joints = self._make_root("Joints")
-        for i, joint in enumerate(model.Joints, start=1):
-            label = joint.name or f"{type(joint).__name__}_{i}"
-            desc = {"kind": "joint", "index": i - 1, "label": label, "object": joint}
-            self._add_leaf(root_joints, label, desc)
+            root_bodies = self._make_root("Bodies", parent=session_root)
+            for i, body in enumerate(model.Bodies, start=1):
+                label = body.name or f"Body_{i}"
+                desc = {"kind": "body", "index": i - 1, "label": label,
+                        "object": body, "session": session}
+                self._add_leaf(root_bodies, label, desc)
 
-        root_forces = self._make_root("Forces")
-        for i, force in enumerate(model.Forces, start=1):
-            label = force.name or f"{type(force).__name__}_{i}"
-            desc = {"kind": "force", "index": i - 1, "label": label, "object": force}
-            self._add_leaf(root_forces, label, desc)
+            root_joints = self._make_root("Joints", parent=session_root)
+            for i, joint in enumerate(model.Joints, start=1):
+                label = joint.name or f"{type(joint).__name__}_{i}"
+                desc = {"kind": "joint", "index": i - 1, "label": label,
+                        "object": joint, "session": session}
+                self._add_leaf(root_joints, label, desc)
+
+            root_forces = self._make_root("Forces", parent=session_root)
+            for i, force in enumerate(model.Forces, start=1):
+                label = force.name or f"{type(force).__name__}_{i}"
+                desc = {"kind": "force", "index": i - 1, "label": label,
+                        "object": force, "session": session}
+                self._add_leaf(root_forces, label, desc)
 
         self._tree.expandAll()
         self._tree.blockSignals(False)
 
-    def _make_root(self, text):
-        item = QTreeWidgetItem(self._tree, [text])
+    def _make_root(self, text, parent=None):
+        target = parent if parent is not None else self._tree
+        item = QTreeWidgetItem(target, [text])
         item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsUserCheckable)
         font = item.font(0)
         font.setBold(True)
