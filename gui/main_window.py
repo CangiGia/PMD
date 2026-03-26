@@ -4,7 +4,6 @@ import logging
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QLabel,
     QMainWindow,
     QSplitter,
     QVBoxLayout,
@@ -13,6 +12,7 @@ from PySide6.QtWidgets import (
 
 from .curve_item import build_curves
 from .filter_panel import FilterPanel
+from .plot_canvas import PlotCanvas
 from .result_set_panel import ResultSetPanel
 from .simulation_panel import SimulationPanel
 
@@ -73,9 +73,8 @@ class MainWindow(QMainWindow):
         self._filter_panel.add_curves_requested.connect(self._on_add_curves)
         right_layout.addWidget(self._filter_panel)
 
-        self._plot_placeholder = QLabel("Plot area (placeholder)")
-        self._plot_placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        right_layout.addWidget(self._plot_placeholder, stretch=1)
+        self._plot_canvas = PlotCanvas()
+        right_layout.addWidget(self._plot_canvas, stretch=1)
 
         self._result_set_panel = ResultSetPanel()
         self._result_set_panel.setMaximumHeight(200)
@@ -130,6 +129,7 @@ class MainWindow(QMainWindow):
         )
 
     def _on_curves_changed(self):
-        """Stub — will refresh PlotCanvas in S5."""
+        """Refresh the plot with currently visible curves."""
         visible = self._result_set_panel.visible_curves()
+        self._plot_canvas.update_plot(visible)
         logger.debug("Curves changed: %d visible", len(visible))
