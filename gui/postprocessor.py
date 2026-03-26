@@ -5,6 +5,7 @@ import sys
 from PySide6.QtWidgets import QApplication
 
 from .main_window import MainWindow
+from .session import Session
 
 
 class PostProcessor:
@@ -13,25 +14,24 @@ class PostProcessor:
     Parameters
     ----------
     model : PlanarMultibodyModel
-        A solved (or unsolved) model instance.
+        A solved model instance.
     T : ndarray
         Time vector, shape (nSteps,).
     uT : ndarray
         State matrix, shape (nSteps, 2*nB3).
+    name : str, optional
+        Label for this simulation session shown in the UI.
     """
 
-    def __init__(self, model, T, uT):
-        self._model = model
-        self._T = T
-        self._uT = uT
-        # Ensure results are distributed into bodies/joints
+    def __init__(self, model, T, uT, name=None):
         model._distribute_results(T, uT)
+        self._session = Session(model, T, uT, name=name)
 
     def show(self):
         """Create (or reuse) a QApplication and display the main window."""
         app = QApplication.instance()
         if app is None:
             app = QApplication(sys.argv)
-        self._window = MainWindow(self._model, self._T)
+        self._window = MainWindow(self._session)
         self._window.show()
         app.exec()

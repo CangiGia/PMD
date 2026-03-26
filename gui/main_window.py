@@ -1,5 +1,7 @@
 """MainWindow — primary QMainWindow shell for the PMD PostProcessor."""
 
+import logging
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QLabel,
@@ -9,24 +11,26 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .simulation_panel import SimulationPanel
+
+logger = logging.getLogger(__name__)
+
 
 class MainWindow(QMainWindow):
     """Top-level window: menu bar, left panel | central area, status bar.
 
     Parameters
     ----------
-    model : PlanarMultibodyModel
-        The solved model whose results are displayed.
-    T : ndarray
-        Time vector, shape (nSteps,).
+    session : Session
+        The loaded simulation session to display.
     parent : QWidget or None
         Optional parent widget.
     """
 
-    def __init__(self, model, T, parent=None):
+    def __init__(self, session, parent=None):
         super().__init__(parent)
-        self._model = model
-        self._T = T
+        self._session = session
+        self._selection = []
 
         self.setWindowTitle("PMD PostProcessor")
         self.resize(1200, 700)
@@ -45,19 +49,17 @@ class MainWindow(QMainWindow):
         file_menu.addAction("&Close", self.close)
 
     # ------------------------------------------------------------------
-    # Central area (splitter: left panel | central placeholder)
+    # Central area (splitter: SimulationPanel | central placeholder)
     # ------------------------------------------------------------------
 
     def _build_central_area(self):
         splitter = QSplitter(Qt.Orientation.Horizontal, self)
 
-        # Left panel — placeholder
-        left_panel = QWidget()
-        left_layout = QVBoxLayout(left_panel)
-        left_layout.addWidget(QLabel("Result browser (placeholder)"))
-        left_layout.addStretch()
-        left_panel.setMinimumWidth(200)
-        left_panel.setMaximumWidth(350)
+        # Left panel — SimulationPanel
+        self._sim_panel = SimulationPanel(self._session)
+        self._sim_panel.setMinimumWidth(200)
+        self._sim_panel.setMaximumWidth(350)
+        self._sim_panel.selection_changed.connect(self._on_selection_changed)
 
         # Central area — placeholder
         central_widget = QWidget()
@@ -65,7 +67,7 @@ class MainWindow(QMainWindow):
         central_layout.addWidget(QLabel("Plot area (placeholder)"))
         central_layout.addStretch()
 
-        splitter.addWidget(left_panel)
+        splitter.addWidget(self._sim_panel)
         splitter.addWidget(central_widget)
         splitter.setStretchFactor(0, 0)
         splitter.setStretchFactor(1, 1)
@@ -77,12 +79,26 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------
 
     def _build_status_bar(self):
-        n_bodies = len(self._model.Bodies)
-        n_joints = len(self._model.Joints)
-        n_steps = len(self._T)
-        t_range = f"{self._T[0]:.4g} – {self._T[-1]:.4g} s"
+        model = self._session.model
+        T = self._session.T
+        n_bodies = len(model.Bodies)
+        n_joints = len(model.Joints)
+        n_steps = len(T)
+        t_range = f"{T[0]:.4g} – {T[-1]:.4g} s"
 
-        self.statusBar().showMessage(
+        self._status_base = (
             f"Bodies: {n_bodies}  |  Joints: {n_joints}  |  "
             f"Steps: {n_steps}  |  T: {t_range}"
         )
+        self.statusBar().showMessage(self._status_base)
+
+    # ------------------------------------------------------------------
+    # Slot
+    # ------------------------------------------------------------------
+
+    def _on_selection_changed(self, selection):
+        """Stub — receives list of checked descriptor dicts."""
+        self._selection = selection
+        msg = self._status_base + f"  |  Selected: {len(selection)}"
+        self.statusBar().showMessage(msg)
+        logger.debug("Selection changed: %s", [d["label"] for d in selection])
