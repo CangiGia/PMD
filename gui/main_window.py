@@ -3,6 +3,7 @@
 import logging
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
     QMainWindow,
     QSplitter,
@@ -49,6 +50,11 @@ class MainWindow(QMainWindow):
         file_menu = menu_bar.addMenu("&File")
         file_menu.addAction("&Close", self.close)
 
+        view_menu = menu_bar.addMenu("&View")
+        self._anim_action = QAction("Animation Pane", self, checkable=True, checked=False)
+        self._anim_action.toggled.connect(self._on_toggle_animation)
+        view_menu.addAction(self._anim_action)
+
     # ------------------------------------------------------------------
     # Central area (splitter: SimulationPanel | FilterPanel + plot)
     # ------------------------------------------------------------------
@@ -76,6 +82,7 @@ class MainWindow(QMainWindow):
         viz_splitter.addWidget(self._plot_canvas)
         self._anim_canvas = AnimationCanvas(self._sessions)
         viz_splitter.addWidget(self._anim_canvas)
+        self._anim_canvas.setVisible(False)
         viz_splitter.setStretchFactor(0, 1)
         viz_splitter.setStretchFactor(1, 1)
         right_layout.addWidget(viz_splitter, stretch=1)
@@ -141,3 +148,7 @@ class MainWindow(QMainWindow):
         visible = self._result_set_panel.visible_curves()
         self._plot_canvas.update_plot(visible)
         logger.debug("Curves changed: %d visible", len(visible))
+
+    def _on_toggle_animation(self, checked: bool):
+        """Show/hide the AnimationCanvas from the View menu."""
+        self._anim_canvas.setVisible(checked)
