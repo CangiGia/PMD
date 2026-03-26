@@ -11,7 +11,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .curve_item import build_curves
 from .filter_panel import FilterPanel
+from .result_set_panel import ResultSetPanel
 from .simulation_panel import SimulationPanel
 
 logger = logging.getLogger(__name__)
@@ -62,7 +64,7 @@ class MainWindow(QMainWindow):
         self._sim_panel.setMaximumWidth(350)
         self._sim_panel.selection_changed.connect(self._on_selection_changed)
 
-        # Right side — FilterPanel on top, plot placeholder below
+        # Right side — FilterPanel on top, plot placeholder centre, ResultSetPanel bottom
         right_widget = QWidget()
         right_layout = QVBoxLayout(right_widget)
         right_layout.setContentsMargins(0, 0, 0, 0)
@@ -74,6 +76,11 @@ class MainWindow(QMainWindow):
         self._plot_placeholder = QLabel("Plot area (placeholder)")
         self._plot_placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
         right_layout.addWidget(self._plot_placeholder, stretch=1)
+
+        self._result_set_panel = ResultSetPanel()
+        self._result_set_panel.setMaximumHeight(200)
+        self._result_set_panel.curves_changed.connect(self._on_curves_changed)
+        right_layout.addWidget(self._result_set_panel)
 
         splitter.addWidget(self._sim_panel)
         splitter.addWidget(right_widget)
@@ -113,8 +120,16 @@ class MainWindow(QMainWindow):
         logger.debug("Selection changed: %s", [d["label"] for d in selection])
 
     def _on_add_curves(self, category, component, selection):
-        """Stub — will forward to PlotCanvas / ResultSetPanel in S4/S5."""
+        """Build CurveItems and add them to the ResultSetPanel."""
+        curves = build_curves(category, component, selection, self._session.T)
+        if curves:
+            self._result_set_panel.add_curves(curves)
         logger.debug(
-            "Add curves: category=%s, component=%s, items=%s",
-            category, component, [d["label"] for d in selection],
+            "Add curves: category=%s, component=%s, added=%d",
+            category, component, len(curves),
         )
+
+    def _on_curves_changed(self):
+        """Stub — will refresh PlotCanvas in S5."""
+        visible = self._result_set_panel.visible_curves()
+        logger.debug("Curves changed: %d visible", len(visible))
