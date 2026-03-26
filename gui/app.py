@@ -5,7 +5,7 @@ import sys
 from PySide6.QtWidgets import QApplication
 
 from .main_window import MainWindow
-from .session import Session
+from .models import Session
 
 
 class PostProcessor:

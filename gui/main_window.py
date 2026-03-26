@@ -10,11 +10,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .curve_item import build_curves
-from .filter_panel import FilterPanel
-from .plot_canvas import PlotCanvas
-from .result_set_panel import ResultSetPanel
-from .simulation_panel import SimulationPanel
+from .models import build_curves
+from .panels import FilterPanel, ResultSetPanel, SimulationPanel
+from .widgets import PlotCanvas
 
 logger = logging.getLogger(__name__)
 

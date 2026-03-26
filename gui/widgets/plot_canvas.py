@@ -7,7 +7,7 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg, NavigationToolb
 from matplotlib.figure import Figure
 from PySide6.QtWidgets import QVBoxLayout, QWidget
 
-from .curve_item import CurveItem
+from ..models import CurveItem
 
 
 class PlotCanvas(QWidget):

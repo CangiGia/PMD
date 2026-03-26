@@ -1,4 +1,4 @@
 """PMD GUI — Post-processing visualization tools."""
 
-from .session import Session
-from .postprocessor import PostProcessor
+from .models import Session
+from .app import PostProcessor
