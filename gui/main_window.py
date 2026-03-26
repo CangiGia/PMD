@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .filter_panel import FilterPanel
 from .simulation_panel import SimulationPanel
 
 logger = logging.getLogger(__name__)
@@ -49,7 +50,7 @@ class MainWindow(QMainWindow):
         file_menu.addAction("&Close", self.close)
 
     # ------------------------------------------------------------------
-    # Central area (splitter: SimulationPanel | central placeholder)
+    # Central area (splitter: SimulationPanel | FilterPanel + plot)
     # ------------------------------------------------------------------
 
     def _build_central_area(self):
@@ -61,14 +62,21 @@ class MainWindow(QMainWindow):
         self._sim_panel.setMaximumWidth(350)
         self._sim_panel.selection_changed.connect(self._on_selection_changed)
 
-        # Central area — placeholder
-        central_widget = QWidget()
-        central_layout = QVBoxLayout(central_widget)
-        central_layout.addWidget(QLabel("Plot area (placeholder)"))
-        central_layout.addStretch()
+        # Right side — FilterPanel on top, plot placeholder below
+        right_widget = QWidget()
+        right_layout = QVBoxLayout(right_widget)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+
+        self._filter_panel = FilterPanel()
+        self._filter_panel.add_curves_requested.connect(self._on_add_curves)
+        right_layout.addWidget(self._filter_panel)
+
+        self._plot_placeholder = QLabel("Plot area (placeholder)")
+        self._plot_placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        right_layout.addWidget(self._plot_placeholder, stretch=1)
 
         splitter.addWidget(self._sim_panel)
-        splitter.addWidget(central_widget)
+        splitter.addWidget(right_widget)
         splitter.setStretchFactor(0, 0)
         splitter.setStretchFactor(1, 1)
 
@@ -93,12 +101,20 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(self._status_base)
 
     # ------------------------------------------------------------------
-    # Slot
+    # Slots
     # ------------------------------------------------------------------
 
     def _on_selection_changed(self, selection):
-        """Stub — receives list of checked descriptor dicts."""
+        """Receives list of checked descriptor dicts from SimulationPanel."""
         self._selection = selection
+        self._filter_panel.update_from_selection(selection)
         msg = self._status_base + f"  |  Selected: {len(selection)}"
         self.statusBar().showMessage(msg)
         logger.debug("Selection changed: %s", [d["label"] for d in selection])
+
+    def _on_add_curves(self, category, component, selection):
+        """Stub — will forward to PlotCanvas / ResultSetPanel in S4/S5."""
+        logger.debug(
+            "Add curves: category=%s, component=%s, items=%s",
+            category, component, [d["label"] for d in selection],
+        )
