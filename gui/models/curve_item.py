@@ -1,11 +1,19 @@
 """CurveItem — lightweight data container for a single plottable curve."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 
 import numpy as np
 from numpy.typing import NDArray
 
 from PMD.src.constraints import RevJoint, TranJoint, RevRevJoint
+from PMD.src.units import (
+    UnitSystem,
+    conversion_factor,
+    ylabel_for,
+    reaction_ylabel_for,
+)
 
 # 10-colour palette (tab10-inspired hex values)
 _PALETTE = [
@@ -22,26 +30,19 @@ def _next_color() -> str:
     return color
 
 
-_YLABEL_MAP: dict[tuple[str, str], str] = {
-    ("positions",     "x"):      "Position [m]",
-    ("positions",     "y"):      "Position [m]",
-    ("positions",     "phi"):    "Orientation [rad]",
-    ("velocities",    "dx"):     "Velocity [m/s]",
-    ("velocities",    "dy"):     "Velocity [m/s]",
-    ("velocities",    "dphi"):   "Angular velocity [rad/s]",
-    ("accelerations", "ddx"):    "Acceleration [m/s\u00b2]",
-    ("accelerations", "ddy"):    "Acceleration [m/s\u00b2]",
-    ("accelerations", "ddphi"):  "Angular acceleration [rad/s\u00b2]",
-}
-
-_REACTION_YLABEL = {
-    "Fx":      "Reaction [N]",
-    "Fy":      "Reaction [N]",
-    "Mz":      "Reaction [N\u00b7m]",
-    "F_perp":  "Reaction [N]",
-    "M":       "Reaction [N\u00b7m]",
-    "F_slide": "Reaction [N]",
-    "F_link":  "Reaction [N]",
+# Mapping from (category, component) to physical dimension used for
+# unit conversion.  "velocity" and "acceleration" scale like length/time^n;
+# angular rates scale like angle/time^n.
+_DIMENSION: dict[tuple[str, str], str] = {
+    ("positions",     "x"):      "length",
+    ("positions",     "y"):      "length",
+    ("positions",     "phi"):    "angle",
+    ("velocities",    "dx"):     "velocity",
+    ("velocities",    "dy"):     "velocity",
+    ("velocities",    "dphi"):   "angle",
+    ("accelerations", "ddx"):    "acceleration",
+    ("accelerations", "ddy"):    "acceleration",
+    ("accelerations", "ddphi"):  "angle",
 }
 
 
@@ -61,6 +62,9 @@ class CurveItem:
         CSS / hex colour string.
     visible : bool
         Whether the curve should be drawn.
+    unit : str
+        Y-axis group label (LaTeX-ready string).  Curves that share the same
+        ``unit`` string are drawn in the same subplot.
     """
 
     label: str
@@ -71,8 +75,12 @@ class CurveItem:
     unit: str = ""
 
 
-def build_curves(category: str, component: str,
-                 selection: list[dict]) -> list[CurveItem]:
+def build_curves(
+    category: str,
+    component: str,
+    selection: list[dict],
+    display_units: UnitSystem | None = None,
+) -> list[CurveItem]:
     """Build CurveItem instances from a FilterPanel request.
 
     Parameters
@@ -84,6 +92,9 @@ def build_curves(category: str, component: str,
     selection : list[dict]
         Descriptor dicts from SimulationPanel (keys: kind, index, label,
         object, session).
+    display_units : UnitSystem, optional
+        Unit system to use when displaying data.  If *None*, the model's own
+        unit system is used (i.e. no conversion).
 
     Returns
     -------
@@ -100,21 +111,29 @@ def build_curves(category: str, component: str,
         kind = desc["kind"]
         obj = desc["object"]
         lbl = desc["label"]
-        T = desc["session"].T
+        session = desc["session"]
+        T = session.T
+
+        # Retrieve the unit system the model data is stored in
+        model_us: UnitSystem = getattr(session, "units", UnitSystem())
+        disp_us: UnitSystem = display_units if display_units is not None else model_us
 
         if multi:
-            lbl = f"{desc['session'].name} / {lbl}"
+            lbl = f"{session.name} / {lbl}"
 
         if kind == "body" and category in ("positions", "velocities", "accelerations"):
             rc = obj._result_container
             if rc is None:
                 continue
-            data = rc[category][component]
+            raw_data = rc[category][component]
+            dim = _DIMENSION.get((category, component), "length")
+            factor = conversion_factor(model_us, disp_us, dim)
+            unit_label = ylabel_for(category, component, disp_us)
             curves.append(CurveItem(
                 label=f"{lbl} / {component}",
                 T=T,
-                data=data,
-                unit=_YLABEL_MAP.get((category, component), ""),
+                data=raw_data * factor,
+                unit=unit_label,
             ))
 
         elif kind == "joint" and category == "reactions":
@@ -125,13 +144,15 @@ def build_curves(category: str, component: str,
             reactions = rc["reactions"]
             if col_idx >= reactions.shape[1]:
                 continue
-            data = reactions[:, col_idx]
+            raw_data = reactions[:, col_idx]
             rxn_lbl = reaction_labels(obj)[col_idx]
+            unit_label, dim = reaction_ylabel_for(rxn_lbl, disp_us)
+            factor = conversion_factor(model_us, disp_us, dim)
             curves.append(CurveItem(
                 label=f"{lbl} / {rxn_lbl}",
                 T=T,
-                data=data,
-                unit=_REACTION_YLABEL.get(rxn_lbl, "Reaction"),
+                data=raw_data * factor,
+                unit=unit_label,
             ))
         # else: skip (force without data, or incompatible kind/category)
 

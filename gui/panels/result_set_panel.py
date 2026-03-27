@@ -1,5 +1,7 @@
 """ResultSetPanel — list of active curves with visibility toggles."""
 
+from __future__ import annotations
+
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor, QPixmap, QIcon
 from PySide6.QtWidgets import (
@@ -35,6 +37,9 @@ class ResultSetPanel(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._curves: list[CurveItem] = []
+        # Each entry stores the original build_curves arguments for a batch
+        # so that rebuild_all() can replay them with new display units.
+        self._requests: list[dict] = []
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -67,18 +72,81 @@ class ResultSetPanel(QWidget):
     # ------------------------------------------------------------------
 
     def add_curves(self, curves: list[CurveItem]):
-        """Append *curves* to the list and create matching QListWidgetItems."""
+        """Append *curves* to the list without storing a rebuild request.
+
+        Use :meth:`add_curves_with_request` when curves should be rebuildable
+        on unit-system changes.
+        """
+        self._append_curves(curves)
+        self.curves_changed.emit()
+
+    def add_curves_with_request(
+        self,
+        curves: list[CurveItem],
+        category: str,
+        component: str,
+        selection: list[dict],
+    ):
+        """Append *curves* and store the original request for later rebuilds.
+
+        Parameters
+        ----------
+        curves : list[CurveItem]
+            Curves already built from the request (with current display units).
+        category, component, selection :
+            The arguments originally passed to :func:`build_curves`.
+        """
+        self._requests.append({
+            "category": category,
+            "component": component,
+            "selection": selection,
+        })
+        self._append_curves(curves)
+        self.curves_changed.emit()
+
+    def rebuild_all(self, display_units, build_curves_fn) -> None:
+        """Rebuild all stored requests with a new display unit system.
+
+        Existing curves are replaced by freshly scaled counterparts.
+        Colors and visibility states are preserved by matching curve labels.
+
+        Parameters
+        ----------
+        display_units : UnitSystem
+            The new display unit system.
+        build_curves_fn : callable
+            The ``build_curves`` factory, signature:
+            ``(category, component, selection, display_units) -> list[CurveItem]``.
+        """
+        if not self._requests:
+            return
+
+        # Snapshot current label → (color, visible) for state preservation
+        label_state: dict[str, tuple[str, bool]] = {}
+        for i, curve in enumerate(self._curves):
+            item = self._curve_list.item(i)
+            vis = (item.checkState() == Qt.CheckState.Checked) if item else curve.visible
+            label_state[curve.label] = (curve.color, vis)
+
+        # Clear display without touching _requests
         self._curve_list.blockSignals(True)
-        for curve in curves:
-            item = QListWidgetItem(_color_icon(curve.color), curve.label)
-            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
-            item.setCheckState(
-                Qt.CheckState.Checked if curve.visible else Qt.CheckState.Unchecked
-            )
-            self._curve_list.addItem(item)
-            self._curves.append(curve)
+        self._curve_list.clear()
+        self._curves.clear()
         self._curve_list.blockSignals(False)
+
+        # Replay each stored request
+        for req in self._requests:
+            new_curves = build_curves_fn(
+                req["category"], req["component"], req["selection"], display_units
+            )
+            # Keep only curves that were present before (i.e. not user-removed)
+            kept = [c for c in new_curves if c.label in label_state]
+            for c in kept:
+                c.color, c.visible = label_state[c.label]
+            self._append_curves(kept)
+
         self._clear_btn.setEnabled(bool(self._curves))
+        self._update_remove_btn()
         self.curves_changed.emit()
 
     def remove_selected(self):
@@ -95,9 +163,10 @@ class ResultSetPanel(QWidget):
         self.curves_changed.emit()
 
     def clear(self):
-        """Remove all curves."""
+        """Remove all curves and stored requests."""
         self._curve_list.clear()
         self._curves.clear()
+        self._requests.clear()
         self._clear_btn.setEnabled(False)
         self._update_remove_btn()
         self.curves_changed.emit()
@@ -112,8 +181,22 @@ class ResultSetPanel(QWidget):
         return result
 
     # ------------------------------------------------------------------
-    # Internal slots
+    # Internal helpers
     # ------------------------------------------------------------------
+
+    def _append_curves(self, curves: list[CurveItem]) -> None:
+        """Add *curves* to the list widget and internal list (no signal)."""
+        self._curve_list.blockSignals(True)
+        for curve in curves:
+            item = QListWidgetItem(_color_icon(curve.color), curve.label)
+            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+            item.setCheckState(
+                Qt.CheckState.Checked if curve.visible else Qt.CheckState.Unchecked
+            )
+            self._curve_list.addItem(item)
+            self._curves.append(curve)
+        self._curve_list.blockSignals(False)
+        self._clear_btn.setEnabled(bool(self._curves))
 
     def _on_item_changed(self, item: QListWidgetItem):
         row = self._curve_list.row(item)

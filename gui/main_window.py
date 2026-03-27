@@ -14,8 +14,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from PMD.src.units import UnitSystem
 from .models import build_curves
-from .panels import FilterPanel, ResultSetPanel, SimulationPanel
+from .panels import FilterPanel, ResultSetPanel, SimulationPanel, UnitsToolbar
 from .widgets import AnimationCanvas, PlotCanvas
 
 logger = logging.getLogger(__name__)
@@ -36,6 +37,7 @@ class MainWindow(QMainWindow):
         super().__init__(parent)
         self._sessions = sessions
         self._selection = []
+        self._display_units = UnitSystem()
 
         self.setWindowTitle("PMD PostProcessor")
         self.resize(1200, 700)
@@ -83,6 +85,10 @@ class MainWindow(QMainWindow):
         right_widget = QWidget()
         right_layout = QVBoxLayout(right_widget)
         right_layout.setContentsMargins(0, 0, 0, 0)
+
+        self._units_toolbar = UnitsToolbar()
+        self._units_toolbar.units_changed.connect(self._on_units_changed)
+        right_layout.addWidget(self._units_toolbar)
 
         self._filter_panel = FilterPanel()
         self._filter_panel.add_curves_requested.connect(self._on_add_curves)
@@ -147,13 +153,21 @@ class MainWindow(QMainWindow):
 
     def _on_add_curves(self, category, component, selection):
         """Build CurveItems and add them to the ResultSetPanel."""
-        curves = build_curves(category, component, selection)
+        curves = build_curves(category, component, selection, self._display_units)
         if curves:
-            self._result_set_panel.add_curves(curves)
+            self._result_set_panel.add_curves_with_request(
+                curves, category, component, selection
+            )
         logger.debug(
             "Add curves: category=%s, component=%s, added=%d",
             category, component, len(curves),
         )
+
+    def _on_units_changed(self, unit_system: UnitSystem):
+        """Rebuild all curves whenever the user changes the display unit system."""
+        self._display_units = unit_system
+        self._result_set_panel.rebuild_all(unit_system, build_curves)
+        # rebuild_all emits curves_changed which triggers _on_curves_changed automatically
 
     def _on_curves_changed(self):
         """Refresh the plot with currently visible curves."""
