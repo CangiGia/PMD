@@ -23,20 +23,26 @@ def _next_color() -> str:
 
 
 _YLABEL_MAP: dict[tuple[str, str], str] = {
-    ("positions",     "x"):      "Position $x$ [m]",
-    ("positions",     "y"):      "Position $y$ [m]",
-    ("positions",     "phi"):    r"Orientation $\phi$ [rad]",
-    ("velocities",    "dx"):     r"Velocity $\dot{x}$ [m/s]",
-    ("velocities",    "dy"):     r"Velocity $\dot{y}$ [m/s]",
-    ("velocities",    "dphi"):   r"Angular velocity $\dot{\phi}$ [rad/s]",
-    ("accelerations", "ddx"):    r"Acceleration $\ddot{x}$ [m/s$^2$]",
-    ("accelerations", "ddy"):    r"Acceleration $\ddot{y}$ [m/s$^2$]",
-    ("accelerations", "ddphi"):  r"Angular acceleration $\ddot{\phi}$ [rad/s$^2$]",
+    ("positions",     "x"):      "Position [m]",
+    ("positions",     "y"):      "Position [m]",
+    ("positions",     "phi"):    "Orientation [rad]",
+    ("velocities",    "dx"):     "Velocity [m/s]",
+    ("velocities",    "dy"):     "Velocity [m/s]",
+    ("velocities",    "dphi"):   "Angular velocity [rad/s]",
+    ("accelerations", "ddx"):    "Acceleration [m/s\u00b2]",
+    ("accelerations", "ddy"):    "Acceleration [m/s\u00b2]",
+    ("accelerations", "ddphi"):  "Angular acceleration [rad/s\u00b2]",
 }
 
-_REACTION_UNITS = {"Fx": "[N]", "Fy": "[N]", "Mz": "[N\u00b7m]",
-                   "F_perp": "[N]", "M": "[N\u00b7m]", "F_slide": "[N]",
-                   "F_link": "[N]"}
+_REACTION_YLABEL = {
+    "Fx":      "Reaction [N]",
+    "Fy":      "Reaction [N]",
+    "Mz":      "Reaction [N\u00b7m]",
+    "F_perp":  "Reaction [N]",
+    "M":       "Reaction [N\u00b7m]",
+    "F_slide": "Reaction [N]",
+    "F_link":  "Reaction [N]",
+}
 
 
 @dataclass
@@ -121,12 +127,11 @@ def build_curves(category: str, component: str,
                 continue
             data = reactions[:, col_idx]
             rxn_lbl = reaction_labels(obj)[col_idx]
-            rxn_unit = _REACTION_UNITS.get(rxn_lbl, "")
             curves.append(CurveItem(
                 label=f"{lbl} / {rxn_lbl}",
                 T=T,
                 data=data,
-                unit=f"Reaction {rxn_lbl} {rxn_unit}",
+                unit=_REACTION_YLABEL.get(rxn_lbl, "Reaction"),
             ))
         # else: skip (force without data, or incompatible kind/category)
 
