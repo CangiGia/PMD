@@ -1,11 +1,14 @@
 """MainWindow — primary QMainWindow shell for the PMD PostProcessor."""
 
+import csv
 import logging
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
+    QFileDialog,
     QMainWindow,
+    QMessageBox,
     QSplitter,
     QVBoxLayout,
     QWidget,
@@ -54,6 +57,14 @@ class MainWindow(QMainWindow):
         self._anim_action = QAction("Animation Pane", self, checkable=True, checked=False)
         self._anim_action.toggled.connect(self._on_toggle_animation)
         view_menu.addAction(self._anim_action)
+        view_menu.addSeparator()
+        self._dark_action = QAction("Dark Theme", self, checkable=True, checked=False)
+        self._dark_action.toggled.connect(self._on_toggle_theme)
+        view_menu.addAction(self._dark_action)
+
+        export_menu = menu_bar.addMenu("E&xport")
+        export_menu.addAction("Save Plot as Image…", self._on_export_plot)
+        export_menu.addAction("Export Curves to CSV…", self._on_export_csv)
 
     # ------------------------------------------------------------------
     # Central area (splitter: SimulationPanel | FilterPanel + plot)
@@ -83,6 +94,7 @@ class MainWindow(QMainWindow):
         self._anim_canvas = AnimationCanvas(self._sessions)
         viz_splitter.addWidget(self._anim_canvas)
         self._anim_canvas.setVisible(False)
+        self._plot_canvas.step_requested.connect(self._anim_canvas.set_step)
         viz_splitter.setStretchFactor(0, 1)
         viz_splitter.setStretchFactor(1, 1)
         right_layout.addWidget(viz_splitter, stretch=1)
@@ -152,3 +164,39 @@ class MainWindow(QMainWindow):
     def _on_toggle_animation(self, checked: bool):
         """Show/hide the AnimationCanvas from the View menu."""
         self._anim_canvas.setVisible(checked)
+
+    def _on_toggle_theme(self, checked: bool):
+        """Switch matplotlib style between dark_background and default."""
+        import matplotlib.pyplot as plt
+        plt.style.use("dark_background" if checked else "default")
+        visible = self._result_set_panel.visible_curves()
+        self._plot_canvas.update_plot(visible)
+
+    def _on_export_plot(self):
+        """Save the current plot figure to PNG/SVG/PDF."""
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Save Plot", "",
+            "PNG Image (*.png);;SVG Vector (*.svg);;PDF Document (*.pdf)"
+        )
+        if path:
+            self._plot_canvas._figure.savefig(path, bbox_inches="tight", dpi=150)
+
+    def _on_export_csv(self):
+        """Export all visible curves to a single CSV file."""
+        curves = self._result_set_panel.visible_curves()
+        if not curves:
+            QMessageBox.information(self, "Export CSV", "No visible curves to export.")
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Export Curves", "", "CSV file (*.csv)"
+        )
+        if not path:
+            return
+        T_ref = curves[0].T
+        header = ["time_s"] + [c.label for c in curves]
+        with open(path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow(header)
+            for i, t in enumerate(T_ref):
+                row = [t] + [float(c.data[i]) if i < len(c.data) else "" for c in curves]
+                writer.writerow(row)
