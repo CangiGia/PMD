@@ -5,6 +5,8 @@ from dataclasses import dataclass, field
 import numpy as np
 from numpy.typing import NDArray
 
+from PMD.src.constraints import RevJoint, TranJoint, RevRevJoint
+
 # 10-colour palette (tab10-inspired hex values)
 _PALETTE = [
     "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd",
@@ -18,6 +20,23 @@ def _next_color() -> str:
     color = _PALETTE[_color_index % len(_PALETTE)]
     _color_index += 1
     return color
+
+
+_YLABEL_MAP: dict[tuple[str, str], str] = {
+    ("positions",     "x"):      "Position $x$ [m]",
+    ("positions",     "y"):      "Position $y$ [m]",
+    ("positions",     "phi"):    r"Orientation $\phi$ [rad]",
+    ("velocities",    "dx"):     r"Velocity $\dot{x}$ [m/s]",
+    ("velocities",    "dy"):     r"Velocity $\dot{y}$ [m/s]",
+    ("velocities",    "dphi"):   r"Angular velocity $\dot{\phi}$ [rad/s]",
+    ("accelerations", "ddx"):    r"Acceleration $\ddot{x}$ [m/s$^2$]",
+    ("accelerations", "ddy"):    r"Acceleration $\ddot{y}$ [m/s$^2$]",
+    ("accelerations", "ddphi"):  r"Angular acceleration $\ddot{\phi}$ [rad/s$^2$]",
+}
+
+_REACTION_UNITS = {"Fx": "[N]", "Fy": "[N]", "Mz": "[N\u00b7m]",
+                   "F_perp": "[N]", "M": "[N\u00b7m]", "F_slide": "[N]",
+                   "F_link": "[N]"}
 
 
 @dataclass
@@ -43,6 +62,7 @@ class CurveItem:
     data: NDArray
     color: str = field(default_factory=_next_color)
     visible: bool = True
+    unit: str = ""
 
 
 def build_curves(category: str, component: str,
@@ -88,6 +108,7 @@ def build_curves(category: str, component: str,
                 label=f"{lbl} / {component}",
                 T=T,
                 data=data,
+                unit=_YLABEL_MAP.get((category, component), ""),
             ))
 
         elif kind == "joint" and category == "reactions":
@@ -99,11 +120,39 @@ def build_curves(category: str, component: str,
             if col_idx >= reactions.shape[1]:
                 continue
             data = reactions[:, col_idx]
+            rxn_lbl = reaction_labels(obj)[col_idx]
+            rxn_unit = _REACTION_UNITS.get(rxn_lbl, "")
             curves.append(CurveItem(
-                label=f"{lbl} / \u03bb_{component}",
+                label=f"{lbl} / {rxn_lbl}",
                 T=T,
                 data=data,
+                unit=f"Reaction {rxn_lbl} {rxn_unit}",
             ))
         # else: skip (force without data, or incompatible kind/category)
 
     return curves
+
+
+def reaction_labels(joint) -> list[str]:
+    """Return a human-readable label for each reaction column of *joint*.
+
+    Returned labels use SI notation and reflect the physical meaning of
+    each Lagrange multiplier for the given joint type.
+    """
+    if isinstance(joint, RevJoint):
+        labels = ["Fx", "Fy"]
+        if getattr(joint, "fix", 0) == 1:
+            labels.append("Mz")
+        return labels
+    if isinstance(joint, TranJoint):
+        labels = ["F_perp", "M"]
+        if getattr(joint, "fix", 0) == 1:
+            labels.append("F_slide")
+        return labels
+    if isinstance(joint, RevRevJoint):
+        return ["F_link"]
+    # generic fallback for any other joint type
+    rc = joint._result_container
+    if rc is not None:
+        return [f"\u03bb_{i}" for i in range(rc["reactions"].shape[1])]
+    return []

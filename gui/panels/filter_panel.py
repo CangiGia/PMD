@@ -9,6 +9,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from ..models import reaction_labels
+
 # Map from display name → (result‑container key, list of component keys)
 _BODY_CATEGORIES = {
     "Positions": ("positions", ["x", "y", "phi"]),
@@ -110,11 +112,10 @@ class FilterPanel(QWidget):
             self._component_combo.setEnabled(True)
 
         elif text in _JOINT_CATEGORIES:
-            max_cols = self._get_max_reaction_cols()
-            if max_cols > 0:
-                self._component_combo.addItems(
-                    [f"\u03bb_{i}" for i in range(max_cols)]
-                )
+            labels = self._get_reaction_labels()
+            if labels:
+                for i, lbl in enumerate(labels):
+                    self._component_combo.addItem(lbl, userData=str(i))
                 self._component_combo.setEnabled(True)
             else:
                 self._component_combo.setEnabled(False)
@@ -134,8 +135,7 @@ class FilterPanel(QWidget):
             comp_key = comp_text
         elif cat_text in _JOINT_CATEGORIES:
             cat_key = _JOINT_CATEGORIES[cat_text][0]
-            # "λ_2" → "2"
-            comp_key = comp_text.split("_", 1)[-1] if "_" in comp_text else comp_text
+            comp_key = self._component_combo.currentData() or comp_text
         else:
             return
 
@@ -144,6 +144,17 @@ class FilterPanel(QWidget):
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
+
+    def _get_reaction_labels(self) -> list[str]:
+        """Return reaction labels from the first selected joint (or generic fallback)."""
+        for d in self._selection:
+            if d["kind"] == "joint":
+                lbls = reaction_labels(d["object"])
+                if lbls:
+                    return lbls
+        # fallback: use column count
+        max_cols = self._get_max_reaction_cols()
+        return [f"\u03bb_{i}" for i in range(max_cols)]
 
     def _get_max_reaction_cols(self) -> int:
         """Return the max number of reaction columns among selected joints."""

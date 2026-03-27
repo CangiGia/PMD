@@ -166,9 +166,8 @@ class MainWindow(QMainWindow):
         self._anim_canvas.setVisible(checked)
 
     def _on_toggle_theme(self, checked: bool):
-        """Switch matplotlib style between dark_background and default."""
-        import matplotlib.pyplot as plt
-        plt.style.use("dark_background" if checked else "default")
+        """Switch the PlotCanvas between dark and light appearance."""
+        self._plot_canvas.set_dark(checked)
         visible = self._result_set_panel.visible_curves()
         self._plot_canvas.update_plot(visible)
 

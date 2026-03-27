@@ -70,13 +70,6 @@ class SimulationPanel(QWidget):
                         "object": joint, "session": session}
                 self._add_leaf(root_joints, label, desc)
 
-            root_forces = self._make_root("Forces", parent=session_root)
-            for i, force in enumerate(model.Forces, start=1):
-                label = force.name or f"{type(force).__name__}_{i}"
-                desc = {"kind": "force", "index": i - 1, "label": label,
-                        "object": force, "session": session}
-                self._add_leaf(root_forces, label, desc)
-
         self._tree.expandAll()
         self._tree.blockSignals(False)
 
