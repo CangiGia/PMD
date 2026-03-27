@@ -3,6 +3,7 @@ import scipy as sc
 from PMD.src import *
 import matplotlib.pyplot as plt
 from PMD.examples._plot_utils import plot_comparison
+from PMD.gui.app import PostProcessor
 
 #%% bodies
 B1 = Body(mass=2, inertia=0.5, position=[0.4398, 0.2512], orientation=-0.0367)   # lower suspension arm
@@ -55,5 +56,8 @@ quarter_car = PlanarMultibodyModel(
 T, uT = quarter_car.solve(method='Radau', t_final=10.0, t_eval=np.linspace(0, 10, 10001),
                           ic_correct=True)
 
-if __name__ == '__main__':
-    plot_comparison(T, uT, matlab_filename='AA.txt', model_title='AA')
+# if __name__ == '__main__':
+#     plot_comparison(T, uT, matlab_filename='AA.txt', model_title='AA')
+
+post_proc = PostProcessor(model=quarter_car, T=T, uT=uT)
+post_proc.show()

@@ -930,7 +930,8 @@ class Weight(Force):
             body._force += body._weight
 
     def __repr__(self):
-        return f"Weight(gravity={self.gravity})"
+        label = f"'{self.name}', " if self.name else ""
+        return f"Weight({label}gravity={self.gravity})"
 
 
 # ── Point-to-Point Force ─────────────────────────────────────────
@@ -974,7 +975,8 @@ class PtpForce(Force):
             Bj._torque += (jPt._sPr.T @ fi).item()
 
     def __repr__(self):
-        return f"PtpForce(k={self.k}, L0={self.L0}, dc={self.dc})"
+        label = f"'{self.name}', " if self.name else ""
+        return f"PtpForce({label}k={self.k}, L0={self.L0}, dc={self.dc})"
 
 
 # ── Rotational Spring-Damper-Actuator ─────────────────────────────
@@ -1121,7 +1123,8 @@ class UserForce(Force):
                         body._torque += float(torque)
 
     def __repr__(self):
-        return f"UserForce(callback={self.callback!r})"
+        label = f"'{self.name}', " if self.name else ""
+        return f"UserForce({label}callback={self.callback!r})"
 
 
 # ═══════════════════════════════════════════════════════════════════

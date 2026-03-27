@@ -55,7 +55,9 @@ class PlanarMultibodyModel:
         Functs: List of Function objects.
     """
 
-    def __init__(self, bodies, joints=None, forces=None, functions=None):
+    def __init__(self, bodies, joints=None, forces=None, functions=None, units=None):
+        from .units import UnitSystem
+        self.units = units if units is not None else UnitSystem()
         self.Bodies = list(bodies)
         self.Joints = list(joints) if joints else []
         self.Forces = list(forces) if forces else []

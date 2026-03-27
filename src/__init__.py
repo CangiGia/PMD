@@ -31,3 +31,4 @@ from .constraints import (
 )
 from .builder import *
 from .solver import PlanarMultibodyModel
+from .units import UnitSystem
