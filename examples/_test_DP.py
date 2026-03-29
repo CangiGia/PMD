@@ -65,16 +65,14 @@ fig, ax = plt.subplots(figsize=(10, 4.5)) # Aspect ratio matching your plots
 
 # 4. Plotting lines
 # - Total error: thick, light line in the background
-ax.plot(T, phi_total_norm, '-', label='Total Error ($||\mathbf{\Phi}||$)', 
-        color='dimgray', linewidth=4, alpha=0.3)
+ax.plot(T, phi_total_norm, label='Total Error ($||\mathbf{\Phi}||$)', 
+        color='tab:blue', alpha=0.4, linewidth=5)
 
 # - Joint 1: Green (matches body_1 color in the schematic)
-ax.plot(T, phi_j1_norm, '--', label='Revolute Joint 1 ($P_{10}-P_{11}$)', 
-        color='forestgreen', linewidth=1.8)
+ax.plot(T, phi_j1_norm, label='Revolute Joint 1 ($P_{10}-P_{11}$)', linewidth=1.8)
 
 # - Joint 2: Blue (matches body_2 color in the schematic)
-ax.plot(T, phi_j2_norm, ':', label='Revolute Joint 2 ($P_{21}-P_{22}$)', 
-        color='royalblue', linewidth=1.8)
+ax.plot(T, phi_j2_norm, label='Revolute Joint 2 ($P_{21}-P_{22}$)', linewidth=1.8)
 
 # 5. Axes formatting
 ax.set_yscale('log')
