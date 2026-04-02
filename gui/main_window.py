@@ -6,6 +6,7 @@ import logging
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
+    QApplication,
     QFileDialog,
     QMainWindow,
     QMessageBox,
@@ -14,7 +15,6 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from PySide6.QtWidgets import QApplication
 from PMD.src.units import UnitSystem
 from .models import build_curves
 from .panels import FilterPanel, ResultSetPanel, SimulationPanel, UnitsToolbar
