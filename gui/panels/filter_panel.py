@@ -54,7 +54,7 @@ class FilterPanel(QWidget):
         self._component_combo.setMinimumWidth(100)
         layout.addWidget(self._component_combo)
 
-        self._add_btn = QPushButton("Add curves")
+        self._add_btn = QPushButton("＋  Add curves")
         layout.addWidget(self._add_btn)
 
         layout.addStretch()

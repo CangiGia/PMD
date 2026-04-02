@@ -54,21 +54,21 @@ class SimulationPanel(QWidget):
 
         for session in self._sessions:
             model = session.model
-            session_root = self._make_root(session.name)
+            session_root = self._make_root(f"⚙  {session.name}")
 
-            root_bodies = self._make_root("Bodies", parent=session_root)
+            root_bodies = self._make_root("⬡  Bodies", parent=session_root)
             for i, body in enumerate(model.Bodies, start=1):
                 label = body.name or f"Body_{i}"
                 desc = {"kind": "body", "index": i - 1, "label": label,
                         "object": body, "session": session}
-                self._add_leaf(root_bodies, label, desc)
+                self._add_leaf(root_bodies, f"◈  {label}", desc)
 
-            root_joints = self._make_root("Joints", parent=session_root)
+            root_joints = self._make_root("⬡  Joints", parent=session_root)
             for i, joint in enumerate(model.Joints, start=1):
                 label = joint.name or f"{type(joint).__name__}_{i}"
                 desc = {"kind": "joint", "index": i - 1, "label": label,
                         "object": joint, "session": session}
-                self._add_leaf(root_joints, label, desc)
+                self._add_leaf(root_joints, f"⇌  {label}", desc)
 
         self._tree.expandAll()
         self._tree.blockSignals(False)
