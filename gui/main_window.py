@@ -6,6 +6,7 @@ import logging
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
+    QApplication,
     QFileDialog,
     QMainWindow,
     QMessageBox,
@@ -17,6 +18,7 @@ from PySide6.QtWidgets import (
 from PMD.src.units import UnitSystem
 from .models import build_curves
 from .panels import FilterPanel, ResultSetPanel, SimulationPanel, UnitsToolbar
+from .style import apply_dark_theme, apply_light_theme
 from .widgets import AnimationCanvas, PlotCanvas
 
 logger = logging.getLogger(__name__)
@@ -181,7 +183,12 @@ class MainWindow(QMainWindow):
         self._anim_canvas.setVisible(checked)
 
     def _on_toggle_theme(self, checked: bool):
-        """Switch the PlotCanvas between dark and light appearance."""
+        """Switch both Qt widgets and Matplotlib between dark and light theme."""
+        app = QApplication.instance()
+        if checked:
+            apply_dark_theme(app)
+        else:
+            apply_light_theme(app)
         self._plot_canvas.set_dark(checked)
         visible = self._result_set_panel.visible_curves()
         self._plot_canvas.update_plot(visible)
