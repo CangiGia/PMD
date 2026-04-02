@@ -52,12 +52,12 @@ class ResultSetPanel(QWidget):
         btn_layout = QHBoxLayout()
         btn_layout.setContentsMargins(4, 2, 4, 2)
 
-        self._remove_btn = QPushButton("✕  Remove selected")
+        self._remove_btn = QPushButton("Remove selected")
         self._remove_btn.setEnabled(False)
         self._remove_btn.clicked.connect(self.remove_selected)
         btn_layout.addWidget(self._remove_btn)
 
-        self._clear_btn = QPushButton("⊘  Clear all")
+        self._clear_btn = QPushButton("Clear all")
         self._clear_btn.setEnabled(False)
         self._clear_btn.clicked.connect(self.clear)
         btn_layout.addWidget(self._clear_btn)

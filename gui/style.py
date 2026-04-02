@@ -267,17 +267,12 @@ QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
 """
 
 # ---------------------------------------------------------------------------
-# Dark theme tokens
+# Public API
 # ---------------------------------------------------------------------------
-_D_ACCENT       = "#4ca3e0"
-_D_ACCENT_HOVER = "#6ab8f0"
-_D_ACCENT_PRESS = "#2c85c4"
-_D_BG           = "#1e1e1e"
-_D_SURFACE      = "#2a2a2a"
-_D_BORDER       = "#3d3d3d"
-_D_BORDER_FOCUS = "#4ca3e0"
-_D_TEXT         = "#e0e0e0"
-_D_TEXT_DIM     = "#888888"
+
+def apply_light_theme(app: QApplication) -> None:
+    """Apply the flat light theme QSS to *app*."""
+    app.setStyleSheet(_LIGHT_QSS)
 _D_TEXT_DISABLED= "#555555"
 _D_SEL_BG       = "#1e4a72"
 _D_SEL_TEXT     = "#d0eaff"
