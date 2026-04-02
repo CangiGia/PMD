@@ -16,12 +16,12 @@ from PySide6.QtWidgets import QApplication
 _ACCENT       = "#0078d4"   # Fluent blue
 _ACCENT_HOVER = "#106ebe"
 _ACCENT_PRESS = "#005a9e"
-_BG           = "#f3f3f3"   # window background
-_SURFACE      = "#ffffff"   # widget surfaces (list, tree, input)
-_BORDER       = "#d0d0d0"
+_BG           = "#e8e8e8"   # window background (warm mid-grey, not pure white)
+_SURFACE      = "#f0f0f0"   # widget surfaces (list, tree, input)
+_BORDER       = "#c4c4c4"
 _BORDER_FOCUS = "#0078d4"
 _TEXT         = "#1a1a1a"
-_TEXT_DIM     = "#666666"
+_TEXT_DIM     = "#606060"
 _TEXT_DISABLED= "#a0a0a0"
 _RADIUS       = "4px"
 _SEL_BG       = "#cce4f7"   # selection background (light blue)
@@ -188,6 +188,38 @@ QSplitter::handle:vertical {{
 }}
 QSplitter::handle:hover {{
     background-color: {_ACCENT};
+}}
+
+/* ── Matplotlib NavigationToolbar ───────────────────── */
+QToolBar {{
+    background-color: {_BG};
+    border: none;
+    border-bottom: 1px solid {_BORDER};
+    spacing: 2px;
+    padding: 2px 4px;
+}}
+QToolBar QToolButton {{
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: {_RADIUS};
+    padding: 3px 5px;
+    color: {_TEXT};
+}}
+QToolBar QToolButton:hover {{
+    background-color: {_SEL_BG};
+    border-color: {_BORDER};
+}}
+QToolBar QToolButton:checked {{
+    background-color: {_SEL_BG};
+    border-color: {_ACCENT};
+}}
+QToolBar QToolButton:pressed {{
+    background-color: #b8d6ee;
+}}
+QToolBar::separator {{
+    width: 1px;
+    background: {_BORDER};
+    margin: 4px 3px;
 }}
 
 /* ── Status bar ─────────────────────────────────────── */
@@ -416,7 +448,37 @@ QSplitter::handle:vertical {{
 QSplitter::handle:hover {{
     background-color: {_D_ACCENT};
 }}
-
+/* ── Matplotlib NavigationToolbar (dark) ────────────── */
+QToolBar {{
+    background-color: {_D_BG};
+    border: none;
+    border-bottom: 1px solid {_D_BORDER};
+    spacing: 2px;
+    padding: 2px 4px;
+}}
+QToolBar QToolButton {{
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: {_RADIUS};
+    padding: 3px 5px;
+    color: {_D_TEXT};
+}}
+QToolBar QToolButton:hover {{
+    background-color: {_D_SEL_BG};
+    border-color: {_D_BORDER};
+}}
+QToolBar QToolButton:checked {{
+    background-color: {_D_SEL_BG};
+    border-color: {_D_ACCENT};
+}}
+QToolBar QToolButton:pressed {{
+    background-color: #1a3a5c;
+}}
+QToolBar::separator {{
+    width: 1px;
+    background: {_D_BORDER};
+    margin: 4px 3px;
+}}
 /* ── Status bar ───────────────────────────────────────── */
 QStatusBar {{
     background-color: {_D_SURFACE};

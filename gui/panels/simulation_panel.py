@@ -111,3 +111,11 @@ class SimulationPanel(QWidget):
             for leaf in self._leaves
             if leaf.checkState(0) == Qt.CheckState.Checked
         ]
+
+    def clear_selection(self):
+        """Uncheck all leaf items without emitting selection_changed."""
+        self._tree.blockSignals(True)
+        for leaf in self._leaves:
+            leaf.setCheckState(0, Qt.CheckState.Unchecked)
+        self._tree.blockSignals(False)
+        self.selection_changed.emit([])

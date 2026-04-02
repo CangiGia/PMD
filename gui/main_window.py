@@ -154,12 +154,13 @@ class MainWindow(QMainWindow):
         logger.debug("Selection changed: %s", [d["label"] for d in selection])
 
     def _on_add_curves(self, category, component, selection):
-        """Build CurveItems and add them to the ResultSetPanel."""
+        """Build CurveItems, add them to the ResultSetPanel, then clear selection."""
         curves = build_curves(category, component, selection, self._display_units)
         if curves:
             self._result_set_panel.add_curves_with_request(
                 curves, category, component, selection
             )
+            self._sim_panel.clear_selection()
         logger.debug(
             "Add curves: category=%s, component=%s, added=%d",
             category, component, len(curves),
