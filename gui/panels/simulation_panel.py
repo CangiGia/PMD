@@ -32,9 +32,9 @@ _TYPE = Qt.ItemDataRole.UserRole
 _DATA = Qt.ItemDataRole.UserRole + 1
 
 # Font sizes per hierarchy level
-_FS_SECTION = 11   # File, Simulation — bold
-_FS_NODE    = 10   # Bodies, Joints, body/joint names, categories — bold
-_FS_LEAF    = 9    # individual component checkboxes — normal weight
+_FS_SECTION = 12   # File, Simulation — bold
+_FS_NODE    = 11   # Bodies, Joints, body/joint names, categories — normal weight
+_FS_LEAF    = 10   # individual component checkboxes — normal weight
 
 
 class NavigationPanel(QWidget):
@@ -68,7 +68,8 @@ class NavigationPanel(QWidget):
         self._tree = QTreeWidget()
         self._tree.setObjectName("nav_tree")
         self._tree.header().hide()
-        self._tree.setIndentation(16)
+        self._tree.setRootIsDecorated(True)
+        self._tree.setIndentation(14)
         self._tree.setAnimated(True)
         layout.addWidget(self._tree, stretch=1)
 
@@ -109,24 +110,24 @@ class NavigationPanel(QWidget):
         self._add_action(file_root, "Close",                     "close")
         self._add_action(file_root, "Save Plot as Image\u2026",  "export_plot")
         self._add_action(file_root, "Export Curves to CSV\u2026", "export_csv")
-        file_root.setExpanded(True)
+        file_root.setExpanded(False)
 
         # ── Simulation sections ──────────────────────────────────────
         for session in self._sessions:
             model = session.model
             sim_root = self._add_section(session.name or "Simulation")
 
-            bodies_root = self._add_node(sim_root, "Bodies", size=_FS_NODE, bold=True)
+            bodies_root = self._add_node(sim_root, "Bodies", size=_FS_NODE, bold=False)
             for i, body in enumerate(model.Bodies, start=1):
                 b_label = body.name or f"Body_{i}"
                 b_desc = {
                     "kind": "body", "index": i - 1,
                     "label": b_label, "object": body, "session": session,
                 }
-                b_node = self._add_node(bodies_root, b_label, size=_FS_NODE, bold=True)
+                b_node = self._add_node(bodies_root, b_label, size=_FS_NODE, bold=False)
                 for cat_label, (cat_key, comps) in _BODY_CATEGORIES.items():
                     cat_node = self._add_node(
-                        b_node, cat_label, size=_FS_NODE, bold=True
+                        b_node, cat_label, size=_FS_NODE, bold=False
                     )
                     for comp in comps:
                         self._add_leaf(
@@ -135,18 +136,18 @@ class NavigationPanel(QWidget):
                             {**b_desc, "category": cat_key, "component": comp},
                         )
 
-            joints_root = self._add_node(sim_root, "Joints", size=_FS_NODE, bold=True)
+            joints_root = self._add_node(sim_root, "Joints", size=_FS_NODE, bold=False)
             for i, joint in enumerate(model.Joints, start=1):
                 j_label = joint.name or f"{type(joint).__name__}_{i}"
                 j_desc = {
                     "kind": "joint", "index": i - 1,
                     "label": j_label, "object": joint, "session": session,
                 }
-                j_node = self._add_node(joints_root, j_label, size=_FS_NODE, bold=True)
+                j_node = self._add_node(joints_root, j_label, size=_FS_NODE, bold=False)
                 r_labels = reaction_labels(joint)
                 if r_labels:
                     react_node = self._add_node(
-                        j_node, "Reactions", size=_FS_NODE, bold=True
+                        j_node, "Reactions", size=_FS_NODE, bold=False
                     )
                     for idx, r_lbl in enumerate(r_labels):
                         self._add_leaf(
@@ -155,9 +156,9 @@ class NavigationPanel(QWidget):
                              "component": str(idx)},
                         )
 
-            sim_root.setExpanded(True)
-            bodies_root.setExpanded(True)
-            joints_root.setExpanded(True)
+            sim_root.setExpanded(False)
+            bodies_root.setExpanded(False)
+            joints_root.setExpanded(False)
 
         self._tree.blockSignals(False)
 

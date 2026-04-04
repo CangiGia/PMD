@@ -156,7 +156,7 @@ QTreeWidget::item:hover {{
     outline: none;
 }}
 #nav_tree::item {{
-    min-height: 30px;
+    min-height: 32px;
     padding: 2px 6px;
     border-radius: 4px;
 }}
@@ -168,8 +168,12 @@ QTreeWidget::item:hover {{
     background-color: rgba(0, 0, 0, 0.07);
 }}
 #nav_tree::branch {{
-    image: none;
+    width: 0px;
+    height: 0px;
+    margin: 0px;
+    padding: 0px;
     border-image: none;
+    image: none;
     background: transparent;
 }}
 QHeaderView::section {{
@@ -506,7 +510,7 @@ QTreeWidget::item:hover {{
     color: {_D_TEXT};
 }}
 #nav_tree::item {{
-    min-height: 30px;
+    min-height: 32px;
     padding: 2px 6px;
     border-radius: 4px;
 }}
@@ -518,8 +522,12 @@ QTreeWidget::item:hover {{
     background-color: rgba(255, 255, 255, 0.07);
 }}
 #nav_tree::branch {{
-    image: none;
+    width: 0px;
+    height: 0px;
+    margin: 0px;
+    padding: 0px;
     border-image: none;
+    image: none;
     background: transparent;
 }}
 QHeaderView::section {{
