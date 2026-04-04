@@ -2,6 +2,7 @@
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
+    QLabel,
     QTreeWidget,
     QTreeWidgetItem,
     QVBoxLayout,
@@ -36,9 +37,14 @@ class SimulationPanel(QWidget):
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        header = QLabel("Simulations")
+        header.setObjectName("panel_header")
+        layout.addWidget(header)
 
         self._tree = QTreeWidget()
-        self._tree.setHeaderLabel("Simulations")
+        self._tree.header().hide()
         self._tree.setAnimated(True)
         layout.addWidget(self._tree)
 
@@ -68,7 +74,7 @@ class SimulationPanel(QWidget):
                 label = joint.name or f"{type(joint).__name__}_{i}"
                 desc = {"kind": "joint", "index": i - 1, "label": label,
                         "object": joint, "session": session}
-                self._add_leaf(root_joints, f"⇌  {label}", desc)
+                self._add_leaf(root_joints, label, desc)
 
         self._tree.expandAll()
         self._tree.blockSignals(False)

@@ -6,6 +6,7 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor, QPixmap, QIcon
 from PySide6.QtWidgets import (
     QHBoxLayout,
+    QLabel,
     QListWidget,
     QListWidgetItem,
     QPushButton,
@@ -43,6 +44,11 @@ class ResultSetPanel(QWidget):
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        header = QLabel("Active Curves")
+        header.setObjectName("panel_header")
+        layout.addWidget(header)
 
         self._curve_list = QListWidget()
         self._curve_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)

@@ -8,7 +8,7 @@ matplotlib.use("qtagg")
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg, NavigationToolbar2QT
 from matplotlib.figure import Figure
 from PySide6.QtCore import Signal
-from PySide6.QtWidgets import QVBoxLayout, QWidget
+from PySide6.QtWidgets import QToolBar, QToolButton, QVBoxLayout, QWidget
 
 from ..models import CurveItem
 
@@ -29,7 +29,10 @@ class PlotCanvas(QWidget):
 
         self._figure = Figure(tight_layout=True)
         self._canvas = FigureCanvasQTAgg(self._figure)
-        self._toolbar = NavigationToolbar2QT(self._canvas, self)
+
+        # Backend nav toolbar (hidden) — used only for navigate state/history
+        self._nav = NavigationToolbar2QT(self._canvas, self)
+        self._nav.hide()
 
         self._curves: list = []
         self._dark = False
@@ -39,10 +42,63 @@ class PlotCanvas(QWidget):
                                            linewidth=0.8, visible=False)]
         self._canvas.mpl_connect("button_press_event", self._on_click)
 
+        # Custom visible toolbar (built after instance vars)
+        self._toolbar = self._build_toolbar()
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self._toolbar)
         layout.addWidget(self._canvas, stretch=1)
+
+    def _build_toolbar(self) -> QToolBar:
+        tb = QToolBar()
+        tb.setMovable(False)
+        self._btn_home = self._make_btn(tb, "Home",    self._on_home)
+        self._btn_back = self._make_btn(tb, "Back",    self._on_back)
+        self._btn_fwd  = self._make_btn(tb, "Forward", self._on_fwd)
+        tb.addSeparator()
+        self._btn_pan  = self._make_btn(tb, "Pan",     self._on_pan,  checkable=True)
+        self._btn_zoom = self._make_btn(tb, "Zoom",    self._on_zoom, checkable=True)
+        tb.addSeparator()
+        self._btn_save = self._make_btn(tb, "Save",    self._on_save)
+        return tb
+
+    @staticmethod
+    def _make_btn(tb: QToolBar, text: str, slot, *, checkable: bool = False) -> QToolButton:
+        btn = QToolButton()
+        btn.setText(text)
+        btn.setToolTip(text)
+        btn.setCheckable(checkable)
+        btn.clicked.connect(slot)
+        tb.addWidget(btn)
+        return btn
+
+    # -- Toolbar actions ------------------------------------------------
+
+    def _on_home(self):
+        self._nav.home()
+        self._canvas.draw_idle()
+
+    def _on_back(self):
+        self._nav.back()
+        self._canvas.draw_idle()
+
+    def _on_fwd(self):
+        self._nav.forward()
+        self._canvas.draw_idle()
+
+    def _on_pan(self, checked: bool):
+        if checked:
+            self._btn_zoom.setChecked(False)
+        self._nav.pan()
+
+    def _on_zoom(self, checked: bool):
+        if checked:
+            self._btn_pan.setChecked(False)
+        self._nav.zoom()
+
+    def _on_save(self):
+        self._nav.save_figure()
 
     def update_plot(self, curves: list[CurveItem]):
         """Clear figure, create one subplot per unit group, plot curves."""
@@ -101,6 +157,8 @@ class PlotCanvas(QWidget):
 
     def _on_click(self, event):
         """Convert a matplotlib click to the nearest time-step index and emit it."""
+        if self._btn_pan.isChecked() or self._btn_zoom.isChecked():
+            return
         if not self._curves or event.inaxes not in self._axes or event.xdata is None:
             return
         t_click = event.xdata

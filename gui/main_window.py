@@ -45,6 +45,7 @@ class MainWindow(QMainWindow):
         self.resize(1200, 700)
 
         self._build_menu_bar()
+        self._build_main_toolbar()
         self._build_central_area()
         self._build_status_bar()
 
@@ -71,6 +72,17 @@ class MainWindow(QMainWindow):
         export_menu.addAction("Export Curves to CSV…", self._on_export_csv)
 
     # ------------------------------------------------------------------
+    # Main toolbar  (Dark / Animation toggles)  — M7
+    # ------------------------------------------------------------------
+
+    def _build_main_toolbar(self):
+        tb = self.addToolBar("View")
+        tb.setMovable(False)
+        tb.setObjectName("main_toolbar")
+        tb.addAction(self._dark_action)
+        tb.addAction(self._anim_action)
+
+    # ------------------------------------------------------------------
     # Central area (splitter: SimulationPanel | FilterPanel + plot)
     # ------------------------------------------------------------------
 
@@ -79,6 +91,7 @@ class MainWindow(QMainWindow):
 
         # Left panel — SimulationPanel
         self._sim_panel = SimulationPanel(self._sessions)
+        self._sim_panel.setObjectName("sim_sidebar")
         self._sim_panel.setMinimumWidth(200)
         self._sim_panel.setMaximumWidth(350)
         self._sim_panel.selection_changed.connect(self._on_selection_changed)
@@ -93,6 +106,7 @@ class MainWindow(QMainWindow):
         right_layout.addWidget(self._units_toolbar)
 
         self._filter_panel = FilterPanel()
+        self._filter_panel.setObjectName("filter_card")
         self._filter_panel.add_curves_requested.connect(self._on_add_curves)
         right_layout.addWidget(self._filter_panel)
 

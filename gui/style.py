@@ -76,8 +76,8 @@ QPushButton {{
     color: #ffffff;
     border: none;
     border-radius: {_RADIUS};
-    padding: 5px 14px;
-    min-height: 24px;
+    padding: 6px 16px;
+    min-height: 28px;
 }}
 QPushButton:hover {{
     background-color: {_ACCENT_HOVER};
@@ -181,10 +181,10 @@ QSplitter::handle {{
     background-color: {_BORDER};
 }}
 QSplitter::handle:horizontal {{
-    width: 2px;
+    width: 4px;
 }}
 QSplitter::handle:vertical {{
-    height: 2px;
+    height: 4px;
 }}
 QSplitter::handle:hover {{
     background-color: {_ACCENT};
@@ -264,6 +264,49 @@ QScrollBar::handle:horizontal:hover {{
 QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
     width: 0px;
 }}
+
+/* ── Checkboxes ──────────────────────────────────────── */
+QTreeWidget::indicator,
+QListWidget::indicator {{
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid {_BORDER};
+    border-radius: 3px;
+    background-color: white;
+}}
+QTreeWidget::indicator:hover,
+QListWidget::indicator:hover {{
+    border-color: {_ACCENT};
+}}
+QTreeWidget::indicator:checked,
+QListWidget::indicator:checked {{
+    background-color: {_ACCENT};
+    border-color: {_ACCENT};
+}}
+
+/* ── Panel section headers ───────────────────────────── */
+QLabel#panel_header {{
+    color: {_TEXT_DIM};
+    font-size: 8pt;
+    font-weight: bold;
+    padding: 6px 8px 4px 8px;
+    background-color: transparent;
+    border-bottom: 1px solid {_BORDER};
+}}
+
+/* ── Sidebar ─────────────────────────────────────────── */
+#sim_sidebar {{
+    background-color: #d2d2d2;
+    border-right: 1px solid {_BORDER};
+}}
+
+/* ── Filter card ─────────────────────────────────────── */
+#filter_card {{
+    background-color: {_SURFACE};
+    border: 1px solid {_BORDER};
+    border-radius: {_RADIUS};
+    padding: 0px 2px;
+}}
 """
 
 # ---------------------------------------------------------------------------
@@ -331,8 +374,8 @@ QPushButton {{
     color: #ffffff;
     border: none;
     border-radius: {_RADIUS};
-    padding: 5px 14px;
-    min-height: 24px;
+    padding: 6px 16px;
+    min-height: 28px;
 }}
 QPushButton:hover {{
     background-color: {_D_ACCENT_HOVER};
@@ -440,10 +483,10 @@ QSplitter::handle {{
     background-color: {_D_BORDER};
 }}
 QSplitter::handle:horizontal {{
-    width: 2px;
+    width: 4px;
 }}
 QSplitter::handle:vertical {{
-    height: 2px;
+    height: 4px;
 }}
 QSplitter::handle:hover {{
     background-color: {_D_ACCENT};
@@ -520,6 +563,49 @@ QScrollBar::handle:horizontal:hover {{
 }}
 QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
     width: 0px;
+}}
+
+/* ── Checkboxes ──────────────────────────────────────── */
+QTreeWidget::indicator,
+QListWidget::indicator {{
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid {_D_BORDER};
+    border-radius: 3px;
+    background-color: {_D_SURFACE};
+}}
+QTreeWidget::indicator:hover,
+QListWidget::indicator:hover {{
+    border-color: {_D_ACCENT};
+}}
+QTreeWidget::indicator:checked,
+QListWidget::indicator:checked {{
+    background-color: {_D_ACCENT};
+    border-color: {_D_ACCENT};
+}}
+
+/* ── Panel section headers ───────────────────────────── */
+QLabel#panel_header {{
+    color: {_D_TEXT_DIM};
+    font-size: 8pt;
+    font-weight: bold;
+    padding: 6px 8px 4px 8px;
+    background-color: transparent;
+    border-bottom: 1px solid {_D_BORDER};
+}}
+
+/* ── Sidebar ─────────────────────────────────────────── */
+#sim_sidebar {{
+    background-color: #161616;
+    border-right: 1px solid {_D_BORDER};
+}}
+
+/* ── Filter card ─────────────────────────────────────── */
+#filter_card {{
+    background-color: {_D_SURFACE};
+    border: 1px solid {_D_BORDER};
+    border-radius: {_RADIUS};
+    padding: 0px 2px;
 }}
 """
 
