@@ -58,6 +58,7 @@ class MainWindow(QMainWindow):
         self._nav_panel.setMinimumWidth(200)
         self._nav_panel.setMaximumWidth(350)
         self._nav_panel.action_triggered.connect(self._on_nav_action)
+        self._nav_panel.add_curves_requested.connect(self._on_add_curves)
         self._nav_panel.dark_theme_toggled.connect(self._on_toggle_theme)
         self._nav_panel.anim_pane_toggled.connect(self._on_toggle_animation)
 

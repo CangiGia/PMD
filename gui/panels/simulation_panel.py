@@ -28,39 +28,13 @@ _COMP_LABEL: dict[str, str] = {
     "ddx": "ddx", "ddy": "ddy", "ddphi": "dd\u03c6",
 }
 
-# ── Unicode icon prefixes ──────────────────────────────────────────────────
-# Segoe UI Symbol / common Unicode — available on Windows 10+ and most Linux
-_ICO = {
-    "file":          "\u2302",   # ⌂  house → File
-    "simulation":    "\u25a6",   # ▦  grid → Simulation
-    "bodies":        "\u25cf",   # ●  filled circle → Bodies
-    "body":          "\u25cb",   # ○  open circle   → single body
-    "positions":     "\u21d5",   # ⇕  up-down arrow → Positions
-    "velocities":    "\u25b6",   # ▶  right arrow   → Velocities
-    "accelerations": "\u00bb",   # »  double angle  → Accelerations
-    "joints":        "\u22c4",   # ⋄  diamond       → Joints
-    "joint":         "\u25c6",   # ◆  filled diamond
-    "reactions":     "\u2295",   # ⊕  circled plus  → Reactions
-    "close":         "\u2715",   # ✕  light cross   → Close
-    "export_plot":   "\u2399",   # ⎙  print/save    → Save Plot
-    "export_csv":    "\u2197",   # ↗  arrow         → Export CSV
-    "settings":      "\u2699",   # ⚙  gear          → Settings
-}
-
-
-def _icon_text(key: str, label: str) -> str:
-    """Return 'ICON  label' with a thin non-breaking space."""
-    ico = _ICO.get(key, "")
-    return f"{ico}\u2002{label}" if ico else label   # \u2002 = en-space
-
-
 _TYPE = Qt.ItemDataRole.UserRole
 _DATA = Qt.ItemDataRole.UserRole + 1
 
 # Font sizes per hierarchy level
-_FS_SECTION = 10   # File, Simulation — largest
-_FS_NODE    = 9    # Bodies, Joints, body/joint names, sub-categories
-_FS_LEAF    = 8    # individual component checkboxes
+_FS_SECTION = 11   # File, Simulation — bold
+_FS_NODE    = 10   # Bodies, Joints, body/joint names, categories — bold
+_FS_LEAF    = 9    # individual component checkboxes — normal weight
 
 
 class NavigationPanel(QWidget):
@@ -74,9 +48,10 @@ class NavigationPanel(QWidget):
     anim_pane_toggled(bool)
     """
 
-    action_triggered   = Signal(str)
-    dark_theme_toggled = Signal(bool)
-    anim_pane_toggled  = Signal(bool)
+    action_triggered      = Signal(str)
+    add_curves_requested  = Signal()
+    dark_theme_toggled    = Signal(bool)
+    anim_pane_toggled     = Signal(bool)
 
     def __init__(self, sessions, parent=None):
         super().__init__(parent)
@@ -107,7 +82,7 @@ class NavigationPanel(QWidget):
         fl.setContentsMargins(8, 6, 8, 10)
         fl.setSpacing(6)
 
-        settings_hdr = QLabel(_icon_text("settings", "Settings"))
+        settings_hdr = QLabel("Settings")
         settings_hdr.setObjectName("panel_header")
         fl.addWidget(settings_hdr)
 
@@ -130,35 +105,28 @@ class NavigationPanel(QWidget):
         self._leaves.clear()
 
         # ── File section ─────────────────────────────────────────────
-        file_root = self._add_section(_icon_text("file", "File"))
-        self._add_action(file_root, _icon_text("close",       "Close"),                     "close")
-        self._add_action(file_root, _icon_text("export_plot", "Save Plot as Image\u2026"),  "export_plot")
-        self._add_action(file_root, _icon_text("export_csv",  "Export Curves to CSV\u2026"),"export_csv")
+        file_root = self._add_section("File")
+        self._add_action(file_root, "Close",                     "close")
+        self._add_action(file_root, "Save Plot as Image\u2026",  "export_plot")
+        self._add_action(file_root, "Export Curves to CSV\u2026", "export_csv")
         file_root.setExpanded(True)
 
         # ── Simulation sections ──────────────────────────────────────
         for session in self._sessions:
             model = session.model
-            sim_root = self._add_section(
-                _icon_text("simulation", session.name or "Simulation")
-            )
+            sim_root = self._add_section(session.name or "Simulation")
 
-            bodies_root = self._add_node(
-                sim_root, _icon_text("bodies", "Bodies"), size=_FS_NODE
-            )
+            bodies_root = self._add_node(sim_root, "Bodies", size=_FS_NODE, bold=True)
             for i, body in enumerate(model.Bodies, start=1):
                 b_label = body.name or f"Body_{i}"
                 b_desc = {
                     "kind": "body", "index": i - 1,
                     "label": b_label, "object": body, "session": session,
                 }
-                b_node = self._add_node(
-                    bodies_root, _icon_text("body", b_label), size=_FS_NODE
-                )
+                b_node = self._add_node(bodies_root, b_label, size=_FS_NODE, bold=True)
                 for cat_label, (cat_key, comps) in _BODY_CATEGORIES.items():
-                    ico_key = cat_label.lower()   # "positions" / "velocities" / "accelerations"
                     cat_node = self._add_node(
-                        b_node, _icon_text(ico_key, cat_label), size=_FS_NODE
+                        b_node, cat_label, size=_FS_NODE, bold=True
                     )
                     for comp in comps:
                         self._add_leaf(
@@ -167,22 +135,18 @@ class NavigationPanel(QWidget):
                             {**b_desc, "category": cat_key, "component": comp},
                         )
 
-            joints_root = self._add_node(
-                sim_root, _icon_text("joints", "Joints"), size=_FS_NODE
-            )
+            joints_root = self._add_node(sim_root, "Joints", size=_FS_NODE, bold=True)
             for i, joint in enumerate(model.Joints, start=1):
                 j_label = joint.name or f"{type(joint).__name__}_{i}"
                 j_desc = {
                     "kind": "joint", "index": i - 1,
                     "label": j_label, "object": joint, "session": session,
                 }
-                j_node = self._add_node(
-                    joints_root, _icon_text("joint", j_label), size=_FS_NODE
-                )
+                j_node = self._add_node(joints_root, j_label, size=_FS_NODE, bold=True)
                 r_labels = reaction_labels(joint)
                 if r_labels:
                     react_node = self._add_node(
-                        j_node, _icon_text("reactions", "Reactions"), size=_FS_NODE
+                        j_node, "Reactions", size=_FS_NODE, bold=True
                     )
                     for idx, r_lbl in enumerate(r_labels):
                         self._add_leaf(
@@ -210,12 +174,13 @@ class NavigationPanel(QWidget):
         return item
 
     def _add_node(self, parent: QTreeWidgetItem, text: str,
-                  size: int = _FS_NODE) -> QTreeWidgetItem:
+                  size: int = _FS_NODE, bold: bool = False) -> QTreeWidgetItem:
         item = QTreeWidgetItem(parent, [text])
         item.setData(0, _TYPE, "node")
         item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsUserCheckable)
         f = QFont()
         f.setPointSize(size)
+        f.setBold(bold)
         item.setFont(0, f)
         return item
 
@@ -244,8 +209,18 @@ class NavigationPanel(QWidget):
     # ------------------------------------------------------------------
 
     def _on_item_clicked(self, item: QTreeWidgetItem, _column: int):
-        if item.data(0, _TYPE) == "action":
+        item_type = item.data(0, _TYPE)
+        if item_type == "action":
             self.action_triggered.emit(item.data(0, _DATA))
+        elif item_type == "leaf":
+            # Toggle checkbox and trigger plot
+            new_state = (
+                Qt.CheckState.Unchecked
+                if item.checkState(0) == Qt.CheckState.Checked
+                else Qt.CheckState.Checked
+            )
+            item.setCheckState(0, new_state)
+            self.add_curves_requested.emit()
 
     # ------------------------------------------------------------------
     # Public API

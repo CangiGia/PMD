@@ -26,8 +26,3 @@ class FilterPanel(QWidget):
         self._add_btn.clicked.connect(self.add_curves_requested)
         layout.addWidget(self._add_btn)
         layout.addStretch()
-
-    def _set_enabled(self, enabled: bool):
-        self._category_combo.setEnabled(enabled)
-        self._component_combo.setEnabled(enabled)
-        self._add_btn.setEnabled(enabled)
