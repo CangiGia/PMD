@@ -130,7 +130,7 @@ QLabel {{
     background: transparent;
 }}
 
-/* ── Tree widget ────────────────────────────────────── */
+/* ── Tree widget (generic) ──────────────────────────── */
 QTreeWidget {{
     background-color: {_SURFACE};
     border: 1px solid {_BORDER};
@@ -147,6 +147,30 @@ QTreeWidget::item:selected {{
 }}
 QTreeWidget::item:hover {{
     background-color: #e5f1fb;
+}}
+
+/* ── Navigation sidebar tree ────────────────────────── */
+#nav_tree {{
+    background-color: transparent;
+    border: none;
+    outline: none;
+}}
+#nav_tree::item {{
+    min-height: 30px;
+    padding: 2px 6px;
+    border-radius: 4px;
+}}
+#nav_tree::item:selected {{
+    background-color: {_ACCENT};
+    color: #ffffff;
+}}
+#nav_tree::item:hover:!selected {{
+    background-color: rgba(0, 0, 0, 0.07);
+}}
+#nav_tree::branch {{
+    image: none;
+    border-image: none;
+    background: transparent;
 }}
 QHeaderView::section {{
     background-color: {_BG};
@@ -286,8 +310,8 @@ QListWidget::indicator:checked {{
 
 /* ── Panel section headers ───────────────────────────── */
 QLabel#panel_header {{
-    color: {_TEXT_DIM};
-    font-size: 8pt;
+    color: {_TEXT};
+    font-size: 10pt;
     font-weight: bold;
     padding: 6px 8px 4px 8px;
     background-color: transparent;
@@ -454,7 +478,7 @@ QLabel {{
     background: transparent;
 }}
 
-/* ── Tree widget ────────────────────────────────────── */
+/* ── Tree widget (generic) ──────────────────────────── */
 QTreeWidget {{
     background-color: {_D_SURFACE};
     border: 1px solid {_D_BORDER};
@@ -472,6 +496,31 @@ QTreeWidget::item:selected {{
 }}
 QTreeWidget::item:hover {{
     background-color: #2e3e50;
+}}
+
+/* ── Navigation sidebar tree ────────────────────────── */
+#nav_tree {{
+    background-color: transparent;
+    border: none;
+    outline: none;
+    color: {_D_TEXT};
+}}
+#nav_tree::item {{
+    min-height: 30px;
+    padding: 2px 6px;
+    border-radius: 4px;
+}}
+#nav_tree::item:selected {{
+    background-color: {_D_ACCENT};
+    color: #ffffff;
+}}
+#nav_tree::item:hover:!selected {{
+    background-color: rgba(255, 255, 255, 0.07);
+}}
+#nav_tree::branch {{
+    image: none;
+    border-image: none;
+    background: transparent;
 }}
 QHeaderView::section {{
     background-color: {_D_BG};
@@ -610,8 +659,8 @@ QListWidget::indicator:checked {{
 
 /* ── Panel section headers ───────────────────────────── */
 QLabel#panel_header {{
-    color: {_D_TEXT_DIM};
-    font-size: 8pt;
+    color: {_D_TEXT};
+    font-size: 10pt;
     font-weight: bold;
     padding: 6px 8px 4px 8px;
     background-color: transparent;
