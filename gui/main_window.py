@@ -4,7 +4,6 @@ import csv
 import logging
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -17,7 +16,7 @@ from PySide6.QtWidgets import (
 
 from PMD.src.units import UnitSystem
 from .models import build_curves
-from .panels import FilterPanel, ResultSetPanel, SimulationPanel, UnitsToolbar
+from .panels import FilterPanel, NavigationPanel, ResultSetPanel, UnitsToolbar
 from .style import apply_dark_theme, apply_light_theme
 from .widgets import AnimationCanvas, PlotCanvas
 
@@ -38,63 +37,29 @@ class MainWindow(QMainWindow):
     def __init__(self, sessions, parent=None):
         super().__init__(parent)
         self._sessions = sessions
-        self._selection = []
         self._display_units = UnitSystem()
 
         self.setWindowTitle("PMD PostProcessor")
         self.resize(1200, 700)
 
-        self._build_menu_bar()
-        self._build_main_toolbar()
         self._build_central_area()
         self._build_status_bar()
 
     # ------------------------------------------------------------------
-    # Menu bar
-    # ------------------------------------------------------------------
-
-    def _build_menu_bar(self):
-        menu_bar = self.menuBar()
-        file_menu = menu_bar.addMenu("&File")
-        file_menu.addAction("&Close", self.close)
-
-        view_menu = menu_bar.addMenu("&View")
-        self._anim_action = QAction("Animation Pane", self, checkable=True, checked=False)
-        self._anim_action.toggled.connect(self._on_toggle_animation)
-        view_menu.addAction(self._anim_action)
-        view_menu.addSeparator()
-        self._dark_action = QAction("Dark Theme", self, checkable=True, checked=False)
-        self._dark_action.toggled.connect(self._on_toggle_theme)
-        view_menu.addAction(self._dark_action)
-
-        export_menu = menu_bar.addMenu("E&xport")
-        export_menu.addAction("Save Plot as Image…", self._on_export_plot)
-        export_menu.addAction("Export Curves to CSV…", self._on_export_csv)
-
-    # ------------------------------------------------------------------
-    # Main toolbar  (Dark / Animation toggles)  — M7
-    # ------------------------------------------------------------------
-
-    def _build_main_toolbar(self):
-        tb = self.addToolBar("View")
-        tb.setMovable(False)
-        tb.setObjectName("main_toolbar")
-        tb.addAction(self._dark_action)
-        tb.addAction(self._anim_action)
-
-    # ------------------------------------------------------------------
-    # Central area (splitter: SimulationPanel | FilterPanel + plot)
+    # Central area (splitter: NavigationPanel | content)
     # ------------------------------------------------------------------
 
     def _build_central_area(self):
         splitter = QSplitter(Qt.Orientation.Horizontal, self)
 
-        # Left panel — SimulationPanel
-        self._sim_panel = SimulationPanel(self._sessions)
-        self._sim_panel.setObjectName("sim_sidebar")
-        self._sim_panel.setMinimumWidth(200)
-        self._sim_panel.setMaximumWidth(350)
-        self._sim_panel.selection_changed.connect(self._on_selection_changed)
+        # Left — NavigationPanel
+        self._nav_panel = NavigationPanel(self._sessions)
+        self._nav_panel.setObjectName("sim_sidebar")
+        self._nav_panel.setMinimumWidth(200)
+        self._nav_panel.setMaximumWidth(350)
+        self._nav_panel.action_triggered.connect(self._on_nav_action)
+        self._nav_panel.dark_theme_toggled.connect(self._on_toggle_theme)
+        self._nav_panel.anim_pane_toggled.connect(self._on_toggle_animation)
 
         # Right side — FilterPanel on top, vertical splitter (plot | animation), ResultSetPanel bottom
         right_widget = QWidget()
@@ -126,7 +91,7 @@ class MainWindow(QMainWindow):
         self._result_set_panel.curves_changed.connect(self._on_curves_changed)
         right_layout.addWidget(self._result_set_panel)
 
-        splitter.addWidget(self._sim_panel)
+        splitter.addWidget(self._nav_panel)
         splitter.addWidget(right_widget)
         splitter.setStretchFactor(0, 0)
         splitter.setStretchFactor(1, 1)
@@ -159,26 +124,41 @@ class MainWindow(QMainWindow):
     # Slots
     # ------------------------------------------------------------------
 
-    def _on_selection_changed(self, selection):
-        """Receives list of checked descriptor dicts from SimulationPanel."""
-        self._selection = selection
-        self._filter_panel.update_from_selection(selection)
-        msg = self._status_base + f"  |  Selected: {len(selection)}"
-        self.statusBar().showMessage(msg)
-        logger.debug("Selection changed: %s", [d["label"] for d in selection])
+    def _on_nav_action(self, action_id: str):
+        """Dispatch File actions from NavigationPanel."""
+        if action_id == "close":
+            self.close()
+        elif action_id == "export_plot":
+            self._on_export_plot()
+        elif action_id == "export_csv":
+            self._on_export_csv()
 
-    def _on_add_curves(self, category, component, selection):
-        """Build CurveItems, add them to the ResultSetPanel, then clear selection."""
-        curves = build_curves(category, component, selection, self._display_units)
-        if curves:
-            self._result_set_panel.add_curves_with_request(
-                curves, category, component, selection
-            )
-            self._sim_panel.clear_selection()
-        logger.debug(
-            "Add curves: category=%s, component=%s, added=%d",
-            category, component, len(curves),
-        )
+    def _on_add_curves(self):
+        """Build CurveItems from all checked NavigationPanel leaves."""
+        checked = self._nav_panel.get_checked_items()
+        if not checked:
+            return
+
+        # Group by (category, component) to batch calls to build_curves
+        groups: dict[tuple, list] = {}
+        for item in checked:
+            key = (item["category"], item["component"])
+            desc = {k: v for k, v in item.items()
+                    if k not in ("category", "component")}
+            groups.setdefault(key, []).append(desc)
+
+        for (category, component), selection in groups.items():
+            curves = build_curves(category, component, selection, self._display_units)
+            if curves:
+                self._result_set_panel.add_curves_with_request(
+                    curves, category, component, selection
+                )
+                logger.debug(
+                    "Add curves: category=%s, component=%s, added=%d",
+                    category, component, len(curves),
+                )
+
+        self._nav_panel.clear_checks()
 
     def _on_units_changed(self, unit_system: UnitSystem):
         """Rebuild all curves whenever the user changes the display unit system."""

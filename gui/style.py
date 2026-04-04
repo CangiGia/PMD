@@ -307,6 +307,30 @@ QLabel#panel_header {{
     border-radius: {_RADIUS};
     padding: 0px 2px;
 }}
+
+/* ── QCheckBox ──────────────────────────────────────── */
+QCheckBox {{
+    color: {_TEXT};
+    spacing: 6px;
+}}
+QCheckBox::indicator {{
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid {_BORDER};
+    border-radius: 3px;
+    background-color: white;
+}}
+QCheckBox::indicator:hover  {{ border-color: {_ACCENT}; }}
+QCheckBox::indicator:checked {{
+    background-color: {_ACCENT};
+    border-color: {_ACCENT};
+}}
+
+/* ── Settings footer ────────────────────────────────── */
+#settings_footer {{
+    background-color: #c8c8c8;
+    border-top: 1px solid {_BORDER};
+}}
 """
 
 # ---------------------------------------------------------------------------
@@ -606,6 +630,30 @@ QLabel#panel_header {{
     border: 1px solid {_D_BORDER};
     border-radius: {_RADIUS};
     padding: 0px 2px;
+}}
+
+/* ── QCheckBox ──────────────────────────────────────── */
+QCheckBox {{
+    color: {_D_TEXT};
+    spacing: 6px;
+}}
+QCheckBox::indicator {{
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid {_D_BORDER};
+    border-radius: 3px;
+    background-color: {_D_SURFACE};
+}}
+QCheckBox::indicator:hover  {{ border-color: {_D_ACCENT}; }}
+QCheckBox::indicator:checked {{
+    background-color: {_D_ACCENT};
+    border-color: {_D_ACCENT};
+}}
+
+/* ── Settings footer ────────────────────────────────── */
+#settings_footer {{
+    background-color: #252525;
+    border-top: 1px solid {_D_BORDER};
 }}
 """
 
