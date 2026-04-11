@@ -45,7 +45,6 @@ class MainWindow(QMainWindow):
         self.resize(1200, 700)
 
         self._build_menu_bar()
-        self._build_main_toolbar()
         self._build_central_area()
         self._build_status_bar()
 
@@ -59,18 +58,7 @@ class MainWindow(QMainWindow):
         file_menu.addAction("&Close", self.close)
 
     # ------------------------------------------------------------------
-    # Main toolbar  (Dark / Animation toggles)  — M7
-    # ------------------------------------------------------------------
-
-    def _build_main_toolbar(self):
-        tb = self.addToolBar("View")
-        tb.setMovable(False)
-        tb.setObjectName("main_toolbar")
-        tb.addAction(self._dark_action)
-        tb.addAction(self._anim_action)
-
-    # ------------------------------------------------------------------
-    # Central area (splitter: SimulationPanel | FilterPanel + plot)
+    # Central area (splitter: NavigationPanel | FilterPanel + plot)
     # ------------------------------------------------------------------
 
     def _build_central_area(self):
