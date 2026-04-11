@@ -88,6 +88,11 @@ class PlanarMultibodyModel:
         """Total number of constraint equations."""
         return self.Joints[-1]._rowe if self.Joints else 0
 
+    @property
+    def nDOF(self):
+        """Grübler degrees of freedom: 3*nB - nC."""
+        return 3 * len(self.Bodies) - self.nC
+
     def _initialize(self):
         """Initialize the multi-body model after construction."""
         nB = len(self.Bodies)
@@ -531,27 +536,80 @@ class PlanarMultibodyModel:
             re = joint._rowe
             joint._result_container = {'reactions': reactions[:, rs:re]}
 
-    def solve(self, method="LSODA", t_final=None, dt=None, ic_correct=False,
-              t_eval=None, t_span=None,
+    def solve(self, analysis="dynamic", method="LSODA", t_final=None, dt=None,
+              ic_correct=False, t_eval=None, t_span=None,
               baumgarte_alpha=5.0, baumgarte_beta=5.0, ggl_penalty=1e8):
-        """Solve equations of motion.
+        """Solve the model equations.
+
+        The type of analysis is selected via the ``analysis`` parameter:
+
+        * ``"dynamic"``   — full time-integration of equations of motion
+          (default; previous behaviour preserved exactly).
+        * ``"kinematic"`` — position/velocity/acceleration analysis at each
+          time step without inertia; requires DOF = 0.
+        * ``"static"``    — static equilibrium search; returns a single-step
+          result (``T = [0.0]``).
 
         Args:
-            method: ODE solver method (default "LSODA").
-            t_final: Final simulation time. If None, prompts interactively.
-            dt: Output time step. Used only when t_eval is not given.
-            ic_correct: Whether to correct initial conditions before solving.
+            analysis: Type of analysis: ``"dynamic"`` (default), ``"kinematic"``
+                or ``"static"``. Case-insensitive.
+            method: ODE solver method for dynamic analysis (default ``"LSODA"``).
+                Ignored for kinematic and static analyses.
+            t_final: Final simulation time. If *None* and interactive, prompts
+                the user. Not used for static analysis.
+            dt: Output time step. Used only when *t_eval* is not given.
+            ic_correct: Whether to project initial conditions onto the constraint
+                manifold before solving.
             t_eval: Explicit array of output time points.
-            t_span: (t_start, t_end) shorthand.
-            baumgarte_alpha: Velocity-level stabilization gain (default 5.0).
-            baumgarte_beta: Position-level stabilization gain (default 5.0).
-            ggl_penalty: GGL regularization parameter (default 1e8).
+            t_span: ``(t_start, t_end)`` shorthand; sets *t_final* when given.
+            baumgarte_alpha: Velocity-level Baumgarte gain (default 5.0).
+                Dynamic analysis only.
+            baumgarte_beta: Position-level Baumgarte gain (default 5.0).
+                Dynamic analysis only.
+            ggl_penalty: GGL regularisation parameter (default 1e8).
+                Dynamic analysis only.
 
         Returns:
-            Tuple (T, uT): time vector (nSteps,) and state matrix (nSteps, 2*nB3).
-            Results are also distributed into each Body and Joint via
-            ``_result_container``; use ``body.get_position()`` etc. to retrieve them.
+            Tuple ``(T, uT)``: time vector of shape ``(nSteps,)`` and state
+            matrix of shape ``(nSteps, 2*nB3)``.  Results are also distributed
+            into each ``Body`` and ``Joint`` via ``_result_container``.
         """
+        analysis = analysis.lower()
+        _valid = ("dynamic", "kinematic", "static")
+        if analysis not in _valid:
+            raise ValueError(
+                f"Unknown analysis type '{analysis}'. "
+                f"Valid options: {_valid}"
+            )
+
+        if analysis == "dynamic":
+            return self._solve_dynamic(
+                method=method,
+                t_final=t_final, dt=dt,
+                ic_correct=ic_correct,
+                t_eval=t_eval, t_span=t_span,
+                baumgarte_alpha=baumgarte_alpha,
+                baumgarte_beta=baumgarte_beta,
+                ggl_penalty=ggl_penalty,
+            )
+        elif analysis == "kinematic":
+            return self._solve_kinematic(
+                t_final=t_final, dt=dt,
+                ic_correct=ic_correct,
+                t_eval=t_eval, t_span=t_span,
+            )
+        else:  # "static"
+            return self._solve_static(ic_correct=ic_correct)
+
+    # ------------------------------------------------------------------
+    # Private: dynamic solver (original solve() body)
+    # ------------------------------------------------------------------
+
+    def _solve_dynamic(self, method="LSODA", t_final=None, dt=None,
+                       ic_correct=False, t_eval=None, t_span=None,
+                       baumgarte_alpha=5.0, baumgarte_beta=5.0,
+                       ggl_penalty=1e8):
+        """Time-integrate the equations of motion (original solve behaviour)."""
         self.method = method
         self._baumgarte_alpha = baumgarte_alpha
         self._baumgarte_beta = baumgarte_beta
@@ -697,4 +755,311 @@ class PlanarMultibodyModel:
             reactions[i] = Lambda.flatten()
 
         return accelerations, reactions
+
+    # ------------------------------------------------------------------
+    # Private: kinematic solver
+    # ------------------------------------------------------------------
+
+    def _solve_kinematic(self, t_final=None, dt=None, ic_correct=False,
+                         t_eval=None, t_span=None):
+        """Position/velocity/acceleration analysis at each time step.
+
+        Requires DOF = 0 (fully determined model).  At least one driven
+        joint (``RelRotJoint`` or ``RelTranJoint`` with a ``Function``)
+        must exist to supply kinematic input at each instant.
+
+        Algorithm per step *k*:
+
+        1. **Positions** – Newton-Raphson: :math:`\\Phi(q) = 0`
+        2. **Velocities** – linear solve: :math:`\\Phi_q \\dot{q} = \\nu(t_k)`
+        3. **Accelerations** – linear solve: :math:`\\Phi_q \\ddot{q} = \\gamma(t_k, q, \\dot{q})`
+        4. **Reactions** – inverse dynamics: :math:`\\Phi_q^T \\lambda = M\\ddot{q} - h_a`
+        """
+        # ---- DOF check ----
+        nDOF = self.nDOF
+        if nDOF != 0:
+            raise ValueError(
+                f"Kinematic analysis requires DOF = 0, but this model has "
+                f"DOF = {nDOF}. Add driven joints (RelRotJoint / RelTranJoint) "
+                f"or remove free bodies."
+            )
+
+        nB = len(self.Bodies)
+        nB3 = 3 * nB
+        nConst = self.nC
+
+        # ---- Build time vector ----
+        if t_span is not None and t_final is None:
+            t_final = t_span[1]
+        if t_final is None:
+            t_final = float(input("\n\t ...Final time = ? "))
+        if t_eval is not None:
+            T = np.asarray(t_eval, dtype=float)
+        elif dt is not None:
+            T = np.arange(0.0, t_final + dt * 0.5, dt)
+        else:
+            dt_input = float(input("\t ...Reporting time-step = ? "))
+            T = np.arange(0.0, t_final + dt_input * 0.5, dt_input)
+
+        nSteps = len(T)
+        uT = np.zeros((nSteps, 2 * nB3))
+
+        # ---- Correct initial conditions if requested ----
+        self.t = float(T[0])
+        if ic_correct:
+            self._ic_correct()
+
+        # ---- Storage for post-processed quantities ----
+        accelerations = np.zeros((nSteps, nB3))
+        reactions = np.zeros((nSteps, nConst))
+
+        print(f"\n\t ...Kinematic analysis: {nSteps} steps")
+
+        for k, t_k in enumerate(T):
+            self.t = float(t_k)
+
+            # --- 1. Position: Newton-Raphson Phi(q) = 0 ---
+            _pos_converged = False
+            for _iter in range(100):
+                self._update_position()
+                Phi = self._compute_constraints()
+                res = float(np.linalg.norm(Phi))
+                if res < 1.0e-10:
+                    _pos_converged = True
+                    break
+                D = self._compute_jacobian()
+                # Minimum-norm correction: delta_q = -D^+ Phi  (1-D)
+                delta_q = (-D.T @ np.linalg.solve(D @ D.T, Phi)).flatten()
+                for Bi in range(nB):
+                    ir = 3 * Bi
+                    self.Bodies[Bi].position = (
+                        self.Bodies[Bi].position + delta_q[ir:ir + 2].reshape(2, 1))
+                    self.Bodies[Bi].orientation = (
+                        self.Bodies[Bi].orientation + float(delta_q[ir + 2]))
+
+            if not _pos_converged:
+                raise RuntimeError(
+                    f"Kinematic position Newton-Raphson did not converge "
+                    f"at t = {t_k:.6g} (step {k})."
+                )
+
+            # --- 2. Velocity: Phi_q * dq = nu(t) ---
+            D = self._compute_jacobian()
+            nu = self._rhs_velocity()  # shape (nConst, 1)
+            dq = np.linalg.lstsq(D, nu.flatten(), rcond=None)[0]  # 1-D
+            for Bi in range(nB):
+                ir = 3 * Bi
+                self.Bodies[Bi].velocity = dq[ir:ir + 2].reshape(2, 1)
+                self.Bodies[Bi].angular_velocity = float(dq[ir + 2])
+
+            # --- 3. Acceleration: Phi_q * ddq = gamma(t, q, dq) ---
+            self._update_velocity()
+            gamma = self._rhs_acceleration()  # shape (nConst, 1)
+            ddq = np.linalg.lstsq(D, gamma.flatten(), rcond=None)[0]  # 1-D
+            for Bi in range(nB):
+                ir = 3 * Bi
+                self.Bodies[Bi].acceleration = ddq[ir:ir + 2].reshape(2, 1)
+                self.Bodies[Bi].angular_acceleration = float(ddq[ir + 2])
+
+            # --- 4. Reactions: Phi_q^T lambda = M*ddq - h_a ---
+            h_a = self._compute_force()
+            M_ddq = (self.M_array * ddq).reshape(-1, 1)
+            rhs_lam = (M_ddq - h_a).flatten()
+            # Solve D^T lambda = rhs_lam  (least-squares; D is square here)
+            lam = np.linalg.lstsq(D.T, rhs_lam, rcond=None)[0]
+
+            # --- Pack state vector row ---
+            u_k = np.zeros(2 * nB3)
+            for Bi in range(nB):
+                ir = 3 * Bi
+                u_k[ir]     = self.Bodies[Bi].position.flat[0]
+                u_k[ir + 1] = self.Bodies[Bi].position.flat[1]
+                u_k[ir + 2] = float(self.Bodies[Bi].orientation)
+                u_k[nB3 + ir]     = self.Bodies[Bi].velocity.flat[0]
+                u_k[nB3 + ir + 1] = self.Bodies[Bi].velocity.flat[1]
+                u_k[nB3 + ir + 2] = float(self.Bodies[Bi].angular_velocity)
+
+            uT[k] = u_k
+            accelerations[k] = ddq.flatten()
+            reactions[k] = lam.flatten()
+
+        print(f"\t ...Kinematic analysis completed successfully!")
+        print(f"\n ")
+        self._distribute_results_kin(T, uT, accelerations, reactions)
+        return T, uT
+
+    # ------------------------------------------------------------------
+    # Private: static solver
+    # ------------------------------------------------------------------
+
+    def _solve_static(self, ic_correct=False):
+        """Find static equilibrium: :math:`\\ddot{q} = 0`, :math:`\\dot{q} = 0`.
+
+        Solves the nonlinear system
+
+        .. math::
+
+            \\begin{bmatrix} \\Phi(q) \\\\ \\Phi_q^T \\lambda - h_a(q) \\end{bmatrix} = 0
+
+        via Newton-Raphson with a finite-difference Jacobian (no analytic
+        second derivatives required).
+
+        Returns a single-step result: ``T = [0.0]``,
+        ``uT`` of shape ``(1, 2*nB3)`` with zero velocities.
+        """
+        nB = len(self.Bodies)
+        nB3 = 3 * nB
+        nConst = self.nC
+
+        # ---- Zero velocities (static assumption) ----
+        for body in self.Bodies:
+            body.velocity = np.zeros((2, 1))
+            body.angular_velocity = 0.0
+
+        # ---- Correct initial positions if requested ----
+        self.t = 0.0
+        if ic_correct:
+            self._ic_correct()
+
+        # ---- Build initial guess vector z = [q; lambda] ----
+        def _pack_q():
+            q = np.zeros(nB3)
+            for Bi, body in enumerate(self.Bodies):
+                ir = 3 * Bi
+                q[ir]     = body.position.flat[0]
+                q[ir + 1] = body.position.flat[1]
+                q[ir + 2] = float(body.orientation)
+            return q
+
+        def _unpack_q(q):
+            for Bi in range(nB):
+                ir = 3 * Bi
+                self.Bodies[Bi].position = q[ir:ir + 2].reshape(2, 1)
+                self.Bodies[Bi].orientation = float(q[ir + 2])
+
+        def _residual(z):
+            """Residual F(q, lambda) = [Phi(q); Phi_q^T lam - h_a(q)]."""
+            q = z[:nB3]
+            lam = z[nB3:].reshape(-1, 1)
+            _unpack_q(q)
+            self._update_position()
+            Phi = self._compute_constraints().flatten()  # (nConst,)
+            D = self._compute_jacobian()                 # (nConst, nB3)
+            h_a = self._compute_force().flatten()        # (nB3,)
+            eq_forces = (D.T @ lam).flatten() - h_a     # (nB3,)
+            return np.concatenate([Phi, eq_forces])
+
+        q0 = _pack_q()
+        if nConst > 0:
+            # Initial Lagrange multiplier guess via least squares
+            self._update_position()
+            D0 = self._compute_jacobian()
+            h_a0 = self._compute_force().flatten()
+            lam0 = np.linalg.lstsq(D0.T, h_a0, rcond=None)[0]
+        else:
+            lam0 = np.zeros(0)
+
+        z0 = np.concatenate([q0, lam0])
+
+        # ---- Newton-Raphson with finite-difference Jacobian ----
+        _tol = 1.0e-10
+        _max_iter = 100
+        _eps = 1.0e-7  # FD perturbation
+        n_z = len(z0)
+        z = z0.copy()
+        converged = False
+
+        print(f"\n\t ...Static equilibrium search")
+        for _iter in range(_max_iter):
+            F = _residual(z)
+            norm_F = float(np.linalg.norm(F))
+            if norm_F < _tol:
+                converged = True
+                break
+
+            # Finite-difference Jacobian
+            J = np.zeros((n_z, n_z))
+            for j in range(n_z):
+                dz = np.zeros(n_z)
+                dz[j] = _eps
+                J[:, j] = (_residual(z + dz) - F) / _eps
+
+            try:
+                delta = np.linalg.solve(J, -F)
+            except np.linalg.LinAlgError:
+                delta = np.linalg.lstsq(J, -F, rcond=None)[0]
+
+            z = z + delta
+
+        if not converged:
+            raise RuntimeError(
+                f"Static equilibrium Newton-Raphson did not converge after "
+                f"{_max_iter} iterations (final residual = {norm_F:.3e})."
+            )
+
+        # ---- Unpack final solution ----
+        q_eq = z[:nB3]
+        lam_eq = z[nB3:]
+        _unpack_q(q_eq)
+        for body in self.Bodies:
+            body.velocity = np.zeros((2, 1))
+            body.angular_velocity = 0.0
+            body.acceleration = np.zeros((2, 1))
+            body.angular_acceleration = 0.0
+
+        # ---- Build output arrays ----
+        T = np.array([0.0])
+        u_eq = np.zeros(2 * nB3)
+        for Bi in range(nB):
+            ir = 3 * Bi
+            u_eq[ir]     = self.Bodies[Bi].position.flat[0]
+            u_eq[ir + 1] = self.Bodies[Bi].position.flat[1]
+            u_eq[ir + 2] = float(self.Bodies[Bi].orientation)
+            # velocities remain 0
+
+        uT = u_eq.reshape(1, -1)
+
+        # accelerations = 0 everywhere; reactions from lam_eq
+        accelerations = np.zeros((1, nB3))
+        reactions = lam_eq.reshape(1, -1) if nConst > 0 else np.zeros((1, 0))
+
+        print(f"\t ...Static equilibrium found (iter = {_iter + 1})")
+        print(f"\n ")
+        self._distribute_results_kin(T, uT, accelerations, reactions)
+        return T, uT
+
+    # ------------------------------------------------------------------
+    # Private: distribute results for kinematic / static analyses
+    # ------------------------------------------------------------------
+
+    def _distribute_results_kin(self, T, uT, accelerations, reactions):
+        """Populate ``_result_container`` from pre-computed arrays.
+
+        Used by ``_solve_kinematic`` and ``_solve_static`` which compute
+        accelerations and reactions analytically (not via ``_post_process``).
+        """
+        nB3 = 3 * self.nB
+        for Bi, body in enumerate(self.Bodies):
+            i = 3 * Bi
+            body._result_container = {
+                'positions': {
+                    'x':   uT[:, i],
+                    'y':   uT[:, i + 1],
+                    'phi': uT[:, i + 2],
+                },
+                'velocities': {
+                    'dx':   uT[:, nB3 + i],
+                    'dy':   uT[:, nB3 + i + 1],
+                    'dphi': uT[:, nB3 + i + 2],
+                },
+                'accelerations': {
+                    'ddx':   accelerations[:, i],
+                    'ddy':   accelerations[:, i + 1],
+                    'ddphi': accelerations[:, i + 2],
+                },
+            }
+        for joint in self.Joints:
+            rs = joint._rows
+            re = joint._rowe
+            joint._result_container = {'reactions': reactions[:, rs:re]}
 
