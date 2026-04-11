@@ -54,8 +54,23 @@ class MainWindow(QMainWindow):
 
     def _build_menu_bar(self):
         menu_bar = self.menuBar()
+
+        # File menu
         file_menu = menu_bar.addMenu("&File")
+        file_menu.addAction("Export &Plot…", self._on_export_plot)
+        file_menu.addAction("Export &CSV…", self._on_export_csv)
+        file_menu.addSeparator()
         file_menu.addAction("&Close", self.close)
+
+        # View menu
+        view_menu = menu_bar.addMenu("&View")
+        self._dark_action = QAction("Dark Theme", self, checkable=True)
+        self._dark_action.toggled.connect(self._on_toggle_theme)
+        view_menu.addAction(self._dark_action)
+
+        self._anim_action = QAction("Animation Pane", self, checkable=True)
+        self._anim_action.toggled.connect(self._on_toggle_animation)
+        view_menu.addAction(self._anim_action)
 
     # ------------------------------------------------------------------
     # Central area (splitter: NavigationPanel | FilterPanel + plot)
