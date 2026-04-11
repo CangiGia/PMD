@@ -130,7 +130,7 @@ QLabel {{
     background: transparent;
 }}
 
-/* ── Tree widget (generic) ──────────────────────────── */
+/* ── Tree widget ────────────────────────────────────── */
 QTreeWidget {{
     background-color: {_SURFACE};
     border: 1px solid {_BORDER};
@@ -147,34 +147,6 @@ QTreeWidget::item:selected {{
 }}
 QTreeWidget::item:hover {{
     background-color: #e5f1fb;
-}}
-
-/* ── Navigation sidebar tree ────────────────────────── */
-#nav_tree {{
-    background-color: transparent;
-    border: none;
-    outline: none;
-}}
-#nav_tree::item {{
-    min-height: 32px;
-    padding: 2px 6px;
-    border-radius: 4px;
-}}
-#nav_tree::item:selected {{
-    background-color: {_ACCENT};
-    color: #ffffff;
-}}
-#nav_tree::item:hover:!selected {{
-    background-color: rgba(0, 0, 0, 0.07);
-}}
-#nav_tree::branch {{
-    width: 0px;
-    height: 0px;
-    margin: 0px;
-    padding: 0px;
-    border-image: none;
-    image: none;
-    background: transparent;
 }}
 QHeaderView::section {{
     background-color: {_BG};
@@ -314,8 +286,8 @@ QListWidget::indicator:checked {{
 
 /* ── Panel section headers ───────────────────────────── */
 QLabel#panel_header {{
-    color: {_TEXT};
-    font-size: 10pt;
+    color: {_TEXT_DIM};
+    font-size: 8pt;
     font-weight: bold;
     padding: 6px 8px 4px 8px;
     background-color: transparent;
@@ -336,28 +308,24 @@ QLabel#panel_header {{
     padding: 0px 2px;
 }}
 
-/* ── QCheckBox ──────────────────────────────────────── */
-QCheckBox {{
+/* ── AnimationCanvas toolbar ─────────────────────────── */
+QToolBar QToolButton {{
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: {_RADIUS};
+    padding: 3px 5px;
     color: {_TEXT};
-    spacing: 6px;
 }}
-QCheckBox::indicator {{
-    width: 14px;
-    height: 14px;
-    border: 1.5px solid {_BORDER};
-    border-radius: 3px;
-    background-color: white;
+QToolBar QToolButton:hover {{
+    background-color: {_SEL_BG};
+    border-color: {_BORDER};
 }}
-QCheckBox::indicator:hover  {{ border-color: {_ACCENT}; }}
-QCheckBox::indicator:checked {{
-    background-color: {_ACCENT};
+QToolBar QToolButton:checked {{
+    background-color: {_SEL_BG};
     border-color: {_ACCENT};
 }}
-
-/* ── Settings footer ────────────────────────────────── */
-#settings_footer {{
-    background-color: #c8c8c8;
-    border-top: 1px solid {_BORDER};
+QToolBar QToolButton:pressed {{
+    background-color: #b8d6ee;
 }}
 """
 
@@ -482,7 +450,7 @@ QLabel {{
     background: transparent;
 }}
 
-/* ── Tree widget (generic) ──────────────────────────── */
+/* ── Tree widget ────────────────────────────────────── */
 QTreeWidget {{
     background-color: {_D_SURFACE};
     border: 1px solid {_D_BORDER};
@@ -500,35 +468,6 @@ QTreeWidget::item:selected {{
 }}
 QTreeWidget::item:hover {{
     background-color: #2e3e50;
-}}
-
-/* ── Navigation sidebar tree ────────────────────────── */
-#nav_tree {{
-    background-color: transparent;
-    border: none;
-    outline: none;
-    color: {_D_TEXT};
-}}
-#nav_tree::item {{
-    min-height: 32px;
-    padding: 2px 6px;
-    border-radius: 4px;
-}}
-#nav_tree::item:selected {{
-    background-color: {_D_ACCENT};
-    color: #ffffff;
-}}
-#nav_tree::item:hover:!selected {{
-    background-color: rgba(255, 255, 255, 0.07);
-}}
-#nav_tree::branch {{
-    width: 0px;
-    height: 0px;
-    margin: 0px;
-    padding: 0px;
-    border-image: none;
-    image: none;
-    background: transparent;
 }}
 QHeaderView::section {{
     background-color: {_D_BG};
@@ -667,8 +606,8 @@ QListWidget::indicator:checked {{
 
 /* ── Panel section headers ───────────────────────────── */
 QLabel#panel_header {{
-    color: {_D_TEXT};
-    font-size: 10pt;
+    color: {_D_TEXT_DIM};
+    font-size: 8pt;
     font-weight: bold;
     padding: 6px 8px 4px 8px;
     background-color: transparent;
@@ -689,28 +628,24 @@ QLabel#panel_header {{
     padding: 0px 2px;
 }}
 
-/* ── QCheckBox ──────────────────────────────────────── */
-QCheckBox {{
+/* ── AnimationCanvas toolbar (dark) ────────────────── */
+QToolBar QToolButton {{
+    background-color: transparent;
+    border: 1px solid transparent;
+    border-radius: {_RADIUS};
+    padding: 3px 5px;
     color: {_D_TEXT};
-    spacing: 6px;
 }}
-QCheckBox::indicator {{
-    width: 14px;
-    height: 14px;
-    border: 1.5px solid {_D_BORDER};
-    border-radius: 3px;
-    background-color: {_D_SURFACE};
+QToolBar QToolButton:hover {{
+    background-color: {_D_SEL_BG};
+    border-color: {_D_BORDER};
 }}
-QCheckBox::indicator:hover  {{ border-color: {_D_ACCENT}; }}
-QCheckBox::indicator:checked {{
-    background-color: {_D_ACCENT};
+QToolBar QToolButton:checked {{
+    background-color: {_D_SEL_BG};
     border-color: {_D_ACCENT};
 }}
-
-/* ── Settings footer ────────────────────────────────── */
-#settings_footer {{
-    background-color: #252525;
-    border-top: 1px solid {_D_BORDER};
+QToolBar QToolButton:pressed {{
+    background-color: #1a3a5c;
 }}
 """
 

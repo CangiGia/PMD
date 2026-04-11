@@ -16,6 +16,8 @@ from PySide6.QtWidgets import (
     QLabel,
     QPushButton,
     QSlider,
+    QToolBar,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -76,7 +78,13 @@ class AnimationCanvas(QWidget):
         self._ax = self._figure.add_subplot(111)
         self._ax.set_aspect("equal")
         self._canvas = FigureCanvasQTAgg(self._figure)
-        self._toolbar = NavigationToolbar2QT(self._canvas, self)
+
+        # Backend nav toolbar (hidden) — used only for navigate state/history
+        self._nav = NavigationToolbar2QT(self._canvas, self)
+        self._nav.hide()
+
+        # Custom visible toolbar (built after instance vars)
+        self._toolbar = self._build_toolbar()
 
         # --- transport controls ---
         self._play_btn = QPushButton("\u25b6")        # ▶
@@ -116,6 +124,58 @@ class AnimationCanvas(QWidget):
         # --- animation timer ---
         self._timer = self._canvas.new_timer(interval=30)
         self._timer.add_callback(self._advance_frame)
+
+    # ------------------------------------------------------------------
+    # Custom toolbar
+    # ------------------------------------------------------------------
+
+    def _build_toolbar(self) -> QToolBar:
+        tb = QToolBar()
+        tb.setMovable(False)
+        self._btn_home = self._make_btn(tb, "Home",    self._on_home)
+        self._btn_back = self._make_btn(tb, "Back",    self._on_back)
+        self._btn_fwd  = self._make_btn(tb, "Forward", self._on_fwd)
+        tb.addSeparator()
+        self._btn_pan  = self._make_btn(tb, "Pan",     self._on_pan,  checkable=True)
+        self._btn_zoom = self._make_btn(tb, "Zoom",    self._on_zoom, checkable=True)
+        tb.addSeparator()
+        self._btn_save = self._make_btn(tb, "Save",    self._on_save)
+        return tb
+
+    @staticmethod
+    def _make_btn(tb: QToolBar, text: str, slot, *, checkable: bool = False) -> QToolButton:
+        btn = QToolButton()
+        btn.setText(text)
+        btn.setToolTip(text)
+        btn.setCheckable(checkable)
+        btn.clicked.connect(slot)
+        tb.addWidget(btn)
+        return btn
+
+    def _on_home(self):
+        self._nav.home()
+        self._canvas.draw_idle()
+
+    def _on_back(self):
+        self._nav.back()
+        self._canvas.draw_idle()
+
+    def _on_fwd(self):
+        self._nav.forward()
+        self._canvas.draw_idle()
+
+    def _on_pan(self, checked: bool):
+        if checked:
+            self._btn_zoom.setChecked(False)
+        self._nav.pan()
+
+    def _on_zoom(self, checked: bool):
+        if checked:
+            self._btn_pan.setChecked(False)
+        self._nav.zoom()
+
+    def _on_save(self):
+        self._nav.save_figure()
 
     # ------------------------------------------------------------------
     # helpers
