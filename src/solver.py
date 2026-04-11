@@ -93,6 +93,16 @@ class PlanarMultibodyModel:
         """Grübler degrees of freedom: 3*nB - nC."""
         return 3 * len(self.Bodies) - self.nC
 
+    # BDF-k coefficients (k = 1..5).
+    # Convention: ydot_n = (y_n - sum(alpha[j]*y_{n-1-j})) / (beta0*h)
+    _BDF_COEFFS = {
+        1: {'alpha': [1.0],                                         'beta0': 1.0},
+        2: {'alpha': [4/3, -1/3],                                   'beta0': 2/3},
+        3: {'alpha': [18/11, -9/11, 2/11],                          'beta0': 6/11},
+        4: {'alpha': [48/25, -36/25, 16/25, -3/25],                 'beta0': 12/25},
+        5: {'alpha': [300/137, -300/137, 200/137, -75/137, 12/137], 'beta0': 60/137},
+    }
+
     def _initialize(self):
         """Initialize the multi-body model after construction."""
         nB = len(self.Bodies)
@@ -554,6 +564,8 @@ class PlanarMultibodyModel:
             analysis: Type of analysis: ``"dynamic"`` (default), ``"kinematic"``
                 or ``"static"``. Case-insensitive.
             method: ODE solver method for dynamic analysis (default ``"LSODA"``).
+                Pass ``"BDF-DAE"`` to use the custom variable-order BDF index-3
+                DAE solver instead of ``scipy.integrate.solve_ivp``.
                 Ignored for kinematic and static analyses.
             t_final: Final simulation time. If *None* and interactive, prompts
                 the user. Not used for static analysis.
@@ -583,6 +595,12 @@ class PlanarMultibodyModel:
             )
 
         if analysis == "dynamic":
+            if method.upper() == "BDF-DAE":
+                return self._solve_dae(
+                    t_final=t_final, dt=dt,
+                    ic_correct=ic_correct,
+                    t_eval=t_eval, t_span=t_span,
+                )
             return self._solve_dynamic(
                 method=method,
                 t_final=t_final, dt=dt,
@@ -1062,4 +1080,242 @@ class PlanarMultibodyModel:
             rs = joint._rows
             re = joint._rowe
             joint._result_container = {'reactions': reactions[:, rs:re]}
+
+    # ------------------------------------------------------------------
+    # Private: DAE solver — custom variable-order BDF, index-3
+    # ------------------------------------------------------------------
+
+    def _dae_residual(self, t, y, ydot):
+        """DAE residual F(t, y, ydot) = 0 for the BDF solver.
+
+        State:  y    = [q (nB3), v (nB3), lam (nC)]
+        Deriv:  ydot = [qd (nB3), vd (nB3), lamdot (nC)]
+
+        Residual blocks:
+            r1 = qd  - v              kinematic relation  (nB3,)
+            r2 = M vd + D^T lam - Q   equations of motion (nB3,)
+            r3 = Phi(q, t)            position constraints (nC,)
+        """
+        nB3 = 3 * len(self.Bodies)
+        nC  = self.nC
+
+        q   = y[:nB3]
+        v   = y[nB3:2 * nB3]
+        lam = y[2 * nB3:]        # empty array when nC == 0
+
+        qd = ydot[:nB3]
+        vd = ydot[nB3:2 * nB3]
+
+        # Load body state
+        self.t = t
+        for Bi, body in enumerate(self.Bodies):
+            ir = 3 * Bi
+            body.position         = q[ir:ir + 2].reshape(2, 1)
+            body.orientation      = float(q[ir + 2])
+            body.velocity         = v[ir:ir + 2].reshape(2, 1)
+            body.angular_velocity = float(v[ir + 2])
+
+        self._update_position()
+        self._update_velocity()
+
+        Q  = self._compute_force().flatten()    # (nB3,)
+        r1 = qd - v                             # (nB3,)
+
+        if nC > 0:
+            D   = self._compute_jacobian()               # (nC, nB3)
+            Phi = self._compute_constraints().flatten()  # (nC,)
+            r2  = self.M_array * vd + D.T @ lam - Q     # (nB3,)
+            r3  = Phi                                    # (nC,)
+            return np.concatenate([r1, r2, r3])
+        else:
+            r2 = self.M_array * vd - Q                   # (nB3,)
+            return np.concatenate([r1, r2])
+
+    def _solve_dae(self, t_final=None, dt=None, ic_correct=False,
+                   t_eval=None, t_span=None, bdf_order=5):
+        """Custom variable-order BDF solver for the index-3 DAE.
+
+        Integrates the constrained equations of motion written as a
+        semi-explicit DAE of index 3::
+
+            q_dot  = v
+            M v_dot + Phi_q^T lam = Q(t, q, v)
+            Phi(q, t) = 0
+
+        State vector: y = [q (nB3), v (nB3), lam (nC)].
+
+        At each step the BDF-k corrector equation is solved with a
+        Newton-Raphson iteration using a forward finite-difference
+        Jacobian (same pattern as ``_solve_static``).  The order ramps
+        from 1 (backward Euler) up to *bdf_order* over the first steps.
+
+        Args:
+            t_final:    Final simulation time.
+            dt:         Output time step (used when *t_eval* is absent).
+            ic_correct: Project initial conditions before integrating.
+            t_eval:     Explicit array of output time points.
+            t_span:     ``(t0, tf)`` shorthand; overrides *t_final*.
+            bdf_order:  Maximum BDF order 1–5 (default 5).
+
+        Returns:
+            Tuple ``(T, uT)`` compatible with ``_solve_dynamic`` output.
+        """
+        from collections import deque
+
+        nB  = len(self.Bodies)
+        nB3 = 3 * nB
+        nC  = self.nC
+
+        # ---- Build time grid ----
+        if t_span is not None and t_final is None:
+            t_final = t_span[1]
+        if t_final is None:
+            t_final = float(input("\n\t ...Final time = ? "))
+        if t_eval is not None:
+            T = np.asarray(t_eval, dtype=float)
+        elif dt is not None:
+            T = np.arange(0.0, t_final + dt * 0.5, dt)
+        else:
+            dt_input = float(input("\t ...Reporting time-step = ? "))
+            T = np.arange(0.0, t_final + dt_input * 0.5, dt_input)
+        nSteps = len(T)
+
+        # ---- Correct initial conditions if requested ----
+        self.t = float(T[0])
+        if ic_correct:
+            self._ic_correct()
+
+        # ---- Pack initial state y0 = [q0, v0, lam0] ----
+        q0 = np.zeros(nB3)
+        v0 = np.zeros(nB3)
+        for Bi, body in enumerate(self.Bodies):
+            ir = 3 * Bi
+            q0[ir]     = body.position.flat[0]
+            q0[ir + 1] = body.position.flat[1]
+            q0[ir + 2] = float(body.orientation)
+            v0[ir]     = body.velocity.flat[0]
+            v0[ir + 1] = body.velocity.flat[1]
+            v0[ir + 2] = float(body.angular_velocity)
+
+        self._update_position()
+        self._update_velocity()
+        Q0 = self._compute_force().flatten()
+        if nC > 0:
+            D0   = self._compute_jacobian()
+            lam0 = np.linalg.lstsq(D0.T, Q0, rcond=None)[0]
+        else:
+            D0   = None
+            lam0 = np.zeros(0)
+
+        y0  = np.concatenate([q0, v0, lam0])
+        n_y = len(y0)
+
+        # ---- BDF settings ----
+        bdf_order   = min(max(int(bdf_order), 1), 5)
+        coeffs_all  = self._BDF_COEFFS
+        _eps_J      = 1.0e-7
+        _newton_tol = 1.0e-10
+        _max_newton = 30
+
+        # ---- Storage ----
+        uT            = np.zeros((nSteps, 2 * nB3))
+        accelerations = np.zeros((nSteps, nB3))
+        reactions     = np.zeros((nSteps, nC))
+
+        # Row 0 — initial state and accelerations
+        uT[0, :]       = np.concatenate([q0, v0])
+        reactions[0]   = lam0
+        if nC > 0:
+            accelerations[0] = (Q0 - D0.T @ lam0) / self.M_array
+        else:
+            accelerations[0] = Q0 / self.M_array
+
+        # ---- BDF history (most-recent first): history[0] = y_{n-1} ----
+        history = deque([y0.copy()], maxlen=bdf_order)
+
+        print(f"\n\t ...DAE analysis (BDF-{bdf_order}): {nSteps} steps")
+
+        # ---- Main time loop ----
+        for k in range(1, nSteps):
+            t_new  = float(T[k])
+            h      = t_new - float(T[k - 1])
+            order  = min(k, bdf_order)
+            coeffs = coeffs_all[order]
+            alphas = coeffs['alpha']
+            beta0  = coeffs['beta0']
+            denom  = h * beta0
+
+            # Past weighted sum:  sum_past = Σ_j alphas[j] * history[j]
+            sum_past = sum(alphas[j] * history[j] for j in range(order))
+
+            # Zero-order predictor (constant extrapolation)
+            y_curr = np.asarray(history[0]).copy()
+
+            # ---- Newton-Raphson corrector ----
+            converged = False
+            norm_G    = float('inf')
+            for _iter in range(_max_newton):
+                ydot_curr = (y_curr - sum_past) / denom
+                G         = self._dae_residual(t_new, y_curr, ydot_curr)
+                norm_G    = float(np.linalg.norm(G))
+                if norm_G < _newton_tol:
+                    converged = True
+                    break
+
+                # Forward finite-difference Jacobian
+                J_mat = np.zeros((n_y, n_y))
+                for j_col in range(n_y):
+                    dz          = np.zeros(n_y)
+                    dz[j_col]   = _eps_J
+                    y_p         = y_curr + dz
+                    ydot_p      = (y_p - sum_past) / denom
+                    J_mat[:, j_col] = (
+                        self._dae_residual(t_new, y_p, ydot_p) - G
+                    ) / _eps_J
+
+                try:
+                    delta = np.linalg.solve(J_mat, -G)
+                except np.linalg.LinAlgError:
+                    delta = np.linalg.lstsq(J_mat, -G, rcond=None)[0]
+
+                y_curr = y_curr + delta
+
+            if not converged:
+                logger.warning(
+                    "BDF DAE Newton-Raphson did not converge at t = %.6g "
+                    "(step %d, order %d, residual = %.3e)",
+                    t_new, k, order, norm_G
+                )
+
+            # ---- Accept step ----
+            ydot_new = (y_curr - sum_past) / denom
+            history.appendleft(y_curr.copy())
+
+            q_new   = y_curr[:nB3]
+            v_new   = y_curr[nB3:2 * nB3]
+            lam_new = y_curr[2 * nB3:]
+            vd_new  = ydot_new[nB3:2 * nB3]    # body accelerations
+
+            uT[k, :]         = np.concatenate([q_new, v_new])
+            accelerations[k] = vd_new
+            reactions[k]     = lam_new
+
+        # ---- Constraint violation summary ----
+        max_phi = 0.0
+        if nC > 0:
+            for k in range(nSteps):
+                q_k = uT[k, :nB3]
+                for Bi in range(nB):
+                    ir = 3 * Bi
+                    self.Bodies[Bi].position    = q_k[ir:ir + 2].reshape(2, 1)
+                    self.Bodies[Bi].orientation = float(q_k[ir + 2])
+                self._update_position()
+                phi_k   = self._compute_constraints().flatten()
+                max_phi = max(max_phi, float(np.max(np.abs(phi_k))))
+
+        print(f"\t ...DAE analysis completed successfully!")
+        print(f"\t ...Max constraint violation: {max_phi:.3e}")
+        print(f"\n ")
+        self._distribute_results_kin(T, uT, accelerations, reactions)
+        return T, uT
 
