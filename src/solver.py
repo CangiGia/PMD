@@ -554,6 +554,8 @@ class PlanarMultibodyModel:
             analysis: Type of analysis: ``"dynamic"`` (default), ``"kinematic"``
                 or ``"static"``. Case-insensitive.
             method: ODE solver method for dynamic analysis (default ``"LSODA"``).
+                Pass ``"CASADI-DAE"`` to use a CasADi DAE solver (Radau
+                collocation) with symbolically-built constraints and forces.
                 Ignored for kinematic and static analyses.
             t_final: Final simulation time. If *None* and interactive, prompts
                 the user. Not used for static analysis.
@@ -583,6 +585,12 @@ class PlanarMultibodyModel:
             )
 
         if analysis == "dynamic":
+            if method.upper() == "CASADI-DAE":
+                return self._solve_dae_casadi(
+                    t_final=t_final, dt=dt,
+                    ic_correct=ic_correct,
+                    t_eval=t_eval, t_span=t_span,
+                )
             return self._solve_dynamic(
                 method=method,
                 t_final=t_final, dt=dt,
@@ -1062,4 +1070,590 @@ class PlanarMultibodyModel:
             rs = joint._rows
             re = joint._rowe
             joint._result_container = {'reactions': reactions[:, rs:re]}
+
+    # ------------------------------------------------------------------
+    # Private: CasADi DAE solver (Radau collocation)
+    # ------------------------------------------------------------------
+
+    def _build_casadi_phi(self, ca, q_sym, t_sym):
+        """Build symbolic constraint vector Phi(q, t) using CasADi SX.
+
+        Walks ``self.Joints`` and translates each constraint equation into
+        a pure CasADi SX expression.  The Jacobian is **not** built here —
+        CasADi computes it automatically via ``ca.jacobian``.
+
+        Supported joint types: RevJoint, TranJoint, RevRevJoint,
+        RevTranJoint, RigidJoint, DiscJoint, RelRotJoint, RelTranJoint.
+
+        Returns:
+            ca.SX column vector of shape ``(nC, 1)``.
+        """
+        from .constraints import (RevJoint, TranJoint, RevRevJoint,
+                                  RevTranJoint, RigidJoint, DiscJoint,
+                                  RelRotJoint, RelTranJoint)
+        from .model import Ground
+
+        phi_blocks = []
+
+        for joint in self.Joints:
+            iBody = joint.iBody
+            jBody = joint.jBody
+
+            # --- helper: extract symbolic body state from q_sym ---
+            def _body_state(body):
+                if body is Ground:
+                    return (ca.SX.zeros(2, 1), ca.SX(0),
+                            ca.SX.eye(2))  # pos, phi, R
+                Bi = body._body_index - 1
+                ir = 3 * Bi
+                pos = q_sym[ir:ir + 2]
+                phi = q_sym[ir + 2]
+                R = ca.vertcat(
+                    ca.horzcat(ca.cos(phi), -ca.sin(phi)),
+                    ca.horzcat(ca.sin(phi),  ca.cos(phi)),
+                )
+                return pos, phi, R
+
+            def _marker_rP(marker, body):
+                """Global position of a marker on *body*."""
+                pos, phi, R = _body_state(body)
+                sP_local = marker.local_position.reshape(2, 1)
+                sP = R @ sP_local
+                return pos + sP
+
+            def _marker_u(marker, body):
+                """Global unit direction of a marker on *body*."""
+                _, phi, R = _body_state(body)
+                return R @ marker._ulocal
+
+            # ---- Joint-specific symbolic Phi ----
+
+            if isinstance(joint, RevJoint):
+                rPi = _marker_rP(joint.iMarker, iBody)
+                rPj = _marker_rP(joint.jMarker, jBody)
+                block = rPi - rPj  # (2, 1)
+                if joint.fix == 1:
+                    _, phi_i, _ = _body_state(iBody)
+                    _, phi_j, _ = _body_state(jBody)
+                    if iBody is Ground:
+                        extra = -phi_j - joint._p0
+                    elif jBody is Ground:
+                        extra = phi_i - joint._p0
+                    else:
+                        extra = phi_i - phi_j - joint._p0
+                    block = ca.vertcat(block, extra)
+
+            elif isinstance(joint, TranJoint):
+                rPi = _marker_rP(joint.iMarker, iBody)
+                rPj = _marker_rP(joint.jMarker, jBody)
+                uj = _marker_u(joint.jMarker, jBody)
+                ujr = ca.vertcat(-uj[1], uj[0])
+                ui = _marker_u(joint.iMarker, iBody)
+                d = rPi - rPj
+                block = ca.vertcat(ujr.T @ d, ujr.T @ ui)
+                if joint.fix == 1:
+                    block = ca.vertcat(block, (ui.T @ d - joint._p0) / 2)
+
+            elif isinstance(joint, RevRevJoint):
+                rPi = _marker_rP(joint.iMarker, iBody)
+                rPj = _marker_rP(joint.jMarker, jBody)
+                d = rPi - rPj
+                L = joint.L
+                block = (d.T @ d - L**2) / (2 * L)
+
+            elif isinstance(joint, RevTranJoint):
+                rPi = _marker_rP(joint.iMarker, iBody)
+                rPj = _marker_rP(joint.jMarker, jBody)
+                ui = _marker_u(joint.iMarker, iBody)
+                uir = ca.vertcat(-ui[1], ui[0])
+                d = rPi - rPj
+                block = uir.T @ d - joint.L
+
+            elif isinstance(joint, RigidJoint):
+                _, phi_i, _ = _body_state(iBody)
+                _, phi_j, Rj = _body_state(jBody)
+                pos_i, _, _ = _body_state(iBody)
+                pos_j, _, _ = _body_state(jBody)
+                d0 = joint.d0
+                if not isinstance(d0, np.ndarray):
+                    d0 = np.array(d0).reshape(-1, 1)
+                if iBody is Ground:
+                    block = ca.vertcat(
+                        -(pos_j + Rj @ d0),
+                        -phi_j - joint._p0,
+                    )
+                elif jBody is Ground:
+                    block = ca.vertcat(
+                        pos_i - d0,
+                        phi_i - joint._p0,
+                    )
+                else:
+                    block = ca.vertcat(
+                        pos_i - (pos_j + Rj @ d0),
+                        phi_i - phi_j - joint._p0,
+                    )
+
+            elif isinstance(joint, DiscJoint):
+                pos_i, phi_i, _ = _body_state(iBody)
+                block = ca.vertcat(
+                    pos_i[1] - joint.R,
+                    (pos_i[0] - joint.x0) + joint.R * (phi_i - joint._p0),
+                )
+
+            elif isinstance(joint, RelRotJoint):
+                from .mechanics import functEval as _fE
+                # Build symbolic function value from the Function object
+                fun_sx = self._casadi_functEval(ca, joint.iFunct, t_sym)
+                _, phi_i, _ = _body_state(iBody)
+                _, phi_j, _ = _body_state(jBody)
+                if iBody is Ground:
+                    block = -phi_j - fun_sx
+                elif jBody is Ground:
+                    block = phi_i - fun_sx
+                else:
+                    block = phi_i - phi_j - fun_sx
+
+            elif isinstance(joint, RelTranJoint):
+                rPi = _marker_rP(joint.iMarker, iBody)
+                rPj = _marker_rP(joint.jMarker, jBody)
+                d = rPi - rPj
+                fun_sx = self._casadi_functEval(ca, joint.iFunct, t_sym)
+                block = (d.T @ d - fun_sx**2) / 2
+
+            else:
+                raise NotImplementedError(
+                    f"CasADi symbolic Phi not implemented for "
+                    f"{type(joint).__name__}")
+
+            phi_blocks.append(block)
+
+        if not phi_blocks:
+            return ca.SX.zeros(0, 1)
+        return ca.vertcat(*phi_blocks)
+
+    @staticmethod
+    def _casadi_functEval(ca, funct, t_sym):
+        """Build CasADi SX expression for a Function value f(t).
+
+        Supports types 'a', 'b', 'c' — mirrors ``mechanics.functEval``
+        but as a single symbolic SX graph using ``ca.if_else``.
+        """
+        ftype = funct.type
+        c = funct.coeff
+
+        if ftype == 'a':
+            return c[0] + c[1] * t_sym + c[2] * t_sym**2
+
+        elif ftype in ('b', 'c'):
+            t0 = float(funct.t_start)
+            te = float(funct.t_end)
+            fs = float(funct.f_start)
+            tau = t_sym - t0
+
+            if ftype == 'b':
+                f_mid  = fs + c[0]*tau**3 + c[1]*tau**4 + c[2]*tau**5
+                tau_e  = te - t0
+                f_end  = float(fs + c[0]*tau_e**3 + c[1]*tau_e**4 + c[2]*tau_e**5)
+            else:  # 'c'
+                f_mid    = fs + c[0]*tau**4 + c[1]*tau**5 + c[2]*tau**6
+                tau_e    = te - t0
+                f_end_v  = float(fs + c[0]*tau_e**4 + c[1]*tau_e**5 + c[2]*tau_e**6)
+                fd_end_v = float(c[3]*tau_e**3 + c[4]*tau_e**4 + c[5]*tau_e**5)
+                f_end    = f_end_v + fd_end_v * (t_sym - te)
+
+            return ca.if_else(t_sym < t0, fs,
+                              ca.if_else(t_sym >= te, f_end, f_mid))
+
+        else:
+            raise ValueError(f"Unknown function type '{ftype}'.")
+
+    def _build_casadi_forces(self, ca, q_sym, v_sym, t_sym):
+        """Build symbolic generalised force vector Q(q, v, t) using CasADi SX.
+
+        Supported force types: Weight, PtpForce, RotSdaForce, LocalForce,
+        GlobalForce, Torque.
+
+        Returns:
+            ca.SX column vector of shape ``(nB3, 1)``.
+        """
+        from .constraints import (Weight, PtpForce, RotSdaForce,
+                                  LocalForce, GlobalForce, Torque)
+        from .model import Ground
+
+        nB3 = 3 * len(self.Bodies)
+        Q = ca.SX.zeros(nB3, 1)
+
+        def _body_sym(body, section='q'):
+            if body is Ground:
+                return None, None, None, None
+            Bi = body._body_index - 1
+            ir = 3 * Bi
+            if section == 'q':
+                pos = q_sym[ir:ir + 2]
+                phi = q_sym[ir + 2]
+            else:
+                pos = v_sym[ir:ir + 2]
+                phi = v_sym[ir + 2]
+            R = ca.vertcat(
+                ca.horzcat(ca.cos(q_sym[3*Bi + 2]), -ca.sin(q_sym[3*Bi + 2])),
+                ca.horzcat(ca.sin(q_sym[3*Bi + 2]),  ca.cos(q_sym[3*Bi + 2])),
+            )
+            return pos, phi, R, ir
+
+        def _marker_sPr_sym(marker, body):
+            """Symbolic rotate_90(R @ sP_local) for torque computation."""
+            _, phi_b, R, _ = _body_sym(body, 'q')
+            if R is None:
+                sP = ca.SX(marker.local_position.reshape(2, 1))
+                return ca.vertcat(-sP[1], sP[0])
+            sP = R @ marker.local_position.reshape(2, 1)
+            return ca.vertcat(-sP[1], sP[0])
+
+        def _marker_rP_sym(marker, body):
+            if body is Ground:
+                return ca.SX(marker.local_position.reshape(2, 1))
+            _, _, R, ir = _body_sym(body, 'q')
+            pos = q_sym[ir:ir + 2]
+            sP = R @ marker.local_position.reshape(2, 1)
+            return pos + sP
+
+        def _marker_drP_sym(marker, body):
+            """Symbolic velocity of marker global position."""
+            if body is Ground:
+                return ca.SX.zeros(2, 1)
+            Bi = body._body_index - 1
+            ir = 3 * Bi
+            vel = v_sym[ir:ir + 2]
+            omega = v_sym[ir + 2]
+            _, _, R, _ = _body_sym(body, 'q')
+            sP = R @ marker.local_position.reshape(2, 1)
+            sPr = ca.vertcat(-sP[1], sP[0])
+            dsP = sPr * omega
+            return vel + dsP
+
+        for force in self.Forces:
+            if isinstance(force, Weight):
+                g_val = force.gravity
+                g_dir = force.gravity_direction.flatten()
+                for body in self.Bodies:
+                    Bi = body._body_index - 1
+                    ir = 3 * Bi
+                    w = body.mass * g_val * ca.SX(g_dir.reshape(2, 1))
+                    Q[ir:ir + 2] += w
+
+            elif isinstance(force, PtpForce):
+                rPi = _marker_rP_sym(force.iMarker, force.iBody)
+                rPj = _marker_rP_sym(force.jMarker, force.jBody)
+                d = rPi - rPj
+                L = ca.norm_2(d)
+                u = d / L
+
+                drPi = _marker_drP_sym(force.iMarker, force.iBody)
+                drPj = _marker_drP_sym(force.jMarker, force.jBody)
+                dd = drPi - drPj
+                dL = (d.T @ dd) / L
+                delta = L - force.L0
+                f_mag = force.k * delta + force.dc * dL + force.f_a
+                fi = f_mag * u
+
+                if force.iBody is not Ground:
+                    Bi = force.iBody._body_index - 1
+                    ir = 3 * Bi
+                    Q[ir:ir + 2] -= fi
+                    sPr_i = _marker_sPr_sym(force.iMarker, force.iBody)
+                    Q[ir + 2] -= (sPr_i.T @ fi)
+
+                if force.jBody is not Ground:
+                    Bj = force.jBody._body_index - 1
+                    jr = 3 * Bj
+                    Q[jr:jr + 2] += fi
+                    sPr_j = _marker_sPr_sym(force.jMarker, force.jBody)
+                    Q[jr + 2] += (sPr_j.T @ fi)
+
+            elif isinstance(force, RotSdaForce):
+                iB = force.iBody
+                jB = force.jBody
+                if iB is Ground:
+                    Bj = jB._body_index - 1
+                    jr = 3 * Bj
+                    theta = -q_sym[jr + 2]
+                    theta_d = -v_sym[jr + 2]
+                    T = force.k * (theta - force.theta0) + force.dc * theta_d + force.T_a
+                    Q[jr + 2] += T
+                elif jB is Ground:
+                    Bi = iB._body_index - 1
+                    ir = 3 * Bi
+                    theta = q_sym[ir + 2]
+                    theta_d = v_sym[ir + 2]
+                    T = force.k * (theta - force.theta0) + force.dc * theta_d + force.T_a
+                    Q[ir + 2] -= T
+                else:
+                    Bi = iB._body_index - 1
+                    Bj = jB._body_index - 1
+                    ir = 3 * Bi
+                    jr = 3 * Bj
+                    theta = q_sym[ir + 2] - q_sym[jr + 2]
+                    theta_d = v_sym[ir + 2] - v_sym[jr + 2]
+                    T = force.k * (theta - force.theta0) + force.dc * theta_d + force.T_a
+                    Q[ir + 2] -= T
+                    Q[jr + 2] += T
+
+            elif isinstance(force, LocalForce):
+                Bi = force.iBody._body_index - 1
+                ir = 3 * Bi
+                _, _, R, _ = _body_sym(force.iBody, 'q')
+                f_local = force.force_local
+                if not isinstance(f_local, np.ndarray):
+                    f_local = np.array(f_local).reshape(2, 1)
+                Q[ir:ir + 2] += R @ f_local
+
+            elif isinstance(force, GlobalForce):
+                Bi = force.iBody._body_index - 1
+                ir = 3 * Bi
+                f_glob = force.force_global
+                if not isinstance(f_glob, np.ndarray):
+                    f_glob = np.array(f_glob).reshape(2, 1)
+                Q[ir:ir + 2] += ca.SX(f_glob)
+
+            elif isinstance(force, Torque):
+                Bi = force.iBody._body_index - 1
+                ir = 3 * Bi
+                Q[ir + 2] += force.torque_value
+
+            else:
+                raise NotImplementedError(
+                    f"CasADi symbolic Q not implemented for "
+                    f"{type(force).__name__}")
+
+        return Q
+
+    def _solve_dae_casadi(self, t_final=None, dt=None, ic_correct=False,
+                          t_eval=None, t_span=None):
+        """CasADi DAE solver using implicit Radau collocation.
+
+        Builds the constraint and force equations as CasADi SX
+        expressions, then integrates step-by-step with an implicit
+        collocation scheme (Radau IIA) that handles the index-2 DAE
+        arising from position-level constraints.
+
+        The formulation uses differential states ``x = [q, v]`` and
+        algebraic states ``z = [lam]`` in the semi-explicit form::
+
+            q_dot = v
+            M v_dot = Q(t, q, v) - Phi_q^T(q, t) lam
+            0 = Phi(q, t)
+
+        Args:
+            t_final:    Final simulation time.
+            dt:         Output time step (used when *t_eval* is absent).
+            ic_correct: Project initial conditions before integrating.
+            t_eval:     Explicit array of output time points.
+            t_span:     ``(t0, tf)`` shorthand; overrides *t_final*.
+
+        Returns:
+            Tuple ``(T, uT)`` compatible with ``_solve_dynamic`` output.
+        """
+        try:
+            import casadi as ca
+        except ImportError:
+            raise ImportError(
+                "CasADi is required for method='CASADI-DAE'. "
+                "Install it with: pip install casadi"
+            ) from None
+
+        nB  = len(self.Bodies)
+        nB3 = 3 * nB
+        nC  = self.nC
+
+        # ---- Build time grid ----
+        if t_span is not None and t_final is None:
+            t_final = t_span[1]
+        if t_eval is not None:
+            T = np.asarray(t_eval, dtype=float)
+        elif t_final is not None and dt is not None:
+            T = np.arange(0.0, t_final + dt * 0.5, dt)
+        elif t_final is None:
+            t_final = float(input("\n\t ...Final time = ? "))
+            if dt is None:
+                dt = float(input("\t ...Reporting time-step = ? "))
+            T = np.arange(0.0, t_final + dt * 0.5, dt)
+        else:
+            dt_input = float(input("\t ...Reporting time-step = ? "))
+            T = np.arange(0.0, t_final + dt_input * 0.5, dt_input)
+        nSteps = len(T)
+
+        # ---- Correct initial conditions if requested ----
+        self.t = float(T[0])
+        if ic_correct:
+            self._ic_correct()
+
+        # ---- Pack initial state ----
+        q0 = np.zeros(nB3)
+        v0 = np.zeros(nB3)
+        for Bi, body in enumerate(self.Bodies):
+            ir = 3 * Bi
+            q0[ir]     = body.position.flat[0]
+            q0[ir + 1] = body.position.flat[1]
+            q0[ir + 2] = float(body.orientation)
+            v0[ir]     = body.velocity.flat[0]
+            v0[ir + 1] = body.velocity.flat[1]
+            v0[ir + 2] = float(body.angular_velocity)
+
+        self._update_position()
+        self._update_velocity()
+        Q0_num = self._compute_force().flatten()
+        if nC > 0:
+            D0 = self._compute_jacobian()
+            # Velocity-level IC correction: project v0 so Phi_q*v + Phi_t = 0
+            Phi0 = self._compute_constraints().flatten()
+            eps_t = 1e-8
+            self.t = float(T[0]) + eps_t
+            self._update_position()  # re-eval for t+eps
+            Phi0p = self._compute_constraints().flatten()
+            self.t = float(T[0]) - eps_t
+            self._update_position()
+            Phi0m = self._compute_constraints().flatten()
+            self.t = float(T[0])
+            self._update_position()
+            Phi_t = (Phi0p - Phi0m) / (2 * eps_t)
+            rhs = -(D0 @ v0 + Phi_t)
+            if np.linalg.norm(rhs) > 1e-12:
+                v0 += np.linalg.lstsq(D0, rhs, rcond=None)[0]
+                # Update body velocities with corrected v0
+                for Bi, body in enumerate(self.Bodies):
+                    ir = 3 * Bi
+                    body.velocity         = v0[ir:ir + 2].reshape(2, 1)
+                    body.angular_velocity = float(v0[ir + 2])
+                self._update_velocity()
+                Q0_num = self._compute_force().flatten()
+            lam0 = np.linalg.lstsq(D0.T, Q0_num, rcond=None)[0]
+        else:
+            lam0 = np.zeros(0)
+
+        # ---- Build CasADi symbolic DAE ----
+        q_sym   = ca.SX.sym('q',   nB3)
+        v_sym   = ca.SX.sym('v',   nB3)
+        qd_sym  = ca.SX.sym('qd',  nB3)
+        vd_sym  = ca.SX.sym('vd',  nB3)
+        t_sym   = ca.SX.sym('t')
+
+        Phi_sx = self._build_casadi_phi(ca, q_sym, t_sym)       # (nC, 1)
+        Q_sx   = self._build_casadi_forces(ca, q_sym, v_sym, t_sym)  # (nB3, 1)
+
+        M_vec  = ca.SX(self.M_array.reshape(-1, 1))
+        invM   = ca.SX(self.invM_array.reshape(-1, 1))
+
+        if nC > 0:
+            lam_sym = ca.SX.sym('lam', nC)
+            D_sx = ca.jacobian(Phi_sx, q_sym)  # (nC, nB3) — automatic!
+
+            # Semi-explicit DAE:
+            #   x = [q, v]   (differential)
+            #   z = [lam]    (algebraic)
+            #   ode: dx/dt = [v, M^{-1}(Q - D^T lam)]
+            #   alg: 0 = Phi(q, t)
+            ode = ca.vertcat(v_sym, invM * (Q_sx - D_sx.T @ lam_sym))
+            alg = Phi_sx
+
+            dae = {
+                'x':   ca.vertcat(q_sym, v_sym),
+                'z':   lam_sym,
+                'p':   ca.SX(),
+                't':   t_sym,
+                'ode': ode,
+                'alg': alg,
+            }
+        else:
+            # No constraints — pure ODE
+            ode = ca.vertcat(v_sym, invM * Q_sx)
+            dae = {
+                'x':   ca.vertcat(q_sym, v_sym),
+                'z':   ca.SX(),
+                'p':   ca.SX(),
+                't':   t_sym,
+                'ode': ode,
+                'alg': ca.SX(),
+            }
+
+        # ---- Collocation integrator options ----
+        opts = {
+            'rootfinder':                'kinsol',
+            'collocation_scheme':        'radau',
+            'number_of_finite_elements': 1,
+        }
+
+        # ---- Storage ----
+        uT            = np.zeros((nSteps, 2 * nB3))
+        accelerations = np.zeros((nSteps, nB3))
+        reactions     = np.zeros((nSteps, nC))
+
+        # Row 0 — initial state
+        uT[0] = np.concatenate([q0, v0])
+        reactions[0] = lam0
+        if nC > 0:
+            accelerations[0] = (Q0_num - D0.T @ lam0) / self.M_array
+        else:
+            accelerations[0] = Q0_num / self.M_array
+
+        print(f"\n\t ...DAE analysis (CasADi-collocation): {nSteps} steps")
+
+        # ---- Step-by-step integration ----
+        x_curr = np.concatenate([q0, v0])
+        z_curr = lam0.copy()
+
+        for k in range(1, nSteps):
+            t0_k = float(T[k - 1])
+            tf_k = float(T[k])
+
+            # Build integrator for this step interval
+            integrator = ca.integrator(
+                'col_step', 'collocation', dae, t0_k, tf_k, opts
+            )
+
+            res = integrator(x0=x_curr, z0=z_curr)
+            x_curr = np.array(res['xf']).flatten()
+            z_curr = np.array(res['zf']).flatten() if nC > 0 else np.zeros(0)
+
+            uT[k] = x_curr
+            reactions[k] = z_curr
+
+            # Compute accelerations: vdot = M^{-1}(Q - D^T lam)
+            q_k = x_curr[:nB3]
+            v_k = x_curr[nB3:]
+            for Bi, body in enumerate(self.Bodies):
+                ir = 3 * Bi
+                body.position         = q_k[ir:ir + 2].reshape(2, 1)
+                body.orientation      = float(q_k[ir + 2])
+                body.velocity         = v_k[ir:ir + 2].reshape(2, 1)
+                body.angular_velocity = float(v_k[ir + 2])
+            self.t = tf_k
+            self._update_position()
+            self._update_velocity()
+            Q_k = self._compute_force().flatten()
+            if nC > 0:
+                D_k = self._compute_jacobian()
+                accelerations[k] = (Q_k - D_k.T @ z_curr) / self.M_array
+            else:
+                accelerations[k] = Q_k / self.M_array
+
+        # ---- Compute max constraint violation ----
+        max_phi = 0.0
+        if nC > 0:
+            for k in range(nSteps):
+                q_k = uT[k, :nB3]
+                for Bi, body in enumerate(self.Bodies):
+                    ir = 3 * Bi
+                    body.position    = q_k[ir:ir + 2].reshape(2, 1)
+                    body.orientation = float(q_k[ir + 2])
+                self.t = float(T[k])
+                self._update_position()
+                Phi_k = self._compute_constraints().flatten()
+                max_phi = max(max_phi, float(np.max(np.abs(Phi_k))))
+
+        print(f"\t ...DAE analysis (collocation) completed successfully!")
+        print(f"\t ...Max constraint violation: {max_phi:.3e}")
+        print(f"\n ")
+
+        self._distribute_results_kin(T, uT, accelerations, reactions)
+        return T, uT
 
