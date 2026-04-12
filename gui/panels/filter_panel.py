@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
 )
 
 from ..models import reaction_labels
+from .. import icons as _icons
 
 # Map from display name → (result‑container key, list of component keys)
 _BODY_CATEGORIES = {
@@ -55,6 +56,7 @@ class FilterPanel(QWidget):
         layout.addWidget(self._component_combo)
 
         self._add_btn = QPushButton("Add curves")
+        self._add_btn.setIcon(_icons.icon("mdi6.plus"))
         layout.addWidget(self._add_btn)
 
         layout.addStretch()

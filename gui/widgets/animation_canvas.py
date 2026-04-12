@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
 from PMD.src.shapes import Rectangle, Circle, Polygon
 from PMD.src.constraints import RevJoint, TranJoint, PtpForce
 from PMD.src.mechanics import rotation_matrix
+from .. import icons as _icons
 
 # Colour palette for bodies (tab10)
 _BODY_COLORS = [
@@ -87,7 +88,9 @@ class AnimationCanvas(QWidget):
         self._toolbar = self._build_toolbar()
 
         # --- transport controls ---
-        self._play_btn = QPushButton("\u25b6")        # ▶
+        self._play_btn = QPushButton()
+        self._play_btn.setIcon(_icons.icon("mdi6.play"))
+        self._play_btn.setToolTip("Play / Pause")
         self._play_btn.setFixedWidth(36)
         self._play_btn.clicked.connect(self._on_play_pause)
 
@@ -132,25 +135,37 @@ class AnimationCanvas(QWidget):
     def _build_toolbar(self) -> QToolBar:
         tb = QToolBar()
         tb.setMovable(False)
-        self._btn_home = self._make_btn(tb, "Home",    self._on_home)
-        self._btn_back = self._make_btn(tb, "Back",    self._on_back)
-        self._btn_fwd  = self._make_btn(tb, "Forward", self._on_fwd)
+        self._btn_home = self._make_btn(tb, "Home",    "mdi6.home",                    self._on_home)
+        self._btn_back = self._make_btn(tb, "Back",    "mdi6.arrow-left",              self._on_back)
+        self._btn_fwd  = self._make_btn(tb, "Forward", "mdi6.arrow-right",             self._on_fwd)
         tb.addSeparator()
-        self._btn_pan  = self._make_btn(tb, "Pan",     self._on_pan,  checkable=True)
-        self._btn_zoom = self._make_btn(tb, "Zoom",    self._on_zoom, checkable=True)
+        self._btn_pan  = self._make_btn(tb, "Pan",     "mdi6.hand-back-right-outline", self._on_pan,  checkable=True)
+        self._btn_zoom = self._make_btn(tb, "Zoom",    "mdi6.magnify",                 self._on_zoom, checkable=True)
         tb.addSeparator()
-        self._btn_save = self._make_btn(tb, "Save",    self._on_save)
+        self._btn_save = self._make_btn(tb, "Save",    "mdi6.content-save",            self._on_save)
         return tb
 
     @staticmethod
-    def _make_btn(tb: QToolBar, text: str, slot, *, checkable: bool = False) -> QToolButton:
+    def _make_btn(tb: QToolBar, text: str, icon_name: str, slot,
+                  *, checkable: bool = False) -> QToolButton:
         btn = QToolButton()
-        btn.setText(text)
+        btn.setIcon(_icons.icon(icon_name))
         btn.setToolTip(text)
         btn.setCheckable(checkable)
         btn.clicked.connect(slot)
         tb.addWidget(btn)
         return btn
+
+    def set_icon_theme(self, dark: bool) -> None:
+        """Re-apply icon colours after a theme toggle."""
+        self._btn_home.setIcon(_icons.icon("mdi6.home"))
+        self._btn_back.setIcon(_icons.icon("mdi6.arrow-left"))
+        self._btn_fwd.setIcon( _icons.icon("mdi6.arrow-right"))
+        self._btn_pan.setIcon( _icons.icon("mdi6.hand-back-right-outline"))
+        self._btn_zoom.setIcon(_icons.icon("mdi6.magnify"))
+        self._btn_save.setIcon(_icons.icon("mdi6.content-save"))
+        play_icon = "mdi6.pause" if self._playing else "mdi6.play"
+        self._play_btn.setIcon(_icons.icon(play_icon))
 
     def _on_home(self):
         self._nav.home()
@@ -392,10 +407,10 @@ class AnimationCanvas(QWidget):
     def _on_play_pause(self):
         if self._playing:
             self._timer.stop()
-            self._play_btn.setText("\u25b6")   # ▶
+            self._play_btn.setIcon(_icons.icon("mdi6.play"))
         else:
             self._timer.start()
-            self._play_btn.setText("\u23f8")   # ⏸
+            self._play_btn.setIcon(_icons.icon("mdi6.pause"))
         self._playing = not self._playing
 
     def _advance_frame(self):

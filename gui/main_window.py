@@ -19,6 +19,7 @@ from PMD.src.units import UnitSystem
 from .models import build_curves
 from .panels import FilterPanel, ResultSetPanel, SimulationPanel, UnitsToolbar
 from .style import apply_dark_theme, apply_light_theme
+from . import icons as _icons
 from .widgets import AnimationCanvas, PlotCanvas
 
 logger = logging.getLogger(__name__)
@@ -57,18 +58,34 @@ class MainWindow(QMainWindow):
 
         # File menu
         file_menu = menu_bar.addMenu("&File")
-        file_menu.addAction("Export &Plot…", self._on_export_plot)
-        file_menu.addAction("Export &CSV…", self._on_export_csv)
+
+        self._act_export_plot = QAction("Export &Plot…", self)
+        self._act_export_plot.setIcon(_icons.icon("mdi6.image-outline"))
+        self._act_export_plot.triggered.connect(self._on_export_plot)
+        file_menu.addAction(self._act_export_plot)
+
+        self._act_export_csv = QAction("Export &CSV…", self)
+        self._act_export_csv.setIcon(_icons.icon("mdi6.file-delimited-outline"))
+        self._act_export_csv.triggered.connect(self._on_export_csv)
+        file_menu.addAction(self._act_export_csv)
+
         file_menu.addSeparator()
-        file_menu.addAction("&Close", self.close)
+
+        self._act_close = QAction("&Close", self)
+        self._act_close.setIcon(_icons.icon("mdi6.close"))
+        self._act_close.triggered.connect(self.close)
+        file_menu.addAction(self._act_close)
 
         # View menu
         view_menu = menu_bar.addMenu("&View")
+
         self._dark_action = QAction("Dark Theme", self, checkable=True)
+        self._dark_action.setIcon(_icons.icon("mdi6.theme-light-dark"))
         self._dark_action.toggled.connect(self._on_toggle_theme)
         view_menu.addAction(self._dark_action)
 
         self._anim_action = QAction("Animation Pane", self, checkable=True)
+        self._anim_action.setIcon(_icons.icon("mdi6.animation-play"))
         self._anim_action.toggled.connect(self._on_toggle_animation)
         view_menu.addAction(self._anim_action)
 
@@ -193,6 +210,17 @@ class MainWindow(QMainWindow):
             apply_dark_theme(app)
         else:
             apply_light_theme(app)
+        _icons.set_dark(checked)
+        # Refresh menu-action icons
+        self._act_export_plot.setIcon(_icons.icon("mdi6.image-outline"))
+        self._act_export_csv.setIcon(_icons.icon("mdi6.file-delimited-outline"))
+        self._act_close.setIcon(_icons.icon("mdi6.close"))
+        self._dark_action.setIcon(_icons.icon("mdi6.theme-light-dark"))
+        self._anim_action.setIcon(_icons.icon("mdi6.animation-play"))
+        # Refresh toolbar icons on both canvases
+        self._plot_canvas.set_icon_theme(checked)
+        self._anim_canvas.set_icon_theme(checked)
+        # Redraw plot
         self._plot_canvas.set_dark(checked)
         visible = self._result_set_panel.visible_curves()
         self._plot_canvas.update_plot(visible)

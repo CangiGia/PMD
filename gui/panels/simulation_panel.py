@@ -9,6 +9,18 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from .. import icons as _icons
+
+_ROOT_ICONS = {
+    "Bodies": "mdi6.cube-outline",
+    "Joints": "mdi6.link-variant",
+}
+_LEAF_ICONS = {
+    "body":  "mdi6.cube-scan",
+    "joint": "mdi6.vector-link",
+    "force": "mdi6.lightning-bolt",
+}
+
 
 class SimulationPanel(QWidget):
     """Tree-based browser of Bodies, Joints, and Forces across Sessions.
@@ -86,6 +98,8 @@ class SimulationPanel(QWidget):
         font = item.font(0)
         font.setBold(True)
         item.setFont(0, font)
+        icon_name = _ROOT_ICONS.get(text, "mdi6.layers-outline")
+        item.setIcon(0, _icons.icon(icon_name))
         return item
 
     def _add_leaf(self, parent, label, descriptor):
@@ -93,6 +107,8 @@ class SimulationPanel(QWidget):
         item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
         item.setCheckState(0, Qt.CheckState.Unchecked)
         item.setData(0, Qt.ItemDataRole.UserRole, descriptor)
+        kind = descriptor.get("kind", "")
+        item.setIcon(0, _icons.icon(_LEAF_ICONS.get(kind, "mdi6.circle-outline")))
         self._leaves.append(item)
 
     # ------------------------------------------------------------------
