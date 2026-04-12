@@ -30,7 +30,7 @@ except ImportError:
 from PMD.src.model import Body, Ground, _GroundType
 from PMD.src.constraints import (
     RevJoint, Weight, RelRotJoint, Function,
-    PtpForce, RotSdaForce, Torque,
+    PtpForce, RotSdaForce, Torque, UserForce,
 )
 from PMD.src.solver import PlanarMultibodyModel
 
@@ -420,3 +420,101 @@ class TestNoConstraints:
 
         np.testing.assert_allclose(y_actual, y_expected, atol=1e-5,
                                    err_msg="Free-body gravity y(t) mismatch")
+
+
+# ---------------------------------------------------------------------------
+# 12. UserForce (callback-based force via numeric parameters)
+# ---------------------------------------------------------------------------
+
+def _make_quarter_car():
+    """Quarter-car model (AA) with a UserForce wheel contact."""
+    _GroundType._instance._markers = [_GroundType._instance.origin]
+    Body.COUNT = 0
+
+    B1 = Body(mass=2, inertia=0.5, position=[0.4398, 0.2512], orientation=-0.0367)
+    B2 = Body(mass=30, inertia=2.5, position=[0.6817, 0.3498], orientation=0.0783)
+    B3 = Body(mass=1, inertia=0.5, position=[0.4463, 0.4308], orientation=6.5222)
+
+    q1 = B1.add_marker([-0.24, 0.0])
+    a1 = B1.add_marker([0.18, 0.0])
+    a2 = B2.add_marker([-0.07, -0.10])
+    b2 = B2.add_marker([-0.10, 0.12])
+    b3 = B3.add_marker([0.13, 0.0])
+    o3 = B3.add_marker([-0.13, 0.0])
+    o0 = Ground.add_marker([0.32, 0.40])
+    q0 = Ground.add_marker([0.20, 0.26])
+    e1 = B1.add_marker([0.0, 0.0])
+    f0 = Ground.add_marker([0.38, 0.43])
+
+    j1 = RevJoint(iMarker=q1, jMarker=q0)
+    j2 = RevJoint(iMarker=a1, jMarker=a2)
+    j3 = RevJoint(iMarker=b2, jMarker=b3)
+    j4 = RevJoint(iMarker=o3, jMarker=o0)
+
+    s1 = PtpForce(iMarker=e1, jMarker=f0, k=90000, L0=0.23, dc=1100)
+
+    _k_wh, _L0_wh, _dc_wh = 50000, 0.35, 1000
+
+    def wheel_contact():
+        dely = B2.position[1] - _L0_wh
+        if dely < 0:
+            fy = (_k_wh * dely + _dc_wh * B2.velocity[1]).item()
+            return [{'body': B2, 'force': [0, -fy], 'torque': 0}]
+        return []
+
+    s2 = UserForce(callback=wheel_contact)
+    s3 = Weight()
+
+    model = PlanarMultibodyModel(
+        bodies=[B1, B2, B3],
+        joints=[j1, j2, j3, j4],
+        forces=[s1, s2, s3])
+    return model, B2
+
+
+class TestUserForce:
+
+    @casadi_required
+    def test_user_force_runs(self):
+        """Quarter car with UserForce completes without error."""
+        model, B2 = _make_quarter_car()
+        T, uT = model.solve(method="CASADI-DAE", t_final=1.0,
+                             t_eval=np.linspace(0, 1, 101),
+                             ic_correct=True)
+        assert T.shape[0] == 101
+        assert uT.shape == (101, 18)
+
+    @casadi_required
+    def test_user_force_constraints_satisfied(self):
+        """Constraint violation stays small with UserForce."""
+        model, _ = _make_quarter_car()
+        T, uT = model.solve(method="CASADI-DAE", t_final=0.5,
+                             t_eval=np.linspace(0, 0.5, 51),
+                             ic_correct=True)
+        nB3 = 3 * model.nB
+        for k in range(len(T)):
+            q_k = uT[k, :nB3]
+            for Bi, body in enumerate(model.Bodies):
+                ir = 3 * Bi
+                body.position = q_k[ir:ir + 2].reshape(2, 1)
+                body.orientation = float(q_k[ir + 2])
+            model.t = float(T[k])
+            model._update_position()
+            Phi_k = model._compute_constraints().flatten()
+            assert np.max(np.abs(Phi_k)) < 1e-6, \
+                f"Constraint violation {np.max(np.abs(Phi_k)):.2e} at step {k}"
+
+    @casadi_required
+    def test_user_force_vs_radau(self):
+        """CasADi-DAE result should be close to Radau for the quarter car."""
+        t_eval = np.linspace(0, 0.5, 501)  # fine grid for piecewise-constant UserForce
+        model_c, _ = _make_quarter_car()
+        T_c, uT_c = model_c.solve(method="CASADI-DAE", t_final=0.5,
+                                   t_eval=t_eval, ic_correct=True)
+
+        model_r, _ = _make_quarter_car()
+        T_r, uT_r = model_r.solve(method="Radau", t_final=0.5,
+                                   t_eval=t_eval, ic_correct=True)
+
+        np.testing.assert_allclose(uT_c, uT_r, atol=5e-2,
+                                   err_msg="CasADi-DAE vs Radau mismatch")

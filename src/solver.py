@@ -1277,11 +1277,13 @@ class PlanarMultibodyModel:
             ca.SX column vector of shape ``(nB3, 1)``.
         """
         from .constraints import (Weight, PtpForce, RotSdaForce,
-                                  LocalForce, GlobalForce, Torque)
+                                  LocalForce, GlobalForce, Torque,
+                                  UserForce)
         from .model import Ground
 
         nB3 = 3 * len(self.Bodies)
         Q = ca.SX.zeros(nB3, 1)
+        has_user_forces = False
 
         def _body_sym(body, section='q'):
             if body is Ground:
@@ -1420,12 +1422,15 @@ class PlanarMultibodyModel:
                 ir = 3 * Bi
                 Q[ir + 2] += force.torque_value
 
+            elif isinstance(force, UserForce):
+                has_user_forces = True  # handled via numeric parameters
+
             else:
                 raise NotImplementedError(
                     f"CasADi symbolic Q not implemented for "
                     f"{type(force).__name__}")
 
-        return Q
+        return Q, has_user_forces
 
     def _solve_dae_casadi(self, t_final=None, dt=None, ic_correct=False,
                           t_eval=None, t_span=None):
@@ -1538,10 +1543,18 @@ class PlanarMultibodyModel:
         t_sym   = ca.SX.sym('t')
 
         Phi_sx = self._build_casadi_phi(ca, q_sym, t_sym)       # (nC, 1)
-        Q_sx   = self._build_casadi_forces(ca, q_sym, v_sym, t_sym)  # (nB3, 1)
+        Q_sx, has_user_forces = self._build_casadi_forces(
+            ca, q_sym, v_sym, t_sym)                              # (nB3, 1)
 
         M_vec  = ca.SX(self.M_array.reshape(-1, 1))
         invM   = ca.SX(self.invM_array.reshape(-1, 1))
+
+        # If any UserForce exists, add a numeric parameter vector
+        if has_user_forces:
+            p_user = ca.SX.sym('p_user', nB3)
+            Q_sx = Q_sx + p_user
+        else:
+            p_user = ca.SX()
 
         if nC > 0:
             lam_sym = ca.SX.sym('lam', nC)
@@ -1558,7 +1571,7 @@ class PlanarMultibodyModel:
             dae = {
                 'x':   ca.vertcat(q_sym, v_sym),
                 'z':   lam_sym,
-                'p':   ca.SX(),
+                'p':   p_user,
                 't':   t_sym,
                 'ode': ode,
                 'alg': alg,
@@ -1569,7 +1582,7 @@ class PlanarMultibodyModel:
             dae = {
                 'x':   ca.vertcat(q_sym, v_sym),
                 'z':   ca.SX(),
-                'p':   ca.SX(),
+                'p':   p_user,
                 't':   t_sym,
                 'ode': ode,
                 'alg': ca.SX(),
@@ -1597,6 +1610,26 @@ class PlanarMultibodyModel:
 
         print(f"\n\t ...DAE analysis (CasADi-collocation): {nSteps} steps")
 
+        # ---- Helper: evaluate UserForce contributions numerically ----
+        if has_user_forces:
+            from .constraints import UserForce
+
+            def _eval_user_forces():
+                """Zero body forces, apply only UserForce, collect vector."""
+                for body in self.Bodies:
+                    body._force = colvect([0.0, 0.0])
+                    body._torque = 0.0
+                for force in self.Forces:
+                    if isinstance(force, UserForce):
+                        force.apply(self.Bodies)
+                g = np.zeros(nB3)
+                for Bi, body in enumerate(self.Bodies):
+                    ir = 3 * Bi
+                    g[ir]     = float(body._force.flat[0])
+                    g[ir + 1] = float(body._force.flat[1])
+                    g[ir + 2] = float(body._torque)
+                return g
+
         # ---- Step-by-step integration ----
         x_curr = np.concatenate([q0, v0])
         z_curr = lam0.copy()
@@ -1605,12 +1638,29 @@ class PlanarMultibodyModel:
             t0_k = float(T[k - 1])
             tf_k = float(T[k])
 
+            # Evaluate UserForce contributions at current state
+            if has_user_forces:
+                q_k = x_curr[:nB3]
+                v_k = x_curr[nB3:]
+                for Bi, body in enumerate(self.Bodies):
+                    ir = 3 * Bi
+                    body.position         = q_k[ir:ir + 2].reshape(2, 1)
+                    body.orientation      = float(q_k[ir + 2])
+                    body.velocity         = v_k[ir:ir + 2].reshape(2, 1)
+                    body.angular_velocity = float(v_k[ir + 2])
+                self.t = t0_k
+                self._update_position()
+                self._update_velocity()
+                p_num = _eval_user_forces()
+            else:
+                p_num = np.zeros(0)
+
             # Build integrator for this step interval
             integrator = ca.integrator(
                 'col_step', 'collocation', dae, t0_k, tf_k, opts
             )
 
-            res = integrator(x0=x_curr, z0=z_curr)
+            res = integrator(x0=x_curr, z0=z_curr, p=p_num)
             x_curr = np.array(res['xf']).flatten()
             z_curr = np.array(res['zf']).flatten() if nC > 0 else np.zeros(0)
 
