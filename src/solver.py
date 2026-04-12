@@ -1469,6 +1469,9 @@ class PlanarMultibodyModel:
         nB  = len(self.Bodies)
         nB3 = 3 * nB
         nC  = self.nC
+        self._ggl_mu = 0  # no GGL penalty in DAE formulation
+        self._baumgarte_alpha = 0
+        self._baumgarte_beta = 0
 
         # ---- Build time grid ----
         if t_span is not None and t_final is None:
@@ -1610,6 +1613,12 @@ class PlanarMultibodyModel:
 
         print(f"\n\t ...DAE analysis (CasADi-collocation): {nSteps} steps")
 
+        pbar = tqdm(total=nSteps - 1,
+                    desc="         ...Simulation progress",
+                    bar_format="{l_bar}{bar}| [{n_fmt}/{total_fmt} steps, "
+                               "Elapsed: {elapsed}, Remaining: {remaining}]",
+                    colour="green")
+
         # ---- Helper: evaluate UserForce contributions numerically ----
         if has_user_forces:
             from .constraints import UserForce
@@ -1637,6 +1646,7 @@ class PlanarMultibodyModel:
         for k in range(1, nSteps):
             t0_k = float(T[k - 1])
             tf_k = float(T[k])
+            pbar.update(1)
 
             # Evaluate UserForce contributions at current state
             if has_user_forces:
@@ -1687,6 +1697,7 @@ class PlanarMultibodyModel:
                 accelerations[k] = Q_k / self.M_array
 
         # ---- Compute max constraint violation ----
+        pbar.close()
         max_phi = 0.0
         if nC > 0:
             for k in range(nSteps):
