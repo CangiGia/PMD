@@ -13,7 +13,7 @@ from .. import icons as _icons
 
 _ROOT_ICONS = {
     "Bodies": "mdi6.cube-outline",
-    "Joints": "mdi6.link-variant-outline",   # outline — category header
+    "Joints": "mdi6.link-variant",
 }
 _LEAF_ICONS = {
     "body":  "mdi6.cube-scan",
