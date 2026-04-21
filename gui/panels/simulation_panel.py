@@ -1,6 +1,6 @@
 """SimulationPanel — left-sidebar result browser for PMD Sessions."""
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, QSize, Signal
 from PySide6.QtWidgets import (
     QLabel,
     QTreeWidget,
@@ -13,12 +13,12 @@ from .. import icons as _icons
 
 _ROOT_ICONS = {
     "Bodies": "mdi6.cube-outline",
-    "Joints": "mdi6.link-variant",
+    "Joints": "mdi6.link-variant-outline",   # outline — category header
 }
 _LEAF_ICONS = {
     "body":  "mdi6.cube-scan",
     "joint": "mdi6.vector-link",
-    "force": "mdi6.lightning-bolt",
+    "force": "mdi6.lightning-bolt-outline",  # outline for resting state
 }
 
 
@@ -46,6 +46,7 @@ class SimulationPanel(QWidget):
             sessions = [sessions]
         self._sessions = sessions
         self._leaves: list[QTreeWidgetItem] = []
+        self._icon_items: list[tuple] = []  # (item, icon_name, dim)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -57,6 +58,7 @@ class SimulationPanel(QWidget):
 
         self._tree = QTreeWidget()
         self._tree.setIndentation(16)
+        self._tree.setIconSize(QSize(16, 16))
         self._tree.header().hide()
         self._tree.setAnimated(True)
         layout.addWidget(self._tree)
@@ -100,7 +102,8 @@ class SimulationPanel(QWidget):
         font.setBold(True)
         item.setFont(0, font)
         icon_name = _ROOT_ICONS.get(text, "mdi6.layers-outline")
-        item.setIcon(0, _icons.icon(icon_name))
+        item.setIcon(0, _icons.icon(icon_name, dim=True))
+        self._icon_items.append((item, icon_name, True))
         return item
 
     def _add_leaf(self, parent, label, descriptor):
@@ -109,7 +112,9 @@ class SimulationPanel(QWidget):
         item.setCheckState(0, Qt.CheckState.Unchecked)
         item.setData(0, Qt.ItemDataRole.UserRole, descriptor)
         kind = descriptor.get("kind", "")
-        item.setIcon(0, _icons.icon(_LEAF_ICONS.get(kind, "mdi6.circle-outline")))
+        icon_name = _LEAF_ICONS.get(kind, "mdi6.circle-outline")
+        item.setIcon(0, _icons.icon(icon_name))
+        self._icon_items.append((item, icon_name, False))
         self._leaves.append(item)
 
     # ------------------------------------------------------------------
@@ -142,3 +147,8 @@ class SimulationPanel(QWidget):
             leaf.setCheckState(0, Qt.CheckState.Unchecked)
         self._tree.blockSignals(False)
         self.selection_changed.emit([])
+
+    def refresh_icons(self) -> None:
+        """Re-apply icons from the current theme (call after set_dark)."""
+        for item, icon_name, dim in self._icon_items:
+            item.setIcon(0, _icons.icon(icon_name, dim=dim))

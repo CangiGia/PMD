@@ -672,9 +672,13 @@ QLabel#panel_header {{
 # ---------------------------------------------------------------------------
 # Public icon-colour constants  (consumed by gui/icons.py)
 # ---------------------------------------------------------------------------
-ICON_COLOR_LIGHT    = _TEXT            # "#1a1a1a"
-ICON_COLOR_DARK     = _D_TEXT          # "#e0e0e0"
-ICON_COLOR_DISABLED = _TEXT_DISABLED   # "#a0a0a0"
+ICON_COLOR_LIGHT          = _TEXT          # "#1a1a1a"  — default on light
+ICON_COLOR_DARK           = _D_TEXT        # "#e0e0e0"  — default on dark
+ICON_COLOR_LIGHT_DIM      = _TEXT_DIM      # "#5a5a5a"  — secondary on light
+ICON_COLOR_DARK_DIM       = _D_TEXT_DIM    # "#888888"  — secondary on dark
+ICON_COLOR_DISABLED       = _TEXT_DISABLED # "#a8a8a8"  — light disabled
+ICON_COLOR_DARK_DISABLED  = "#5a5a5a"      # ~30% of #e0e0e0 — dark disabled
+ICON_COLOR_ACCENT         = _D_ACCENT      # "#4a9eff"  — active/checked (both themes)
 
 # ---------------------------------------------------------------------------
 # Public API

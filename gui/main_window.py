@@ -85,7 +85,7 @@ class MainWindow(QMainWindow):
         view_menu.addAction(self._dark_action)
 
         self._anim_action = QAction("Animation Pane", self, checkable=True)
-        self._anim_action.setIcon(_icons.icon("mdi6.animation-play"))
+        self._anim_action.setIcon(_icons.icon("mdi6.animation-play-outline"))
         self._anim_action.toggled.connect(self._on_toggle_animation)
         view_menu.addAction(self._anim_action)
 
@@ -212,12 +212,16 @@ class MainWindow(QMainWindow):
         else:
             apply_light_theme(app)
         _icons.set_dark(checked)
+        # Refresh panel icons
+        self._sim_panel.refresh_icons()
+        self._result_set_panel.refresh_icons()
+        self._filter_panel.refresh_icons()
         # Refresh menu-action icons
         self._act_export_plot.setIcon(_icons.icon("mdi6.image-outline"))
         self._act_export_csv.setIcon(_icons.icon("mdi6.file-delimited-outline"))
         self._act_close.setIcon(_icons.icon("mdi6.close"))
         self._dark_action.setIcon(_icons.icon("mdi6.theme-light-dark"))
-        self._anim_action.setIcon(_icons.icon("mdi6.animation-play"))
+        self._anim_action.setIcon(_icons.icon("mdi6.animation-play-outline"))
         # Refresh toolbar icons on both canvases
         self._plot_canvas.set_icon_theme(checked)
         self._anim_canvas.set_icon_theme(checked)

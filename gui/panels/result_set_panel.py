@@ -61,7 +61,7 @@ class ResultSetPanel(QWidget):
         btn_layout.setSpacing(6)
 
         self._remove_btn = QPushButton("Remove selected")
-        self._remove_btn.setIcon(_icons.icon("mdi6.minus"))
+        self._remove_btn.setIcon(_icons.icon("mdi6.minus-circle-outline"))
         self._remove_btn.setEnabled(False)
         self._remove_btn.clicked.connect(self.remove_selected)
         btn_layout.addWidget(self._remove_btn)
@@ -217,3 +217,8 @@ class ResultSetPanel(QWidget):
 
     def _update_remove_btn(self):
         self._remove_btn.setEnabled(bool(self._curve_list.selectedItems()))
+
+    def refresh_icons(self) -> None:
+        """Re-apply icons from the current theme (call after set_dark)."""
+        self._remove_btn.setIcon(_icons.icon("mdi6.minus-circle-outline"))
+        self._clear_btn.setIcon(_icons.icon("mdi6.trash-can-outline"))

@@ -186,3 +186,7 @@ class FilterPanel(QWidget):
         self._category_combo.setEnabled(enabled)
         self._component_combo.setEnabled(enabled)
         self._add_btn.setEnabled(enabled)
+
+    def refresh_icons(self) -> None:
+        """Re-apply icons from the current theme (call after set_dark)."""
+        self._add_btn.setIcon(_icons.icon("mdi6.plus"))
