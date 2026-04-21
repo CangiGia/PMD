@@ -56,6 +56,7 @@ class SimulationPanel(QWidget):
         layout.addWidget(header)
 
         self._tree = QTreeWidget()
+        self._tree.setIndentation(16)
         self._tree.header().hide()
         self._tree.setAnimated(True)
         layout.addWidget(self._tree)

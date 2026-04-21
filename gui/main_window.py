@@ -107,6 +107,7 @@ class MainWindow(QMainWindow):
         right_widget = QWidget()
         right_layout = QVBoxLayout(right_widget)
         right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.setSpacing(0)
 
         self._units_toolbar = UnitsToolbar()
         self._units_toolbar.units_changed.connect(self._on_units_changed)

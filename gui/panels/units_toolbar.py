@@ -22,10 +22,11 @@ class UnitsToolbar(QWidget):
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
+        self.setObjectName("units_toolbar")
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(4, 2, 4, 2)
-        layout.setSpacing(6)
+        layout.setContentsMargins(8, 4, 8, 4)
+        layout.setSpacing(8)
 
         layout.addWidget(QLabel("Display as:"))
 

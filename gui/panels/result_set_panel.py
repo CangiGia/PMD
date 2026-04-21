@@ -57,7 +57,8 @@ class ResultSetPanel(QWidget):
         layout.addWidget(self._curve_list)
 
         btn_layout = QHBoxLayout()
-        btn_layout.setContentsMargins(4, 2, 4, 2)
+        btn_layout.setContentsMargins(4, 4, 4, 4)
+        btn_layout.setSpacing(6)
 
         self._remove_btn = QPushButton("Remove selected")
         self._remove_btn.setIcon(_icons.icon("mdi6.minus"))
