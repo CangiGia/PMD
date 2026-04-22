@@ -2,7 +2,6 @@
 
 from PySide6.QtCore import Qt, QPoint, QSize, Signal
 from PySide6.QtWidgets import (
-    QLabel,
     QMenu,
     QMessageBox,
     QPushButton,
@@ -12,6 +11,8 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
+_ITEM_TYPE = Qt.ItemDataRole.UserRole + 1  # marks "file" and "view" nav items
 
 from .. import icons as _icons
 
@@ -35,6 +36,9 @@ class SimulationPanel(QWidget):
 
     selection_changed = Signal(object)
     theme_toggle_requested = Signal(bool)
+    export_requested = Signal(str)        # "plot" | "csv" | "txt"
+    close_requested = Signal()
+    animation_toggle_requested = Signal(bool)
 
     def __init__(self, sessions, parent=None):
         super().__init__(parent)
@@ -44,14 +48,11 @@ class SimulationPanel(QWidget):
         self._leaves: list[QTreeWidgetItem] = []
         self._icon_items: list[tuple] = []  # (item, icon_name, dim)
         self._is_dark = False
+        self._is_anim = False
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
-
-        header = QLabel("Simulations")
-        header.setObjectName("panel_header")
-        layout.addWidget(header)
 
         # Vertical splitter: tree (resizable) | footer nav buttons
         splitter = QSplitter(Qt.Orientation.Vertical)
@@ -87,6 +88,7 @@ class SimulationPanel(QWidget):
 
         self._populate()
         self._tree.itemChanged.connect(self._on_item_changed)
+        self._tree.itemClicked.connect(self._on_tree_clicked)
 
     # ------------------------------------------------------------------
     # Nav footer helpers
@@ -109,7 +111,7 @@ class SimulationPanel(QWidget):
         dark_action = menu.addAction("Dark Theme")
         dark_action.setCheckable(True)
         dark_action.setChecked(self._is_dark)
-        dark_action.triggered.connect(self.theme_toggle_requested.emit)
+        dark_action.toggled.connect(self.theme_toggle_requested.emit)
         pos = self._btn_settings.mapToGlobal(
             QPoint(self._btn_settings.width(), 0)
         )
@@ -121,6 +123,51 @@ class SimulationPanel(QWidget):
     def _on_help(self):
         QMessageBox.information(self, "Help", "Under development")
 
+    def set_animation(self, enabled: bool) -> None:
+        self._is_anim = enabled
+
+    # ------------------------------------------------------------------
+    # Tree item click dispatcher
+    # ------------------------------------------------------------------
+
+    def _on_tree_clicked(self, item: QTreeWidgetItem, column: int):
+        role = item.data(0, _ITEM_TYPE)
+        if role == "file":
+            self._show_file_menu(item)
+        elif role == "view":
+            self._show_view_menu(item)
+
+    def _show_file_menu(self, item: QTreeWidgetItem):
+        menu = QMenu(self)
+        menu.addAction("Export Plot…").triggered.connect(
+            lambda: self.export_requested.emit("plot")
+        )
+        menu.addAction("Export CSV…").triggered.connect(
+            lambda: self.export_requested.emit("csv")
+        )
+        menu.addAction("Export TXT…").triggered.connect(
+            lambda: self.export_requested.emit("txt")
+        )
+        menu.addSeparator()
+        menu.addAction("Close").triggered.connect(self.close_requested.emit)
+        rect = self._tree.visualItemRect(item)
+        pos = self._tree.viewport().mapToGlobal(rect.topRight())
+        menu.exec(pos)
+
+    def _show_view_menu(self, item: QTreeWidgetItem):
+        menu = QMenu(self)
+        anim_action = menu.addAction("Animation Pane")
+        anim_action.setCheckable(True)
+        anim_action.setChecked(self._is_anim)
+        anim_action.toggled.connect(self._on_anim_toggled)
+        rect = self._tree.visualItemRect(item)
+        pos = self._tree.viewport().mapToGlobal(rect.topRight())
+        menu.exec(pos)
+
+    def _on_anim_toggled(self, checked: bool):
+        self._is_anim = checked
+        self.animation_toggle_requested.emit(checked)
+
     # ------------------------------------------------------------------
     # Tree construction
     # ------------------------------------------------------------------
@@ -128,9 +175,24 @@ class SimulationPanel(QWidget):
     def _populate(self):
         self._tree.blockSignals(True)
 
+        # ── Nav root items ───────────────────────────────────────────────
+        file_item = self._make_root("File")
+        file_item.setData(0, _ITEM_TYPE, "file")
+        file_item.setChildIndicatorPolicy(
+            QTreeWidgetItem.ChildIndicatorPolicy.DontShowIndicator
+        )
+
+        view_item = self._make_root("View")
+        view_item.setData(0, _ITEM_TYPE, "view")
+        view_item.setChildIndicatorPolicy(
+            QTreeWidgetItem.ChildIndicatorPolicy.DontShowIndicator
+        )
+
+        # ── Simulations root ─────────────────────────────────────────────
+        sims_item = self._make_root("Simulations")
         for session in self._sessions:
             model = session.model
-            session_root = self._make_root(session.name)
+            session_root = self._make_root(session.name, parent=sims_item)
 
             root_bodies = self._make_root("Bodies", parent=session_root)
             for i, body in enumerate(model.Bodies, start=1):

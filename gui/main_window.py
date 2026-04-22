@@ -4,7 +4,6 @@ import csv
 import logging
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -45,7 +44,6 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("PMD PostProcessor")
         self.resize(1200, 700)
 
-        self._build_menu_bar()
         self._build_central_area()
         self._build_status_bar()
 
@@ -102,9 +100,10 @@ class MainWindow(QMainWindow):
         self._sim_panel.setMinimumWidth(200)
         self._sim_panel.setMaximumWidth(350)
         self._sim_panel.selection_changed.connect(self._on_selection_changed)
-        self._sim_panel.theme_toggle_requested.connect(
-            lambda checked: self._dark_action.setChecked(checked)
-        )
+        self._sim_panel.theme_toggle_requested.connect(self._on_toggle_theme)
+        self._sim_panel.export_requested.connect(self._on_export_requested)
+        self._sim_panel.close_requested.connect(self.close)
+        self._sim_panel.animation_toggle_requested.connect(self._on_toggle_animation)
 
         # Right side — FilterPanel on top, vertical splitter (plot | animation), ResultSetPanel bottom
         right_widget = QWidget()
@@ -204,8 +203,18 @@ class MainWindow(QMainWindow):
         logger.debug("Curves changed: %d visible", len(visible))
 
     def _on_toggle_animation(self, checked: bool):
-        """Show/hide the AnimationCanvas from the View menu."""
+        """Show/hide the AnimationCanvas."""
         self._anim_canvas.setVisible(checked)
+        self._sim_panel.set_animation(checked)
+
+    def _on_export_requested(self, kind: str):
+        """Dispatch export actions triggered from the sidebar File menu."""
+        if kind == "plot":
+            self._on_export_plot()
+        elif kind == "csv":
+            self._on_export_csv()
+        elif kind == "txt":
+            self._on_export_txt()
 
     def _on_toggle_theme(self, checked: bool):
         """Switch both Qt widgets and Matplotlib between dark and light theme."""

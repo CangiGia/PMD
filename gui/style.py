@@ -168,6 +168,11 @@ QTreeWidget::item:selected {{
 QTreeWidget::item:hover:!selected {{
     background: rgba(0, 0, 0, 0.04);
 }}
+QTreeWidget::branch:has-siblings:!has-children {{
+    image: none;
+    border-image: none;
+    background: transparent;
+}}
 QHeaderView::section {{
     background: {_BG};
     border: none;
@@ -528,6 +533,11 @@ QTreeWidget::item:selected {{
 }}
 QTreeWidget::item:hover:!selected {{
     background: rgba(255, 255, 255, 0.04);
+}}
+QTreeWidget::branch:has-siblings:!has-children {{
+    image: none;
+    border-image: none;
+    background: transparent;
 }}
 QHeaderView::section {{
     background: {_D_BG};
