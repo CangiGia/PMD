@@ -60,32 +60,32 @@ class MainWindow(QMainWindow):
         file_menu = menu_bar.addMenu("&File")
 
         self._act_export_plot = QAction("Export &Plot…", self)
-        self._act_export_plot.setIcon(_icons.icon("mdi6.image-outline"))
         self._act_export_plot.triggered.connect(self._on_export_plot)
         file_menu.addAction(self._act_export_plot)
 
         self._act_export_csv = QAction("Export &CSV…", self)
-        self._act_export_csv.setIcon(_icons.icon("mdi6.file-delimited-outline"))
         self._act_export_csv.triggered.connect(self._on_export_csv)
         file_menu.addAction(self._act_export_csv)
+
+        self._act_export_txt = QAction("Export &TXT…", self)
+        self._act_export_txt.triggered.connect(self._on_export_txt)
+        file_menu.addAction(self._act_export_txt)
 
         file_menu.addSeparator()
 
         self._act_close = QAction("&Close", self)
-        self._act_close.setIcon(_icons.icon("mdi6.close"))
         self._act_close.triggered.connect(self.close)
         file_menu.addAction(self._act_close)
 
         # View menu
         view_menu = menu_bar.addMenu("&View")
 
+        # Dark Theme is controlled from the Settings button in SimulationPanel;
+        # keep the action as a state holder but do not add it to any menu.
         self._dark_action = QAction("Dark Theme", self, checkable=True)
-        self._dark_action.setIcon(_icons.icon("mdi6.theme-light-dark"))
         self._dark_action.toggled.connect(self._on_toggle_theme)
-        view_menu.addAction(self._dark_action)
 
         self._anim_action = QAction("Animation Pane", self, checkable=True)
-        self._anim_action.setIcon(_icons.icon("mdi6.animation-play-outline"))
         self._anim_action.toggled.connect(self._on_toggle_animation)
         view_menu.addAction(self._anim_action)
 
