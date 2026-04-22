@@ -103,7 +103,7 @@ class SimulationPanel(QWidget):
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
         if icon_name:
             btn.setIcon(_icons.icon(icon_name, dim=True))
-            btn.setIconSize(QSize(24, 24))
+            btn.setIconSize(QSize(32, 32))
             self._icon_items.append((btn, icon_name, True))
         return btn
 

@@ -31,7 +31,7 @@ _LIGHT_QSS = f"""
 QMainWindow, QWidget {{
     background-color: {_BG};
     color: {_TEXT};
-    font-family: "Segoe UI", sans-serif;
+    font-family: "Aptos", "Segoe UI", sans-serif;
     font-size: 10pt;
 }}
 
@@ -396,7 +396,7 @@ _DARK_QSS = f"""
 QMainWindow, QWidget {{
     background-color: {_D_BG};
     color: {_D_TEXT};
-    font-family: "Segoe UI", sans-serif;
+    font-family: "Aptos", "Segoe UI", sans-serif;
     font-size: 10pt;
 }}
 

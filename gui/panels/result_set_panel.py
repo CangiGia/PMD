@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, QSize, Signal
 from PySide6.QtGui import QColor, QPixmap, QIcon
 from PySide6.QtWidgets import (
     QHBoxLayout,
@@ -62,12 +62,14 @@ class ResultSetPanel(QWidget):
 
         self._remove_btn = QPushButton("Remove selected")
         self._remove_btn.setIcon(_icons.icon("mdi6.minus-circle-outline"))
+        self._remove_btn.setIconSize(QSize(20, 20))
         self._remove_btn.setEnabled(False)
         self._remove_btn.clicked.connect(self.remove_selected)
         btn_layout.addWidget(self._remove_btn)
 
         self._clear_btn = QPushButton("Clear all")
         self._clear_btn.setIcon(_icons.icon("mdi6.trash-can-outline"))
+        self._clear_btn.setIconSize(QSize(20, 20))
         self._clear_btn.setEnabled(False)
         self._clear_btn.clicked.connect(self.clear)
         btn_layout.addWidget(self._clear_btn)
