@@ -225,8 +225,9 @@ class MainWindow(QMainWindow):
         # Refresh toolbar icons on both canvases
         self._plot_canvas.set_icon_theme(checked)
         self._anim_canvas.set_icon_theme(checked)
-        # Redraw plot
+        # Redraw canvases
         self._plot_canvas.set_dark(checked)
+        self._anim_canvas.set_dark(checked)
         visible = self._result_set_panel.visible_curves()
         self._plot_canvas.update_plot(visible)
 

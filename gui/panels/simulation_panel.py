@@ -2,7 +2,9 @@
 
 from PySide6.QtCore import Qt, QSize, Signal
 from PySide6.QtWidgets import (
+    QFrame,
     QLabel,
+    QPushButton,
     QTreeWidget,
     QTreeWidgetItem,
     QVBoxLayout,
@@ -12,13 +14,8 @@ from PySide6.QtWidgets import (
 from .. import icons as _icons
 
 _ROOT_ICONS = {
-    "Bodies": "mdi6.cube-outline",
-    "Joints": "mdi6.link-variant",
-}
-_LEAF_ICONS = {
-    "body":  "mdi6.cube-scan",
-    "joint": "mdi6.vector-link",
-    "force": "mdi6.lightning-bolt-outline",  # outline for resting state
+    "Bodies": "mdi6.shape-outline",
+    "Joints": "mdi6.connection",
 }
 
 
@@ -61,10 +58,40 @@ class SimulationPanel(QWidget):
         self._tree.setIconSize(QSize(16, 16))
         self._tree.header().hide()
         self._tree.setAnimated(True)
-        layout.addWidget(self._tree)
+        layout.addWidget(self._tree, stretch=1)
+
+        sep = QFrame()
+        sep.setFrameShape(QFrame.Shape.HLine)
+        sep.setObjectName("nav_sep")
+        layout.addWidget(sep)
+
+        self._btn_settings    = self._make_nav_btn("Settings",    "mdi6.cog-outline")
+        self._btn_information = self._make_nav_btn("Information", "mdi6.information-outline")
+        self._btn_help        = self._make_nav_btn("Help",        "mdi6.help-circle-outline")
+        for btn in (self._btn_settings, self._btn_information, self._btn_help):
+            layout.addWidget(btn)
+        self._btn_settings.clicked.connect(self._on_settings)
+        self._btn_information.clicked.connect(self._on_information)
+        self._btn_help.clicked.connect(self._on_help)
 
         self._populate()
         self._tree.itemChanged.connect(self._on_item_changed)
+
+    # ------------------------------------------------------------------
+    # Nav footer helpers
+    # ------------------------------------------------------------------
+
+    def _make_nav_btn(self, text: str, icon_name: str) -> QPushButton:
+        btn = QPushButton(f"  {text}")
+        btn.setProperty("nav", "true")
+        btn.setIcon(_icons.icon(icon_name, dim=True))
+        btn.setIconSize(QSize(18, 18))
+        self._icon_items.append((btn, icon_name, True))
+        return btn
+
+    def _on_settings(self): pass
+    def _on_information(self): pass
+    def _on_help(self): pass
 
     # ------------------------------------------------------------------
     # Tree construction
@@ -111,10 +138,6 @@ class SimulationPanel(QWidget):
         item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
         item.setCheckState(0, Qt.CheckState.Unchecked)
         item.setData(0, Qt.ItemDataRole.UserRole, descriptor)
-        kind = descriptor.get("kind", "")
-        icon_name = _LEAF_ICONS.get(kind, "mdi6.circle-outline")
-        item.setIcon(0, _icons.icon(icon_name))
-        self._icon_items.append((item, icon_name, False))
         self._leaves.append(item)
 
     # ------------------------------------------------------------------
@@ -151,4 +174,8 @@ class SimulationPanel(QWidget):
     def refresh_icons(self) -> None:
         """Re-apply icons from the current theme (call after set_dark)."""
         for item, icon_name, dim in self._icon_items:
-            item.setIcon(0, _icons.icon(icon_name, dim=dim))
+            ic = _icons.icon(icon_name, dim=dim)
+            if isinstance(item, QTreeWidgetItem):
+                item.setIcon(0, ic)
+            else:
+                item.setIcon(ic)

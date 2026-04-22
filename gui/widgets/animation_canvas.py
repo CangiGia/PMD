@@ -26,6 +26,7 @@ from PMD.src.shapes import Rectangle, Circle, Polygon
 from PMD.src.constraints import RevJoint, TranJoint, PtpForce
 from PMD.src.mechanics import rotation_matrix
 from .. import icons as _icons
+from ..style import CANVAS_BG_DARK, CANVAS_BG_LIGHT, CANVAS_FG_DARK, CANVAS_FG_LIGHT
 
 # Colour palette for bodies (tab10)
 _BODY_COLORS = [
@@ -166,6 +167,20 @@ class AnimationCanvas(QWidget):
         self._btn_save.setIcon(_icons.icon("mdi6.content-save"))
         play_icon = "mdi6.pause" if self._playing else "mdi6.play"
         self._play_btn.setIcon(_icons.icon(play_icon))
+
+    def set_dark(self, enabled: bool) -> None:
+        """Switch the figure between dark and light appearance."""
+        bg = CANVAS_BG_DARK  if enabled else CANVAS_BG_LIGHT
+        fg = CANVAS_FG_DARK  if enabled else CANVAS_FG_LIGHT
+        self._figure.set_facecolor(bg)
+        self._ax.set_facecolor(bg)
+        self._ax.tick_params(colors=fg, which="both")
+        self._ax.xaxis.label.set_color(fg)
+        self._ax.yaxis.label.set_color(fg)
+        self._ax.title.set_color(fg)
+        for spine in self._ax.spines.values():
+            spine.set_edgecolor(fg)
+        self._canvas.draw_idle()
 
     def _on_home(self):
         self._nav.home()

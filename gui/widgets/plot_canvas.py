@@ -12,6 +12,7 @@ from PySide6.QtWidgets import QToolBar, QToolButton, QVBoxLayout, QWidget
 
 from ..models import CurveItem
 from .. import icons as _icons
+from ..style import CANVAS_BG_DARK, CANVAS_BG_LIGHT, CANVAS_FG_DARK, CANVAS_FG_LIGHT
 
 
 class PlotCanvas(QWidget):
@@ -153,8 +154,8 @@ class PlotCanvas(QWidget):
     def set_dark(self, enabled: bool):
         """Switch the existing Figure between dark and light appearance."""
         self._dark = enabled
-        bg = "#2b2b2b" if enabled else "white"
-        fg = "#cccccc" if enabled else "black"
+        bg = CANVAS_BG_DARK  if enabled else CANVAS_BG_LIGHT
+        fg = CANVAS_FG_DARK  if enabled else CANVAS_FG_LIGHT
         self._figure.set_facecolor(bg)
         for ax in self._axes:
             ax.set_facecolor(bg)

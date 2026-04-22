@@ -13,17 +13,17 @@ from PySide6.QtWidgets import QApplication
 # ---------------------------------------------------------------------------
 # Light theme colour tokens
 # ---------------------------------------------------------------------------
-_ACCENT       = "#0060c0"
-_ACCENT_HOVER = "#0052a3"
-_ACCENT_PRESS = "#004080"
-_BG           = "#ebebeb"
-_SURFACE      = "#f6f6f6"   # card surfaces — lighter than bg
-_SURFACE_HI   = "#eeeeee"   # hover state
-_BORDER       = "#c8c8c8"   # input borders only
-_BORDER_FOCUS = "#0060c0"
-_TEXT         = "#1a1a1a"
-_TEXT_DIM     = "#5a5a5a"
-_TEXT_DISABLED= "#a8a8a8"
+_ACCENT       = "#3f8cff"
+_ACCENT_HOVER = "#2270e0"
+_ACCENT_PRESS = "#1a5cbf"
+_BG           = "#f0f2f5"
+_SURFACE      = "#ffffff"
+_SURFACE_HI   = "#f5f6f8"
+_BORDER       = "#dde0e6"
+_BORDER_FOCUS = "#3f8cff"
+_TEXT         = "#1c2033"
+_TEXT_DIM     = "#6b7280"
+_TEXT_DISABLED= "#b0b7c3"
 _RADIUS       = "6px"
 
 _LIGHT_QSS = f"""
@@ -297,7 +297,7 @@ QListWidget::indicator {{
     height: 14px;
     border: 1.5px solid {_BORDER};
     border-radius: 3px;
-    background: white;
+    background: {_SURFACE};
 }}
 QTreeWidget::indicator:hover,
 QListWidget::indicator:hover {{
@@ -316,13 +316,13 @@ QLabel#panel_header {{
     font-weight: 600;
     padding: 8px 12px 6px 12px;
     background: transparent;
-    border-bottom: 1px solid #d8d8d8;
+    border-bottom: 1px solid {_BORDER};
 }}
 
 /* ── Sidebar ─────────────────────────────────────────── */
 #sim_sidebar {{
-    background: #e0e0e0;
-    border-right: 1px solid #d0d0d0;
+    background: {_BG};
+    border-right: 1px solid {_BORDER};
 }}
 
 /* ── Filter card ─────────────────────────────────────── */
@@ -335,26 +335,54 @@ QLabel#panel_header {{
 /* ── Units toolbar ───────────────────────────────────── */
 #units_toolbar {{
     background: {_BG};
-    border-bottom: 1px solid #d8d8d8;
+    border-bottom: 1px solid {_BORDER};
+}}
+
+/* ── Nav sidebar separator ───────────────────────────── */
+QFrame#nav_sep {{
+    border: none;
+    border-top: 1px solid {_BORDER};
+    background: transparent;
+    max-height: 1px;
+    margin: 4px 0 0 0;
+}}
+
+/* ── Nav footer buttons (sidebar) ───────────────────── */
+QPushButton[nav="true"] {{
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    color: {_TEXT_DIM};
+    text-align: left;
+    padding: 10px 16px;
+    min-height: 36px;
+    font-size: 10pt;
+}}
+QPushButton[nav="true"]:hover {{
+    background: rgba(63, 140, 255, 0.10);
+    color: {_TEXT};
+}}
+QPushButton[nav="true"]:pressed {{
+    background: rgba(63, 140, 255, 0.18);
 }}
 """
 
 # ---------------------------------------------------------------------------
 # Dark theme colour tokens — 3-level surface hierarchy
 # ---------------------------------------------------------------------------
-_D_ACCENT       = "#4a9eff"
-_D_ACCENT_HOVER = "#6ab5ff"
-_D_ACCENT_PRESS = "#2c80e0"
-_D_BG_DEEP    = "#161616"   # sidebar, status bar
-_D_BG         = "#1e1e1e"   # main window background
-_D_SURFACE    = "#252525"   # raised surfaces (cards, lists)
-_D_SURFACE_HI = "#2d2d2d"   # hover on raised surfaces
-_D_DIVIDER    = "#2a2a2a"   # subtle separators
-_D_BORDER     = "#3a3a3a"   # input borders
-_D_BORDER_FOCUS = "#4a9eff"
-_D_TEXT         = "#e0e0e0"
-_D_TEXT_DIM     = "#888888"
-_D_TEXT_DISABLED= "rgba(224, 224, 224, 0.35)"
+_D_ACCENT       = "#3f8cff"
+_D_ACCENT_HOVER = "#5fa3ff"
+_D_ACCENT_PRESS = "#2270e0"
+_D_BG_DEEP    = "#141824"   # sidebar, status bar
+_D_BG         = "#1a1e28"   # main window background
+_D_SURFACE    = "#2d323e"   # raised surfaces (cards, lists)
+_D_SURFACE_HI = "#353b48"   # hover on raised surfaces
+_D_DIVIDER    = "#424751"   # subtle separators
+_D_BORDER     = "#424751"   # input borders
+_D_BORDER_FOCUS = "#3f8cff"
+_D_TEXT         = "#e8eaf0"
+_D_TEXT_DIM     = "#8b92a0"
+_D_TEXT_DISABLED= "rgba(232, 234, 240, 0.35)"
 
 _DARK_QSS = f"""
 /* ── Window & base ──────────────────────────────────── */
@@ -436,7 +464,7 @@ QPushButton[primary="true"]:disabled {{
 
 /* ── ComboBox — flat ─────────────────────────────── */
 QComboBox {{
-    background: {_D_SURFACE_HI};
+    background: {_D_SURFACE};
     border: 1px solid transparent;
     border-radius: 6px;
     padding: 4px 8px;
@@ -444,7 +472,7 @@ QComboBox {{
     color: {_D_TEXT};
 }}
 QComboBox:hover {{
-    background: #333333;
+    background: {_D_SURFACE_HI};
 }}
 QComboBox:focus {{
     border-color: {_D_BORDER_FOCUS};
@@ -667,18 +695,52 @@ QLabel#panel_header {{
     background: {_D_BG};
     border-bottom: 1px solid {_D_DIVIDER};
 }}
+
+/* ── Nav sidebar separator ───────────────────────────── */
+QFrame#nav_sep {{
+    border: none;
+    border-top: 1px solid {_D_DIVIDER};
+    background: transparent;
+    max-height: 1px;
+    margin: 4px 0 0 0;
+}}
+
+/* ── Nav footer buttons (sidebar) ───────────────────── */
+QPushButton[nav="true"] {{
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    color: {_D_TEXT_DIM};
+    text-align: left;
+    padding: 10px 16px;
+    min-height: 36px;
+    font-size: 10pt;
+}}
+QPushButton[nav="true"]:hover {{
+    background: rgba(63, 140, 255, 0.12);
+    color: {_D_TEXT};
+}}
+QPushButton[nav="true"]:pressed {{
+    background: rgba(63, 140, 255, 0.20);
+}}
 """
 
 # ---------------------------------------------------------------------------
 # Public icon-colour constants  (consumed by gui/icons.py)
 # ---------------------------------------------------------------------------
-ICON_COLOR_LIGHT          = _TEXT          # "#1a1a1a"  — default on light
-ICON_COLOR_DARK           = _D_TEXT        # "#e0e0e0"  — default on dark
-ICON_COLOR_LIGHT_DIM      = _TEXT_DIM      # "#5a5a5a"  — secondary on light
-ICON_COLOR_DARK_DIM       = _D_TEXT_DIM    # "#888888"  — secondary on dark
-ICON_COLOR_DISABLED       = _TEXT_DISABLED # "#a8a8a8"  — light disabled
-ICON_COLOR_DARK_DISABLED  = "#5a5a5a"      # ~30% of #e0e0e0 — dark disabled
-ICON_COLOR_ACCENT         = _D_ACCENT      # "#4a9eff"  — active/checked (both themes)
+ICON_COLOR_LIGHT          = _TEXT          # "#1c2033"  — default on light
+ICON_COLOR_DARK           = _D_TEXT        # "#e8eaf0"  — default on dark
+ICON_COLOR_LIGHT_DIM      = _TEXT_DIM      # "#6b7280"  — secondary on light
+ICON_COLOR_DARK_DIM       = _D_TEXT_DIM    # "#8b92a0"  — secondary on dark
+ICON_COLOR_DISABLED       = _TEXT_DISABLED # "#b0b7c3"  — light disabled
+ICON_COLOR_DARK_DISABLED  = "#535966"      # ~30% of #e8eaf0 — dark disabled
+ICON_COLOR_ACCENT         = _D_ACCENT      # "#3f8cff"  — active/checked (both themes)
+
+# Canvas surface colours — imported by plot_canvas and animation_canvas
+CANVAS_BG_DARK  = _D_SURFACE   # "#2d323e" — matches raised card surface
+CANVAS_BG_LIGHT = _SURFACE     # "#ffffff" — matches card surface
+CANVAS_FG_DARK  = _D_TEXT      # "#e8eaf0"
+CANVAS_FG_LIGHT = _TEXT        # "#1c2033"
 
 # ---------------------------------------------------------------------------
 # Public API
