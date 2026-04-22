@@ -1,10 +1,12 @@
 """SimulationPanel — left-sidebar result browser for PMD Sessions."""
 
-from PySide6.QtCore import Qt, QSize, Signal
+from PySide6.QtCore import Qt, QPoint, QSize, Signal
 from PySide6.QtWidgets import (
-    QFrame,
     QLabel,
+    QMenu,
+    QMessageBox,
     QPushButton,
+    QSplitter,
     QTreeWidget,
     QTreeWidgetItem,
     QVBoxLayout,
@@ -13,10 +15,6 @@ from PySide6.QtWidgets import (
 
 from .. import icons as _icons
 
-_ROOT_ICONS = {
-    "Bodies": "mdi6.shape-outline",
-    "Joints": "mdi6.connection",
-}
 
 
 class SimulationPanel(QWidget):
@@ -36,6 +34,7 @@ class SimulationPanel(QWidget):
     """
 
     selection_changed = Signal(object)
+    theme_toggle_requested = Signal(bool)
 
     def __init__(self, sessions, parent=None):
         super().__init__(parent)
@@ -44,6 +43,7 @@ class SimulationPanel(QWidget):
         self._sessions = sessions
         self._leaves: list[QTreeWidgetItem] = []
         self._icon_items: list[tuple] = []  # (item, icon_name, dim)
+        self._is_dark = False
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -53,23 +53,34 @@ class SimulationPanel(QWidget):
         header.setObjectName("panel_header")
         layout.addWidget(header)
 
+        # Vertical splitter: tree (resizable) | footer nav buttons
+        splitter = QSplitter(Qt.Orientation.Vertical)
+        splitter.setObjectName("nav_splitter")
+        splitter.setChildrenCollapsible(False)
+        splitter.setHandleWidth(5)
+
         self._tree = QTreeWidget()
         self._tree.setIndentation(16)
         self._tree.setIconSize(QSize(16, 16))
         self._tree.header().hide()
         self._tree.setAnimated(True)
-        layout.addWidget(self._tree, stretch=1)
+        splitter.addWidget(self._tree)
 
-        sep = QFrame()
-        sep.setFrameShape(QFrame.Shape.HLine)
-        sep.setObjectName("nav_sep")
-        layout.addWidget(sep)
-
+        footer = QWidget()
+        footer_layout = QVBoxLayout(footer)
+        footer_layout.setContentsMargins(0, 0, 0, 0)
+        footer_layout.setSpacing(0)
         self._btn_settings    = self._make_nav_btn("Settings",    "mdi6.cog-outline")
         self._btn_information = self._make_nav_btn("Information", "mdi6.information-outline")
         self._btn_help        = self._make_nav_btn("Help",        "mdi6.help-circle-outline")
         for btn in (self._btn_settings, self._btn_information, self._btn_help):
-            layout.addWidget(btn)
+            footer_layout.addWidget(btn)
+        splitter.addWidget(footer)
+
+        splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 0)
+        layout.addWidget(splitter, stretch=1)
+
         self._btn_settings.clicked.connect(self._on_settings)
         self._btn_information.clicked.connect(self._on_information)
         self._btn_help.clicked.connect(self._on_help)
@@ -85,13 +96,30 @@ class SimulationPanel(QWidget):
         btn = QPushButton(f"  {text}")
         btn.setProperty("nav", "true")
         btn.setIcon(_icons.icon(icon_name, dim=True))
-        btn.setIconSize(QSize(18, 18))
+        btn.setIconSize(QSize(24, 24))
+        btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._icon_items.append((btn, icon_name, True))
         return btn
 
-    def _on_settings(self): pass
-    def _on_information(self): pass
-    def _on_help(self): pass
+    def set_dark(self, enabled: bool) -> None:
+        self._is_dark = enabled
+
+    def _on_settings(self):
+        menu = QMenu(self)
+        dark_action = menu.addAction("Dark Theme")
+        dark_action.setCheckable(True)
+        dark_action.setChecked(self._is_dark)
+        dark_action.triggered.connect(self.theme_toggle_requested.emit)
+        pos = self._btn_settings.mapToGlobal(
+            QPoint(self._btn_settings.width(), 0)
+        )
+        menu.exec(pos)
+
+    def _on_information(self):
+        QMessageBox.information(self, "Information", "Under development")
+
+    def _on_help(self):
+        QMessageBox.information(self, "Help", "Under development")
 
     # ------------------------------------------------------------------
     # Tree construction
@@ -128,9 +156,6 @@ class SimulationPanel(QWidget):
         font = item.font(0)
         font.setBold(True)
         item.setFont(0, font)
-        icon_name = _ROOT_ICONS.get(text, "mdi6.layers-outline")
-        item.setIcon(0, _icons.icon(icon_name, dim=True))
-        self._icon_items.append((item, icon_name, True))
         return item
 
     def _add_leaf(self, parent, label, descriptor):

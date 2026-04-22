@@ -102,6 +102,9 @@ class MainWindow(QMainWindow):
         self._sim_panel.setMinimumWidth(200)
         self._sim_panel.setMaximumWidth(350)
         self._sim_panel.selection_changed.connect(self._on_selection_changed)
+        self._sim_panel.theme_toggle_requested.connect(
+            lambda checked: self._dark_action.setChecked(checked)
+        )
 
         # Right side — FilterPanel on top, vertical splitter (plot | animation), ResultSetPanel bottom
         right_widget = QWidget()
@@ -212,16 +215,11 @@ class MainWindow(QMainWindow):
         else:
             apply_light_theme(app)
         _icons.set_dark(checked)
+        self._sim_panel.set_dark(checked)
         # Refresh panel icons
         self._sim_panel.refresh_icons()
         self._result_set_panel.refresh_icons()
         self._filter_panel.refresh_icons()
-        # Refresh menu-action icons
-        self._act_export_plot.setIcon(_icons.icon("mdi6.image-outline"))
-        self._act_export_csv.setIcon(_icons.icon("mdi6.file-delimited-outline"))
-        self._act_close.setIcon(_icons.icon("mdi6.close"))
-        self._dark_action.setIcon(_icons.icon("mdi6.theme-light-dark"))
-        self._anim_action.setIcon(_icons.icon("mdi6.animation-play-outline"))
         # Refresh toolbar icons on both canvases
         self._plot_canvas.set_icon_theme(checked)
         self._anim_canvas.set_icon_theme(checked)
@@ -259,3 +257,25 @@ class MainWindow(QMainWindow):
             for i, t in enumerate(T_ref):
                 row = [t] + [float(c.data[i]) if i < len(c.data) else "" for c in curves]
                 writer.writerow(row)
+
+    def _on_export_txt(self):
+        """Export all visible curves to a tab-separated text file."""
+        curves = self._result_set_panel.visible_curves()
+        if not curves:
+            QMessageBox.information(self, "Export TXT", "No visible curves to export.")
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Export Curves", "", "Text file (*.txt)"
+        )
+        if not path:
+            return
+        T_ref = curves[0].T
+        cols = ["time_s"] + [c.label for c in curves]
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("\t".join(cols) + "\n")
+            for i, t in enumerate(T_ref):
+                row = [str(t)] + [
+                    str(float(c.data[i])) if i < len(c.data) else ""
+                    for c in curves
+                ]
+                f.write("\t".join(row) + "\n")
