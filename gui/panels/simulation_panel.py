@@ -54,9 +54,9 @@ class SimulationPanel(QWidget):
         top_layout.setContentsMargins(0, 0, 0, 0)
         top_layout.setSpacing(0)
 
-        self._btn_file        = self._make_nav_btn("File")
-        self._btn_view        = self._make_nav_btn("View")
-        self._btn_simulations = self._make_nav_btn("Simulations")
+        self._btn_file        = self._make_nav_btn("File",        "mdi6.home-outline")
+        self._btn_view        = self._make_nav_btn("View",        "mdi6.eye-outline")
+        self._btn_simulations = self._make_nav_btn("Simulations", "mdi6.play-circle-outline")
         for btn in (self._btn_file, self._btn_view, self._btn_simulations):
             top_layout.addWidget(btn)
         top_layout.addStretch(1)
