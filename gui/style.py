@@ -164,8 +164,6 @@ QTreeWidget::item {{
 QTreeWidget::item:selected {{
     background: rgba(0, 96, 192, 0.1);
     color: {_TEXT};
-    border-left: 2px solid {_ACCENT};
-    padding-left: 6px;
 }}
 QTreeWidget::item:hover:!selected {{
     background: rgba(0, 0, 0, 0.04);
@@ -527,8 +525,6 @@ QTreeWidget::item {{
 QTreeWidget::item:selected {{
     background: rgba(74, 158, 255, 0.12);
     color: {_D_TEXT};
-    border-left: 2px solid {_D_ACCENT};
-    padding-left: 6px;
 }}
 QTreeWidget::item:hover:!selected {{
     background: rgba(255, 255, 255, 0.04);
