@@ -1,5 +1,10 @@
 """Session — container for a single solved PMD simulation."""
 
+import inspect
+import pathlib
+
+_PMD_DIR = pathlib.Path(__file__).parent.parent.resolve()
+
 
 class Session:
     """Wraps a solved PlanarMultibodyModel together with its time results.
@@ -24,7 +29,18 @@ class Session:
         self.model = model
         self.T = T
         self.uT = uT
-        self.name = name or f"Simulation {Session._count}"
+        if name is None:
+            try:
+                for frame_info in inspect.stack()[1:]:
+                    caller = pathlib.Path(frame_info.filename).resolve()
+                    if not caller.is_relative_to(_PMD_DIR):
+                        name = caller.stem
+                        break
+            except Exception:
+                pass
+            if name is None:
+                name = f"Simulation {Session._count}"
+        self.name = name
 
     def __repr__(self):
         n_bodies = len(self.model.Bodies)
