@@ -4,8 +4,8 @@ import csv
 import logging
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QAction
 from PySide6.QtWidgets import (
+    QApplication,
     QFileDialog,
     QMainWindow,
     QMessageBox,
@@ -17,6 +17,8 @@ from PySide6.QtWidgets import (
 from PMD.src.units import UnitSystem
 from .models import build_curves
 from .panels import FilterPanel, ResultSetPanel, SimulationPanel, UnitsToolbar
+from .style import apply_dark_theme, apply_light_theme
+from . import icons as _icons
 from .widgets import AnimationCanvas, PlotCanvas
 
 logger = logging.getLogger(__name__)
@@ -40,9 +42,8 @@ class MainWindow(QMainWindow):
         self._display_units = UnitSystem()
 
         self.setWindowTitle("PMD PostProcessor")
-        self.resize(1200, 700)
+        self.resize(1500, 720)
 
-        self._build_menu_bar()
         self._build_central_area()
         self._build_status_bar()
 
@@ -52,24 +53,42 @@ class MainWindow(QMainWindow):
 
     def _build_menu_bar(self):
         menu_bar = self.menuBar()
-        file_menu = menu_bar.addMenu("&File")
-        file_menu.addAction("&Close", self.close)
 
+        # File menu
+        file_menu = menu_bar.addMenu("&File")
+
+        self._act_export_plot = QAction("Export &Plot…", self)
+        self._act_export_plot.triggered.connect(self._on_export_plot)
+        file_menu.addAction(self._act_export_plot)
+
+        self._act_export_csv = QAction("Export &CSV…", self)
+        self._act_export_csv.triggered.connect(self._on_export_csv)
+        file_menu.addAction(self._act_export_csv)
+
+        self._act_export_txt = QAction("Export &TXT…", self)
+        self._act_export_txt.triggered.connect(self._on_export_txt)
+        file_menu.addAction(self._act_export_txt)
+
+        file_menu.addSeparator()
+
+        self._act_close = QAction("&Close", self)
+        self._act_close.triggered.connect(self.close)
+        file_menu.addAction(self._act_close)
+
+        # View menu
         view_menu = menu_bar.addMenu("&View")
-        self._anim_action = QAction("Animation Pane", self, checkable=True, checked=False)
+
+        # Dark Theme is controlled from the Settings button in SimulationPanel;
+        # keep the action as a state holder but do not add it to any menu.
+        self._dark_action = QAction("Dark Theme", self, checkable=True)
+        self._dark_action.toggled.connect(self._on_toggle_theme)
+
+        self._anim_action = QAction("Animation Pane", self, checkable=True)
         self._anim_action.toggled.connect(self._on_toggle_animation)
         view_menu.addAction(self._anim_action)
-        view_menu.addSeparator()
-        self._dark_action = QAction("Dark Theme", self, checkable=True, checked=False)
-        self._dark_action.toggled.connect(self._on_toggle_theme)
-        view_menu.addAction(self._dark_action)
-
-        export_menu = menu_bar.addMenu("E&xport")
-        export_menu.addAction("Save Plot as Image…", self._on_export_plot)
-        export_menu.addAction("Export Curves to CSV…", self._on_export_csv)
 
     # ------------------------------------------------------------------
-    # Central area (splitter: SimulationPanel | FilterPanel + plot)
+    # Central area (splitter: NavigationPanel | FilterPanel + plot)
     # ------------------------------------------------------------------
 
     def _build_central_area(self):
@@ -77,20 +96,27 @@ class MainWindow(QMainWindow):
 
         # Left panel — SimulationPanel
         self._sim_panel = SimulationPanel(self._sessions)
+        self._sim_panel.setObjectName("sim_sidebar")
         self._sim_panel.setMinimumWidth(200)
         self._sim_panel.setMaximumWidth(350)
         self._sim_panel.selection_changed.connect(self._on_selection_changed)
+        self._sim_panel.theme_toggle_requested.connect(self._on_toggle_theme)
+        self._sim_panel.export_requested.connect(self._on_export_requested)
+        self._sim_panel.close_requested.connect(self.close)
+        self._sim_panel.animation_toggle_requested.connect(self._on_toggle_animation)
 
         # Right side — FilterPanel on top, vertical splitter (plot | animation), ResultSetPanel bottom
         right_widget = QWidget()
         right_layout = QVBoxLayout(right_widget)
         right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.setSpacing(0)
 
         self._units_toolbar = UnitsToolbar()
         self._units_toolbar.units_changed.connect(self._on_units_changed)
         right_layout.addWidget(self._units_toolbar)
 
         self._filter_panel = FilterPanel()
+        self._filter_panel.setObjectName("filter_card")
         self._filter_panel.add_curves_requested.connect(self._on_add_curves)
         right_layout.addWidget(self._filter_panel)
 
@@ -152,12 +178,13 @@ class MainWindow(QMainWindow):
         logger.debug("Selection changed: %s", [d["label"] for d in selection])
 
     def _on_add_curves(self, category, component, selection):
-        """Build CurveItems and add them to the ResultSetPanel."""
+        """Build CurveItems, add them to the ResultSetPanel, then clear selection."""
         curves = build_curves(category, component, selection, self._display_units)
         if curves:
             self._result_set_panel.add_curves_with_request(
                 curves, category, component, selection
             )
+            self._sim_panel.clear_selection()
         logger.debug(
             "Add curves: category=%s, component=%s, added=%d",
             category, component, len(curves),
@@ -176,12 +203,40 @@ class MainWindow(QMainWindow):
         logger.debug("Curves changed: %d visible", len(visible))
 
     def _on_toggle_animation(self, checked: bool):
-        """Show/hide the AnimationCanvas from the View menu."""
+        """Show/hide the AnimationCanvas."""
         self._anim_canvas.setVisible(checked)
+        self._sim_panel.set_animation(checked)
+
+    def _on_export_requested(self, kind: str):
+        """Dispatch export actions triggered from the sidebar File menu."""
+        if kind == "plot":
+            self._on_export_plot()
+        elif kind == "csv":
+            self._on_export_csv()
+        elif kind == "txt":
+            self._on_export_txt()
+        elif kind == "all":
+            self._on_export_all()
 
     def _on_toggle_theme(self, checked: bool):
-        """Switch the PlotCanvas between dark and light appearance."""
+        """Switch both Qt widgets and Matplotlib between dark and light theme."""
+        app = QApplication.instance()
+        if checked:
+            apply_dark_theme(app)
+        else:
+            apply_light_theme(app)
+        _icons.set_dark(checked)
+        self._sim_panel.set_dark(checked)
+        # Refresh panel icons
+        self._sim_panel.refresh_icons()
+        self._result_set_panel.refresh_icons()
+        self._filter_panel.refresh_icons()
+        # Refresh toolbar icons on both canvases
+        self._plot_canvas.set_icon_theme(checked)
+        self._anim_canvas.set_icon_theme(checked)
+        # Redraw canvases
         self._plot_canvas.set_dark(checked)
+        self._anim_canvas.set_dark(checked)
         visible = self._result_set_panel.visible_curves()
         self._plot_canvas.update_plot(visible)
 
@@ -213,3 +268,47 @@ class MainWindow(QMainWindow):
             for i, t in enumerate(T_ref):
                 row = [t] + [float(c.data[i]) if i < len(c.data) else "" for c in curves]
                 writer.writerow(row)
+
+    def _on_export_txt(self):
+        """Export all visible curves to a tab-separated text file."""
+        curves = self._result_set_panel.visible_curves()
+        if not curves:
+            QMessageBox.information(self, "Export TXT", "No visible curves to export.")
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Export Curves", "", "Text file (*.txt)"
+        )
+        if not path:
+            return
+        T_ref = curves[0].T
+        cols = ["time_s"] + [c.label for c in curves]
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("\t".join(cols) + "\n")
+            for i, t in enumerate(T_ref):
+                row = [str(t)] + [
+                    str(float(c.data[i])) if i < len(c.data) else ""
+                    for c in curves
+                ]
+                f.write("\t".join(row) + "\n")
+
+    def _on_export_all(self):
+        """Export all loaded curves (visible and hidden) to a tab-separated text file."""
+        curves = self._result_set_panel._curves
+        if not curves:
+            QMessageBox.information(self, "Export", "No curves loaded to export.")
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Export All Curves", "", "Text file (*.txt)"
+        )
+        if not path:
+            return
+        T_ref = curves[0].T
+        cols = ["time_s"] + [c.label for c in curves]
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("\t".join(cols) + "\n")
+            for i, t in enumerate(T_ref):
+                row = [str(t)] + [
+                    str(float(c.data[i])) if i < len(c.data) else ""
+                    for c in curves
+                ]
+                f.write("\t".join(row) + "\n")

@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
 )
 
 from ..models import reaction_labels
+from .. import icons as _icons
 
 # Map from display name → (result‑container key, list of component keys)
 _BODY_CATEGORIES = {
@@ -42,7 +43,8 @@ class FilterPanel(QWidget):
         self._selection: list[dict] = []
 
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(4, 2, 4, 2)
+        layout.setContentsMargins(8, 6, 8, 6)
+        layout.setSpacing(8)
 
         layout.addWidget(QLabel("Category:"))
         self._category_combo = QComboBox()
@@ -55,6 +57,8 @@ class FilterPanel(QWidget):
         layout.addWidget(self._component_combo)
 
         self._add_btn = QPushButton("Add curves")
+        self._add_btn.setProperty("primary", True)
+        self._add_btn.setIcon(_icons.icon("mdi6.plus"))
         layout.addWidget(self._add_btn)
 
         layout.addStretch()
@@ -182,3 +186,7 @@ class FilterPanel(QWidget):
         self._category_combo.setEnabled(enabled)
         self._component_combo.setEnabled(enabled)
         self._add_btn.setEnabled(enabled)
+
+    def refresh_icons(self) -> None:
+        """Re-apply icons from the current theme (call after set_dark)."""
+        self._add_btn.setIcon(_icons.icon("mdi6.plus"))

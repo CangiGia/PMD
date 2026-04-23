@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, QSize, Signal
 from PySide6.QtGui import QColor, QPixmap, QIcon
 from PySide6.QtWidgets import (
     QHBoxLayout,
+    QLabel,
     QListWidget,
     QListWidgetItem,
     QPushButton,
@@ -14,6 +15,7 @@ from PySide6.QtWidgets import (
 )
 
 from ..models import CurveItem
+from .. import icons as _icons
 
 
 def _color_icon(hex_color: str, size: int = 12) -> QIcon:
@@ -43,6 +45,11 @@ class ResultSetPanel(QWidget):
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        header = QLabel("Active Curves")
+        header.setObjectName("panel_header")
+        layout.addWidget(header)
 
         self._curve_list = QListWidget()
         self._curve_list.setSelectionMode(QListWidget.SelectionMode.ExtendedSelection)
@@ -50,14 +57,19 @@ class ResultSetPanel(QWidget):
         layout.addWidget(self._curve_list)
 
         btn_layout = QHBoxLayout()
-        btn_layout.setContentsMargins(4, 2, 4, 2)
+        btn_layout.setContentsMargins(4, 4, 4, 4)
+        btn_layout.setSpacing(6)
 
         self._remove_btn = QPushButton("Remove selected")
+        self._remove_btn.setIcon(_icons.icon("mdi6.minus-circle-outline"))
+        self._remove_btn.setIconSize(QSize(20, 20))
         self._remove_btn.setEnabled(False)
         self._remove_btn.clicked.connect(self.remove_selected)
         btn_layout.addWidget(self._remove_btn)
 
         self._clear_btn = QPushButton("Clear all")
+        self._clear_btn.setIcon(_icons.icon("mdi6.trash-can-outline"))
+        self._clear_btn.setIconSize(QSize(20, 20))
         self._clear_btn.setEnabled(False)
         self._clear_btn.clicked.connect(self.clear)
         btn_layout.addWidget(self._clear_btn)
@@ -207,3 +219,8 @@ class ResultSetPanel(QWidget):
 
     def _update_remove_btn(self):
         self._remove_btn.setEnabled(bool(self._curve_list.selectedItems()))
+
+    def refresh_icons(self) -> None:
+        """Re-apply icons from the current theme (call after set_dark)."""
+        self._remove_btn.setIcon(_icons.icon("mdi6.minus-circle-outline"))
+        self._clear_btn.setIcon(_icons.icon("mdi6.trash-can-outline"))

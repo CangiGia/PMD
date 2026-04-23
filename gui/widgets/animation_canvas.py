@@ -16,6 +16,8 @@ from PySide6.QtWidgets import (
     QLabel,
     QPushButton,
     QSlider,
+    QToolBar,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -23,6 +25,8 @@ from PySide6.QtWidgets import (
 from PMD.src.shapes import Rectangle, Circle, Polygon
 from PMD.src.constraints import RevJoint, TranJoint, PtpForce
 from PMD.src.mechanics import rotation_matrix
+from .. import icons as _icons
+from ..style import CANVAS_BG_DARK, CANVAS_BG_LIGHT, CANVAS_FG_DARK, CANVAS_FG_LIGHT
 
 # Colour palette for bodies (tab10)
 _BODY_COLORS = [
@@ -76,10 +80,18 @@ class AnimationCanvas(QWidget):
         self._ax = self._figure.add_subplot(111)
         self._ax.set_aspect("equal")
         self._canvas = FigureCanvasQTAgg(self._figure)
-        self._toolbar = NavigationToolbar2QT(self._canvas, self)
+
+        # Backend nav toolbar (hidden) — used only for navigate state/history
+        self._nav = NavigationToolbar2QT(self._canvas, self)
+        self._nav.hide()
+
+        # Custom visible toolbar (built after instance vars)
+        self._toolbar = self._build_toolbar()
 
         # --- transport controls ---
-        self._play_btn = QPushButton("\u25b6")        # ▶
+        self._play_btn = QPushButton()
+        self._play_btn.setIcon(_icons.icon("mdi6.play"))
+        self._play_btn.setToolTip("Play / Pause")
         self._play_btn.setFixedWidth(36)
         self._play_btn.clicked.connect(self._on_play_pause)
 
@@ -116,6 +128,84 @@ class AnimationCanvas(QWidget):
         # --- animation timer ---
         self._timer = self._canvas.new_timer(interval=30)
         self._timer.add_callback(self._advance_frame)
+
+    # ------------------------------------------------------------------
+    # Custom toolbar
+    # ------------------------------------------------------------------
+
+    def _build_toolbar(self) -> QToolBar:
+        tb = QToolBar()
+        tb.setMovable(False)
+        self._btn_home = self._make_btn(tb, "Home",    "mdi6.home",                    self._on_home)
+        self._btn_back = self._make_btn(tb, "Back",    "mdi6.arrow-left",              self._on_back)
+        self._btn_fwd  = self._make_btn(tb, "Forward", "mdi6.arrow-right",             self._on_fwd)
+        tb.addSeparator()
+        self._btn_pan  = self._make_btn(tb, "Pan",     "mdi6.hand-back-right-outline", self._on_pan,  checkable=True)
+        self._btn_zoom = self._make_btn(tb, "Zoom",    "mdi6.magnify",                 self._on_zoom, checkable=True)
+        tb.addSeparator()
+        self._btn_save = self._make_btn(tb, "Save",    "mdi6.content-save",            self._on_save)
+        return tb
+
+    @staticmethod
+    def _make_btn(tb: QToolBar, text: str, icon_name: str, slot,
+                  *, checkable: bool = False) -> QToolButton:
+        btn = QToolButton()
+        btn.setIcon(_icons.icon(icon_name))
+        btn.setToolTip(text)
+        btn.setCheckable(checkable)
+        btn.clicked.connect(slot)
+        tb.addWidget(btn)
+        return btn
+
+    def set_icon_theme(self, dark: bool) -> None:
+        """Re-apply icon colours after a theme toggle."""
+        self._btn_home.setIcon(_icons.icon("mdi6.home"))
+        self._btn_back.setIcon(_icons.icon("mdi6.arrow-left"))
+        self._btn_fwd.setIcon( _icons.icon("mdi6.arrow-right"))
+        self._btn_pan.setIcon( _icons.icon("mdi6.hand-back-right-outline"))
+        self._btn_zoom.setIcon(_icons.icon("mdi6.magnify"))
+        self._btn_save.setIcon(_icons.icon("mdi6.content-save"))
+        play_icon = "mdi6.pause" if self._playing else "mdi6.play"
+        self._play_btn.setIcon(_icons.icon(play_icon))
+
+    def set_dark(self, enabled: bool) -> None:
+        """Switch the figure between dark and light appearance."""
+        bg = CANVAS_BG_DARK  if enabled else CANVAS_BG_LIGHT
+        fg = CANVAS_FG_DARK  if enabled else CANVAS_FG_LIGHT
+        self._figure.set_facecolor(bg)
+        self._ax.set_facecolor(bg)
+        self._ax.tick_params(colors=fg, which="both")
+        self._ax.xaxis.label.set_color(fg)
+        self._ax.yaxis.label.set_color(fg)
+        self._ax.title.set_color(fg)
+        for spine in self._ax.spines.values():
+            spine.set_edgecolor(fg)
+        self._canvas.draw_idle()
+
+    def _on_home(self):
+        self._nav.home()
+        self._canvas.draw_idle()
+
+    def _on_back(self):
+        self._nav.back()
+        self._canvas.draw_idle()
+
+    def _on_fwd(self):
+        self._nav.forward()
+        self._canvas.draw_idle()
+
+    def _on_pan(self, checked: bool):
+        if checked:
+            self._btn_zoom.setChecked(False)
+        self._nav.pan()
+
+    def _on_zoom(self, checked: bool):
+        if checked:
+            self._btn_pan.setChecked(False)
+        self._nav.zoom()
+
+    def _on_save(self):
+        self._nav.save_figure()
 
     # ------------------------------------------------------------------
     # helpers
@@ -332,10 +422,10 @@ class AnimationCanvas(QWidget):
     def _on_play_pause(self):
         if self._playing:
             self._timer.stop()
-            self._play_btn.setText("\u25b6")   # ▶
+            self._play_btn.setIcon(_icons.icon("mdi6.play"))
         else:
             self._timer.start()
-            self._play_btn.setText("\u23f8")   # ⏸
+            self._play_btn.setIcon(_icons.icon("mdi6.pause"))
         self._playing = not self._playing
 
     def _advance_frame(self):

@@ -53,7 +53,7 @@ quarter_car = PlanarMultibodyModel(
     bodies=[B1, B2, B3],
     joints=[j1, j2, j3, j4],
     forces=[s1, s2, s3])
-T, uT = quarter_car.solve(method='Radau', t_final=10.0, t_eval=np.linspace(0, 10, 10001),
+T, uT = quarter_car.solve(method='Radau', t_final=10.0, t_eval=np.linspace(0, 5, 10001),
                           ic_correct=True)
 
 # if __name__ == '__main__':
@@ -61,3 +61,5 @@ T, uT = quarter_car.solve(method='Radau', t_final=10.0, t_eval=np.linspace(0, 10
 
 post_proc = PostProcessor(model=quarter_car, T=T, uT=uT)
 post_proc.show()
+
+# %%

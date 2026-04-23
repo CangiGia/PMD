@@ -6,6 +6,7 @@ from PySide6.QtWidgets import QApplication
 
 from .main_window import MainWindow
 from .models import Session
+from .style import apply_light_theme
 
 
 class PostProcessor:
@@ -43,6 +44,7 @@ class PostProcessor:
         app = QApplication.instance()
         if app is None:
             app = QApplication(sys.argv)
+        apply_light_theme(app)
         self._window = MainWindow(self._sessions)
         self._window.show()
         app.exec()
