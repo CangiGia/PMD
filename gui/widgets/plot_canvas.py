@@ -52,6 +52,9 @@ class PlotCanvas(QWidget):
         # Data-cursor state
         self._cursor_artists: dict = {}     # ax -> {'vline','hline','text'}
         self._cid_cursor_motion: int | None = None
+        self._cid_cursor_click: int | None = None
+        self._pinned_tips: list = []        # list of dicts (see _pin_datatip)
+        self._grid_on: bool = True
 
         # Custom visible toolbar (built after instance vars)
         self._toolbar = self._build_toolbar()
@@ -74,8 +77,11 @@ class PlotCanvas(QWidget):
         tb.addSeparator()
         self._btn_subplots = self._make_btn(tb, "Configure subplots",                 "mdi6.tune-vertical",          self._on_subplots)
         self._btn_customize = self._make_btn(tb, "Edit axis, curve and image parameters", "mdi6.format-list-bulleted",  self._on_customize)
+        self._btn_grid     = self._make_btn(tb, "Toggle grid",                          "mdi6.grid",                   self._on_grid,     checkable=True)
+        self._btn_grid.setChecked(True)
         tb.addSeparator()
-        self._btn_cursor   = self._make_btn(tb, "Cursor",   "mdi6.crosshairs-gps",          self._on_cursor,   checkable=True)
+        self._btn_cursor   = self._make_btn(tb, "Data cursor (click on a curve to pin a static tip; right-click a tip to remove it)", "mdi6.crosshairs-gps", self._on_cursor, checkable=True)
+        self._btn_clear_tips = self._make_btn(tb, "Clear all data tips",                "mdi6.eraser",                 self._on_clear_tips)
         return tb
 
     @staticmethod
@@ -99,7 +105,9 @@ class PlotCanvas(QWidget):
         self._btn_add_zoom.setIcon(_icons.icon("mdi6.selection"))
         self._btn_subplots.setIcon( _icons.icon("mdi6.tune-vertical"))
         self._btn_customize.setIcon(_icons.icon("mdi6.format-list-bulleted"))
+        self._btn_grid.setIcon(    _icons.icon("mdi6.grid"))
         self._btn_cursor.setIcon(  _icons.icon("mdi6.crosshairs-gps"))
+        self._btn_clear_tips.setIcon(_icons.icon("mdi6.eraser"))
 
     # -- Toolbar actions ------------------------------------------------
 
@@ -283,6 +291,18 @@ class PlotCanvas(QWidget):
         """
         self._nav.edit_parameters()
 
+    def _on_grid(self, checked: bool):
+        """Toggle the dashed grid on every subplot."""
+        self._grid_on = checked
+        for ax in self._axes:
+            ax.grid(checked, linestyle="--", alpha=0.5)
+        self._canvas.draw_idle()
+
+    def _on_clear_tips(self):
+        """Remove all pinned data tips."""
+        self._clear_pinned_tips()
+        self._canvas.draw_idle()
+
     # -- Data cursor ---------------------------------------------------
 
     def _activate_cursor(self) -> None:
@@ -356,6 +376,9 @@ class PlotCanvas(QWidget):
         self._cid_cursor_motion = self._canvas.mpl_connect(
             "motion_notify_event", self._on_cursor_motion
         )
+        self._cid_cursor_click = self._canvas.mpl_connect(
+            "button_press_event", self._on_cursor_click
+        )
         self._canvas.draw_idle()
 
     def _deactivate_cursor(self) -> None:
@@ -366,6 +389,12 @@ class PlotCanvas(QWidget):
             except Exception:
                 pass
             self._cid_cursor_motion = None
+        if self._cid_cursor_click is not None:
+            try:
+                self._canvas.mpl_disconnect(self._cid_cursor_click)
+            except Exception:
+                pass
+            self._cid_cursor_click = None
         for entry in self._cursor_artists.values():
             try:
                 entry["vline"].remove()
@@ -455,11 +484,154 @@ class PlotCanvas(QWidget):
 
         self._canvas.draw_idle()
 
+    # -- Data tip pinning ----------------------------------------------
+
+    def _on_cursor_click(self, event) -> None:
+        """Handle clicks while Cursor mode is active.
+
+        * Left click on a tracked axes  -> pin a static data tip.
+        * Right click near an existing tip -> remove that tip.
+        """
+        ax = event.inaxes
+        if ax is None or ax not in self._cursor_artists or event.xdata is None:
+            return
+
+        if event.button == 3:
+            self._remove_pin_near(event)
+            return
+        if event.button != 1:
+            return
+
+        entry = self._cursor_artists[ax]
+        curves = entry["curves"]
+        if not curves:
+            return
+
+        x_target = event.xdata
+        samples: list[tuple[float, float]] = []
+        for c in curves:
+            T = c.T
+            i = int(np.searchsorted(T, x_target))
+            if i >= len(T):
+                i = len(T) - 1
+            elif i > 0 and abs(T[i - 1] - x_target) < abs(T[i] - x_target):
+                i -= 1
+            samples.append((float(T[i]), float(c.data[i])))
+
+        anchor_x = samples[0][0]
+        self._pin_datatip(ax, anchor_x, curves, samples, event)
+        self._canvas.draw_idle()
+
+    def _pin_datatip(self, ax, anchor_x: float, curves: list,
+                     samples: list, event) -> None:
+        """Create a static data tip (vline + colored readout) at ``anchor_x``."""
+        from matplotlib.transforms import blended_transform_factory
+        fg = CANVAS_FG_DARK if self._dark else CANVAS_FG_LIGHT
+        bg = CANVAS_BG_DARK if self._dark else CANVAS_BG_LIGHT
+        blended = blended_transform_factory(ax.transData, ax.transAxes)
+
+        # Pin vline
+        vline = ax.axvline(
+            x=anchor_x, color=fg, linestyle="-",
+            linewidth=0.9, alpha=0.55, zorder=10,
+        )
+
+        ax_bbox = ax.get_window_extent()
+        place_left = (event.x - ax_bbox.x0) > (ax_bbox.width * 0.6)
+        ha, ox = ("right", -10) if place_left else ("left", 10)
+
+        # Anchor near the bottom of the axes (so it does not overlap the live
+        # readout pinned at the top).
+        y_anchor = 0.05
+        anns: list = []
+
+        header = ax.annotate(
+            f"x = {anchor_x:.4g}",
+            xy=(anchor_x, y_anchor), xycoords=blended,
+            xytext=(ox, 10 + 16 * len(curves)), textcoords="offset points",
+            ha=ha, va="bottom",
+            fontsize=9, color=fg, zorder=13, annotation_clip=True,
+            bbox=dict(boxstyle="round,pad=0.30",
+                      facecolor=bg, edgecolor=fg,
+                      linewidth=0.9, alpha=0.95),
+        )
+        anns.append(header)
+
+        for i, (c, (cx, cy)) in enumerate(zip(curves, samples)):
+            ann = ax.annotate(
+                f"\u25CF  {c.label}   y = {cy:.4g}",
+                xy=(anchor_x, y_anchor), xycoords=blended,
+                xytext=(ox, 10 + 16 * (len(curves) - 1 - i)),
+                textcoords="offset points",
+                ha=ha, va="bottom",
+                fontsize=9, color=c.color, zorder=13, annotation_clip=True,
+                bbox=dict(boxstyle="round,pad=0.30",
+                          facecolor=bg, edgecolor=c.color,
+                          linewidth=0.9, alpha=0.95),
+            )
+            anns.append(ann)
+
+        self._pinned_tips.append({
+            "ax": ax,
+            "x": anchor_x,
+            "vline": vline,
+            "anns": anns,
+        })
+
+    def _remove_pin_near(self, event) -> None:
+        """Remove the pin whose annotation bbox contains the click, if any."""
+        if event.x is None or event.y is None:
+            return
+        for pin in list(self._pinned_tips):
+            if pin["ax"] is not event.inaxes:
+                continue
+            for ann in pin["anns"]:
+                bbox = ann.get_window_extent()
+                if bbox.contains(event.x, event.y):
+                    self._remove_pin(pin)
+                    self._canvas.draw_idle()
+                    return
+        # Fallback: snap to the closest pin within ~12 px of the vline
+        best = None
+        best_d = 12.0
+        for pin in self._pinned_tips:
+            if pin["ax"] is not event.inaxes:
+                continue
+            try:
+                px, _ = pin["ax"].transData.transform((pin["x"], 0))
+            except Exception:
+                continue
+            d = abs(px - event.x)
+            if d < best_d:
+                best_d = d
+                best = pin
+        if best is not None:
+            self._remove_pin(best)
+            self._canvas.draw_idle()
+
+    def _remove_pin(self, pin: dict) -> None:
+        try:
+            pin["vline"].remove()
+        except Exception:
+            pass
+        for ann in pin["anns"]:
+            try:
+                ann.remove()
+            except Exception:
+                pass
+        if pin in self._pinned_tips:
+            self._pinned_tips.remove(pin)
+
+    def _clear_pinned_tips(self) -> None:
+        for pin in list(self._pinned_tips):
+            self._remove_pin(pin)
+
     def update_plot(self, curves: list[CurveItem]):
         """Clear figure, create one subplot per unit group, plot curves."""
         self._curves = curves
         self._deactivate_pending_selectors()
         self._deactivate_cursor()
+        self._clear_pinned_tips()
         self._btn_add_zoom.setChecked(False)
         self._btn_cursor.setChecked(False)
         # Remove each inset cleanly (disconnects events, clears selector)
@@ -489,7 +661,7 @@ class PlotCanvas(QWidget):
                 ax.plot(c.T, c.data, color=c.color, label=c.label)
             ax.set_ylabel(ylabel)
             ax.legend(fontsize="small", loc="best")
-            ax.grid(True, linestyle="--", alpha=0.5)
+            ax.grid(self._grid_on, linestyle="--", alpha=0.5)
             if idx == n - 1:
                 ax.set_xlabel("Time [s]")
 
@@ -530,6 +702,17 @@ class PlotCanvas(QWidget):
                     if box is not None:
                         box.set_edgecolor(fg)
                 # Curve lines keep their per-curve color and edge
+        # Re-skin pinned data tips: header gets fg, curve pills keep curve color
+        for pin in self._pinned_tips:
+            pin["vline"].set_color(fg)
+            for i, ann in enumerate(pin["anns"]):
+                box = ann.get_bbox_patch()
+                if box is not None:
+                    box.set_facecolor(bg)
+                if i == 0:
+                    ann.set_color(fg)
+                    if box is not None:
+                        box.set_edgecolor(fg)
         for _z in self._zoom_insets:
             _z.apply_theme(enabled)
         self._canvas.draw_idle()
