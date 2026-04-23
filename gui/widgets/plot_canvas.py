@@ -8,7 +8,7 @@ matplotlib.use("qtagg")
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg, NavigationToolbar2QT
 from matplotlib.figure import Figure
 from matplotlib.widgets import RectangleSelector
-from PySide6.QtCore import Signal
+from PySide6.QtCore import Signal, Qt
 
 from ._zoom_inset import ZoomInset
 from PySide6.QtWidgets import QToolBar, QToolButton, QVBoxLayout, QWidget
@@ -44,6 +44,10 @@ class PlotCanvas(QWidget):
         ax0 = self._figure.add_subplot(111)
         self._axes: list = [ax0]
         self._canvas.mpl_connect("button_press_event", self._on_click)
+        # Allow the canvas to receive keyboard events (used to delete
+        # the currently selected data tip with the Delete/Backspace key).
+        self._canvas.setFocusPolicy(Qt.StrongFocus)
+        self._canvas.mpl_connect("key_press_event", self._on_key_press)
 
         # Zoom-inset state
         self._zoom_insets: list[ZoomInset] = []
@@ -54,6 +58,7 @@ class PlotCanvas(QWidget):
         self._cid_cursor_motion: int | None = None
         self._cid_cursor_click: int | None = None
         self._pinned_tips: list = []        # list of dicts (see _pin_datatip)
+        self._selected_pin: dict | None = None
         self._grid_on: bool = True
 
         # Custom visible toolbar (built after instance vars)
@@ -80,7 +85,7 @@ class PlotCanvas(QWidget):
         self._btn_grid     = self._make_btn(tb, "Toggle grid",                          "mdi6.grid",                   self._on_grid,     checkable=True)
         self._btn_grid.setChecked(True)
         tb.addSeparator()
-        self._btn_cursor   = self._make_btn(tb, "Data cursor (click on a curve to pin a static tip; right-click a tip to remove it)", "mdi6.crosshairs-gps", self._on_cursor, checkable=True)
+        self._btn_cursor   = self._make_btn(tb, "Data cursor: click a curve to pin a static tip. Click a pin to select it, then press Delete to remove. Right-click a pin to remove directly.", "mdi6.crosshairs-gps", self._on_cursor, checkable=True)
         self._btn_clear_tips = self._make_btn(tb, "Clear all data tips",                "mdi6.eraser",                 self._on_clear_tips)
         return tb
 
@@ -486,20 +491,42 @@ class PlotCanvas(QWidget):
 
     # -- Data tip pinning ----------------------------------------------
 
+    def _hit_pin(self, event) -> dict | None:
+        """Return the pin whose annotation bbox contains the event, if any."""
+        if event.x is None or event.y is None:
+            return None
+        for pin in self._pinned_tips:
+            if pin["ax"] is not event.inaxes:
+                continue
+            for ann in pin["anns"]:
+                bbox = ann.get_window_extent()
+                if bbox.contains(event.x, event.y):
+                    return pin
+        return None
+
     def _on_cursor_click(self, event) -> None:
         """Handle clicks while Cursor mode is active.
 
-        * Left click on a tracked axes  -> pin a static data tip.
-        * Right click near an existing tip -> remove that tip.
+        * Left click on an existing pin -> select it (highlighted).
+        * Left click elsewhere on a tracked axes -> pin a new static tip.
+        * Right click on/near a pin -> remove it.
         """
         ax = event.inaxes
         if ax is None or ax not in self._cursor_artists or event.xdata is None:
+            self._select_pin(None)
             return
 
         if event.button == 3:
             self._remove_pin_near(event)
             return
         if event.button != 1:
+            return
+
+        # Click on an existing pin -> select it instead of creating a new one
+        hit = self._hit_pin(event)
+        if hit is not None:
+            self._select_pin(hit)
+            self._canvas.setFocus()        # ensure key events reach us
             return
 
         entry = self._cursor_artists[ax]
@@ -520,6 +547,9 @@ class PlotCanvas(QWidget):
 
         anchor_x = samples[0][0]
         self._pin_datatip(ax, anchor_x, curves, samples, event)
+        self._select_pin(None)         # new pin starts unselected
+        self._canvas.setFocus()
+        self._relayout_pins(ax)
         self._canvas.draw_idle()
 
     def _pin_datatip(self, ax, anchor_x: float, curves: list,
@@ -576,6 +606,12 @@ class PlotCanvas(QWidget):
             "x": anchor_x,
             "vline": vline,
             "anns": anns,
+            "y_anchor": y_anchor,
+            "base_oy": 10,            # base vertical offset (px) of header
+            "line_h": 16,             # vertical step (px) between rows
+            "n_rows": len(curves) + 1,
+            "slot": 0,                # vertical slot index, set by _relayout_pins
+            "selected": False,
         })
 
     def _remove_pin_near(self, event) -> None:
@@ -610,6 +646,9 @@ class PlotCanvas(QWidget):
             self._canvas.draw_idle()
 
     def _remove_pin(self, pin: dict) -> None:
+        if self._selected_pin is pin:
+            self._selected_pin = None
+        ax = pin["ax"]
         try:
             pin["vline"].remove()
         except Exception:
@@ -621,10 +660,118 @@ class PlotCanvas(QWidget):
                 pass
         if pin in self._pinned_tips:
             self._pinned_tips.remove(pin)
+        self._relayout_pins(ax)
 
     def _clear_pinned_tips(self) -> None:
         for pin in list(self._pinned_tips):
             self._remove_pin(pin)
+
+    # -- Selection / keyboard -----------------------------------------
+
+    def _select_pin(self, pin: dict | None) -> None:
+        """Highlight ``pin`` (None to clear selection)."""
+        if self._selected_pin is pin:
+            return
+        # De-highlight previously selected
+        prev = self._selected_pin
+        if prev is not None and prev in self._pinned_tips:
+            for ann in prev["anns"]:
+                box = ann.get_bbox_patch()
+                if box is not None:
+                    box.set_linewidth(0.9)
+            prev["vline"].set_alpha(0.55)
+            prev["vline"].set_linewidth(0.9)
+            prev["selected"] = False
+        # Highlight the new selection
+        if pin is not None:
+            for ann in pin["anns"]:
+                box = ann.get_bbox_patch()
+                if box is not None:
+                    box.set_linewidth(2.0)
+            pin["vline"].set_alpha(0.9)
+            pin["vline"].set_linewidth(1.4)
+            pin["selected"] = True
+        self._selected_pin = pin
+        self._canvas.draw_idle()
+
+    def _on_key_press(self, event) -> None:
+        """Delete / Backspace removes the currently selected pin."""
+        if event.key in ("delete", "backspace"):
+            if self._selected_pin is not None:
+                self._remove_pin(self._selected_pin)
+                self._selected_pin = None
+                self._canvas.draw_idle()
+        elif event.key == "escape":
+            self._select_pin(None)
+
+    # -- Pin layout (overlap avoidance) -------------------------------
+
+    def _relayout_pins(self, ax) -> None:
+        """Re-stack pins on ``ax`` so their annotation boxes never overlap.
+
+        Each pin's annotations are positioned at
+            xytext = (ox, base_oy + slot * (n_rows * line_h + gap) + row * line_h)
+        For each axes, sort pins by x and assign the lowest free slot whose
+        horizontal extent does not collide with already-placed pins.
+        """
+        pins = [p for p in self._pinned_tips if p["ax"] is ax]
+        if not pins:
+            return
+
+        # We need rendered extents to know horizontal overlap. Force a draw.
+        self._canvas.draw()
+
+        # Sort by x position (left to right, time grows that way)
+        pins.sort(key=lambda p: p["x"])
+
+        # Group pins by their (vline) x coord and decide slots
+        placed: list[tuple[float, float, int]] = []  # (x_left_px, x_right_px, slot)
+
+        for pin in pins:
+            # Compute combined horizontal extent of this pin's annotations
+            xs0, xs1 = float("inf"), float("-inf")
+            for ann in pin["anns"]:
+                bb = ann.get_window_extent()
+                xs0 = min(xs0, bb.x0)
+                xs1 = max(xs1, bb.x1)
+
+            # Pick the lowest slot index that does not collide horizontally
+            slot = 0
+            while True:
+                collides = any(
+                    not (xs1 < other_x0 or xs0 > other_x1) and slot == s
+                    for other_x0, other_x1, s in placed
+                )
+                if not collides:
+                    break
+                slot += 1
+            placed.append((xs0, xs1, slot))
+
+            if pin["slot"] != slot:
+                pin["slot"] = slot
+                self._apply_pin_slot(pin)
+
+    def _apply_pin_slot(self, pin: dict) -> None:
+        """Update annotation xytext offsets to match pin['slot']."""
+        base = pin["base_oy"]
+        line_h = pin["line_h"]
+        n_rows = pin["n_rows"]
+        gap = 6
+        slot_offset = pin["slot"] * (n_rows * line_h + gap)
+        # anns are [header, curve_0, curve_1, ...]
+        # header sits at top of the stack -> highest offset
+        # curves go below in order
+        anns = pin["anns"]
+        # Header offset = base + slot_offset + (n_rows-1)*line_h
+        # Curve i offset = base + slot_offset + (n_rows-2-i)*line_h
+        for i, ann in enumerate(anns):
+            # current ox is preserved; rebuild oy
+            ox = ann.xyann[0]
+            if i == 0:
+                oy = base + slot_offset + (n_rows - 1) * line_h
+            else:
+                oy = base + slot_offset + (n_rows - 1 - i) * line_h
+            ann.xyann = (ox, oy)
 
     def update_plot(self, curves: list[CurveItem]):
         """Clear figure, create one subplot per unit group, plot curves."""
