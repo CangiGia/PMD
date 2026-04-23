@@ -42,7 +42,7 @@ class MainWindow(QMainWindow):
         self._display_units = UnitSystem()
 
         self.setWindowTitle("PMD PostProcessor")
-        self.resize(1200, 700)
+        self.resize(1500, 720)
 
         self._build_central_area()
         self._build_status_bar()
