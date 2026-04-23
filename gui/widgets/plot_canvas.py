@@ -72,6 +72,9 @@ class PlotCanvas(QWidget):
         self._btn_zoom     = self._make_btn(tb, "Zoom",     "mdi6.magnify",                 self._on_zoom,     checkable=True)
         self._btn_add_zoom = self._make_btn(tb, "Add Zoom", "mdi6.selection",               self._on_add_zoom, checkable=True)
         tb.addSeparator()
+        self._btn_subplots = self._make_btn(tb, "Configure subplots",                 "mdi6.tune-vertical",          self._on_subplots)
+        self._btn_customize = self._make_btn(tb, "Edit axis, curve and image parameters", "mdi6.format-list-bulleted",  self._on_customize)
+        tb.addSeparator()
         self._btn_cursor   = self._make_btn(tb, "Cursor",   "mdi6.crosshairs-gps",          self._on_cursor,   checkable=True)
         return tb
 
@@ -94,6 +97,8 @@ class PlotCanvas(QWidget):
         self._btn_pan.setIcon(     _icons.icon("mdi6.hand-back-right-outline"))
         self._btn_zoom.setIcon(    _icons.icon("mdi6.magnify"))
         self._btn_add_zoom.setIcon(_icons.icon("mdi6.selection"))
+        self._btn_subplots.setIcon( _icons.icon("mdi6.tune-vertical"))
+        self._btn_customize.setIcon(_icons.icon("mdi6.format-list-bulleted"))
         self._btn_cursor.setIcon(  _icons.icon("mdi6.crosshairs-gps"))
 
     # -- Toolbar actions ------------------------------------------------
@@ -265,6 +270,18 @@ class PlotCanvas(QWidget):
     def _on_save(self):
         # Kept as a no-op for backwards compatibility (button was removed).
         self._nav.save_figure()
+
+    def _on_subplots(self):
+        """Open the matplotlib 'Configure subplots' dialog (margins, spacing)."""
+        self._nav.configure_subplots()
+
+    def _on_customize(self):
+        """Open the matplotlib 'Edit axis, curve and image parameters' dialog.
+
+        Lets the user toggle the grid, change line colour/style/width,
+        rename axes/legend entries, set scales, etc.
+        """
+        self._nav.edit_parameters()
 
     # -- Data cursor ---------------------------------------------------
 
