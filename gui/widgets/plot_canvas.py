@@ -68,7 +68,7 @@ class PlotCanvas(QWidget):
         tb.addSeparator()
         self._btn_pan      = self._make_btn(tb, "Pan",      "mdi6.hand-back-right-outline", self._on_pan,      checkable=True)
         self._btn_zoom     = self._make_btn(tb, "Zoom",     "mdi6.magnify",                 self._on_zoom,     checkable=True)
-        self._btn_add_zoom = self._make_btn(tb, "Add Zoom", "mdi6.magnify-plus-outline",    self._on_add_zoom, checkable=True)
+        self._btn_add_zoom = self._make_btn(tb, "Add Zoom", "mdi6.selection",               self._on_add_zoom, checkable=True)
         tb.addSeparator()
         self._btn_save = self._make_btn(tb, "Save",    "mdi6.content-save",            self._on_save)
         return tb
@@ -91,7 +91,7 @@ class PlotCanvas(QWidget):
         self._btn_fwd.setIcon(     _icons.icon("mdi6.arrow-right"))
         self._btn_pan.setIcon(     _icons.icon("mdi6.hand-back-right-outline"))
         self._btn_zoom.setIcon(    _icons.icon("mdi6.magnify"))
-        self._btn_add_zoom.setIcon(_icons.icon("mdi6.magnify-plus-outline"))
+        self._btn_add_zoom.setIcon(_icons.icon("mdi6.selection"))
         self._btn_save.setIcon(    _icons.icon("mdi6.content-save"))
 
     # -- Toolbar actions ------------------------------------------------
@@ -108,25 +108,56 @@ class PlotCanvas(QWidget):
         self._nav.forward()
         self._canvas.draw_idle()
 
+    def _sync_nav_mode(self, target: str | None) -> None:
+        """Force the matplotlib NavigationToolbar mode to ``target``.
+
+        ``target`` is one of ``'pan'``, ``'zoom'`` or ``None`` (idle).
+        ``NavigationToolbar2.pan()`` and ``zoom()`` are toggles, so we
+        inspect ``nav.mode`` and only call them when needed. This avoids
+        leaving matplotlib in pan/zoom mode when switching to the custom
+        Add Zoom mode.
+        """
+        current = str(self._nav.mode)  # '', 'pan/zoom', 'zoom rect'
+        if target == "pan":
+            if current == "zoom rect":
+                self._nav.zoom()           # turn off zoom rect
+            if str(self._nav.mode) != "pan/zoom":
+                self._nav.pan()            # turn on pan
+        elif target == "zoom":
+            if current == "pan/zoom":
+                self._nav.pan()            # turn off pan
+            if str(self._nav.mode) != "zoom rect":
+                self._nav.zoom()           # turn on zoom rect
+        else:  # idle
+            if current == "pan/zoom":
+                self._nav.pan()
+            elif current == "zoom rect":
+                self._nav.zoom()
+
     def _on_pan(self, checked: bool):
         if checked:
             self._btn_zoom.setChecked(False)
             self._btn_add_zoom.setChecked(False)
             self._deactivate_pending_selectors()
-        self._nav.pan()
+            self._sync_nav_mode("pan")
+        else:
+            self._sync_nav_mode(None)
 
     def _on_zoom(self, checked: bool):
         if checked:
             self._btn_pan.setChecked(False)
             self._btn_add_zoom.setChecked(False)
             self._deactivate_pending_selectors()
-        self._nav.zoom()
+            self._sync_nav_mode("zoom")
+        else:
+            self._sync_nav_mode(None)
 
     def _on_add_zoom(self, checked: bool):
         """Toggle the zoom-inset selection mode."""
         if checked:
             self._btn_pan.setChecked(False)
             self._btn_zoom.setChecked(False)
+            self._sync_nav_mode(None)       # ensure matplotlib pan/zoom is OFF
             self._activate_pending_selectors()
         else:
             self._deactivate_pending_selectors()
