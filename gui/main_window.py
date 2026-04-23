@@ -234,11 +234,9 @@ class MainWindow(QMainWindow):
         # Refresh toolbar icons on both canvases
         self._plot_canvas.set_icon_theme(checked)
         self._anim_canvas.set_icon_theme(checked)
-        # Redraw canvases
+        # Redraw canvases — set_dark preserves curves AND any active zoom insets
         self._plot_canvas.set_dark(checked)
         self._anim_canvas.set_dark(checked)
-        visible = self._result_set_panel.visible_curves()
-        self._plot_canvas.update_plot(visible)
 
     def _on_export_plot(self):
         """Save the current plot figure to PNG/SVG/PDF."""
