@@ -43,13 +43,15 @@ class PlotCanvas(QWidget):
         self._dark = False
         ax0 = self._figure.add_subplot(111)
         self._axes: list = [ax0]
-        self._vlines: list = [ax0.axvline(x=0, color="gray", linestyle="--",
-                                           linewidth=0.8, visible=False)]
         self._canvas.mpl_connect("button_press_event", self._on_click)
 
         # Zoom-inset state
         self._zoom_insets: list[ZoomInset] = []
         self._pending_selectors: list = []  # temporary selectors during "Add Zoom" mode
+
+        # Data-cursor state
+        self._cursor_artists: dict = {}     # ax -> {'vline','hline','text'}
+        self._cid_cursor_motion: int | None = None
 
         # Custom visible toolbar (built after instance vars)
         self._toolbar = self._build_toolbar()
@@ -70,7 +72,7 @@ class PlotCanvas(QWidget):
         self._btn_zoom     = self._make_btn(tb, "Zoom",     "mdi6.magnify",                 self._on_zoom,     checkable=True)
         self._btn_add_zoom = self._make_btn(tb, "Add Zoom", "mdi6.selection",               self._on_add_zoom, checkable=True)
         tb.addSeparator()
-        self._btn_save = self._make_btn(tb, "Save",    "mdi6.content-save",            self._on_save)
+        self._btn_cursor   = self._make_btn(tb, "Cursor",   "mdi6.crosshairs-gps",          self._on_cursor,   checkable=True)
         return tb
 
     @staticmethod
@@ -92,7 +94,7 @@ class PlotCanvas(QWidget):
         self._btn_pan.setIcon(     _icons.icon("mdi6.hand-back-right-outline"))
         self._btn_zoom.setIcon(    _icons.icon("mdi6.magnify"))
         self._btn_add_zoom.setIcon(_icons.icon("mdi6.selection"))
-        self._btn_save.setIcon(    _icons.icon("mdi6.content-save"))
+        self._btn_cursor.setIcon(  _icons.icon("mdi6.crosshairs-gps"))
 
     # -- Toolbar actions ------------------------------------------------
 
@@ -138,7 +140,9 @@ class PlotCanvas(QWidget):
         if checked:
             self._btn_zoom.setChecked(False)
             self._btn_add_zoom.setChecked(False)
+            self._btn_cursor.setChecked(False)
             self._deactivate_pending_selectors()
+            self._deactivate_cursor()
             self._sync_nav_mode("pan")
         else:
             self._sync_nav_mode(None)
@@ -147,7 +151,9 @@ class PlotCanvas(QWidget):
         if checked:
             self._btn_pan.setChecked(False)
             self._btn_add_zoom.setChecked(False)
+            self._btn_cursor.setChecked(False)
             self._deactivate_pending_selectors()
+            self._deactivate_cursor()
             self._sync_nav_mode("zoom")
         else:
             self._sync_nav_mode(None)
@@ -157,10 +163,24 @@ class PlotCanvas(QWidget):
         if checked:
             self._btn_pan.setChecked(False)
             self._btn_zoom.setChecked(False)
+            self._btn_cursor.setChecked(False)
             self._sync_nav_mode(None)       # ensure matplotlib pan/zoom is OFF
+            self._deactivate_cursor()
             self._activate_pending_selectors()
         else:
             self._deactivate_pending_selectors()
+
+    def _on_cursor(self, checked: bool):
+        """Toggle the data-cursor mode."""
+        if checked:
+            self._btn_pan.setChecked(False)
+            self._btn_zoom.setChecked(False)
+            self._btn_add_zoom.setChecked(False)
+            self._sync_nav_mode(None)
+            self._deactivate_pending_selectors()
+            self._activate_cursor()
+        else:
+            self._deactivate_cursor()
 
     # -- Zoom-inset helpers ------------------------------------------------
 
@@ -243,25 +263,127 @@ class PlotCanvas(QWidget):
         self._canvas.draw_idle()
 
     def _on_save(self):
+        # Kept as a no-op for backwards compatibility (button was removed).
         self._nav.save_figure()
+
+    # -- Data cursor ---------------------------------------------------
+
+    def _activate_cursor(self) -> None:
+        """Install per-axes crosshair artists and connect the motion handler."""
+        self._deactivate_cursor()
+        fg = CANVAS_FG_DARK if self._dark else CANVAS_FG_LIGHT
+        for ax in self._axes:
+            vline = ax.axvline(x=0, color=fg, linestyle=":", linewidth=0.8, visible=False)
+            hline = ax.axhline(y=0, color=fg, linestyle=":", linewidth=0.8, visible=False)
+            text = ax.annotate(
+                "", xy=(0, 0), xycoords="data",
+                xytext=(8, 8), textcoords="offset points",
+                fontsize=8, color=fg, visible=False, zorder=12,
+                bbox=dict(boxstyle="round,pad=0.25",
+                          facecolor=(CANVAS_BG_DARK if self._dark else CANVAS_BG_LIGHT),
+                          edgecolor=fg, linewidth=0.6, alpha=0.85),
+            )
+            self._cursor_artists[ax] = {"vline": vline, "hline": hline, "text": text}
+        self._cid_cursor_motion = self._canvas.mpl_connect(
+            "motion_notify_event", self._on_cursor_motion
+        )
+        self._canvas.draw_idle()
+
+    def _deactivate_cursor(self) -> None:
+        """Remove cursor artists and disconnect the motion handler."""
+        if self._cid_cursor_motion is not None:
+            try:
+                self._canvas.mpl_disconnect(self._cid_cursor_motion)
+            except Exception:
+                pass
+            self._cid_cursor_motion = None
+        for artists in self._cursor_artists.values():
+            for a in artists.values():
+                try:
+                    a.remove()
+                except Exception:
+                    pass
+        self._cursor_artists.clear()
+        self._canvas.draw_idle()
+
+    def _on_cursor_motion(self, event) -> None:
+        ax = event.inaxes
+        if ax is None or ax not in self._cursor_artists or event.xdata is None:
+            # Hide all cursors when the pointer is outside any tracked axes
+            changed = False
+            for artists in self._cursor_artists.values():
+                for a in artists.values():
+                    if a.get_visible():
+                        a.set_visible(False)
+                        changed = True
+            if changed:
+                self._canvas.draw_idle()
+            return
+
+        # Find the curves that belong to this axes
+        ax_idx = self._axes.index(ax)
+        groups: dict[str, list] = {}
+        for c in self._curves:
+            groups.setdefault(c.unit or "Value", []).append(c)
+        group_curves = list(groups.values())[ax_idx] if ax_idx < len(groups) else []
+        if not group_curves:
+            return
+
+        # Snap to the closest curve in y at the mouse x
+        x_target = event.xdata
+        y_target = event.ydata
+        best_x = best_y = None
+        best_dy = float("inf")
+        for c in group_curves:
+            T = c.T
+            i = int(np.searchsorted(T, x_target))
+            if i >= len(T):
+                i = len(T) - 1
+            elif i > 0 and abs(T[i - 1] - x_target) < abs(T[i] - x_target):
+                i -= 1
+            cx = float(T[i])
+            cy = float(c.data[i])
+            dy = abs(cy - y_target) if y_target is not None else 0.0
+            if dy < best_dy:
+                best_dy = dy
+                best_x, best_y = cx, cy
+
+        if best_x is None:
+            return
+
+        # Hide cursors on other axes
+        for other_ax, artists in self._cursor_artists.items():
+            if other_ax is ax:
+                continue
+            for a in artists.values():
+                if a.get_visible():
+                    a.set_visible(False)
+
+        artists = self._cursor_artists[ax]
+        artists["vline"].set_xdata([best_x])
+        artists["hline"].set_ydata([best_y])
+        artists["text"].xy = (best_x, best_y)
+        artists["text"].set_text(f"x={best_x:.4g}\ny={best_y:.4g}")
+        for a in artists.values():
+            a.set_visible(True)
+        self._canvas.draw_idle()
 
     def update_plot(self, curves: list[CurveItem]):
         """Clear figure, create one subplot per unit group, plot curves."""
         self._curves = curves
         self._deactivate_pending_selectors()
+        self._deactivate_cursor()
         self._btn_add_zoom.setChecked(False)
+        self._btn_cursor.setChecked(False)
         # Remove each inset cleanly (disconnects events, clears selector)
         for _z in list(self._zoom_insets):
             _z.remove()
         self._zoom_insets.clear()
         self._figure.clear()
-        self._vlines = []
 
         if not curves:
             ax0 = self._figure.add_subplot(111)
             self._axes = [ax0]
-            self._vlines = [ax0.axvline(x=0, color="gray", linestyle="--",
-                                         linewidth=0.8, visible=False)]
             self.set_dark(self._dark)
             self._canvas.draw_idle()
             return
@@ -276,9 +398,6 @@ class PlotCanvas(QWidget):
         for idx, (ylabel, group) in enumerate(groups.items()):
             ax = self._figure.add_subplot(n, 1, idx + 1)
             self._axes.append(ax)
-            vline = ax.axvline(x=0, color="gray", linestyle="--",
-                               linewidth=0.8, visible=False)
-            self._vlines.append(vline)
             for c in group:
                 ax.plot(c.T, c.data, color=c.color, label=c.label)
             ax.set_ylabel(ylabel)
@@ -304,13 +423,31 @@ class PlotCanvas(QWidget):
             ax.title.set_color(fg)
             for spine in ax.spines.values():
                 spine.set_edgecolor(fg)
+            # Re-skin legend so text/frame match the theme
+            leg = ax.get_legend()
+            if leg is not None:
+                for txt in leg.get_texts():
+                    txt.set_color(fg)
+                frame = leg.get_frame()
+                frame.set_facecolor(bg)
+                frame.set_edgecolor(fg)
+        # Re-skin existing cursor artists, if any
+        for artists in self._cursor_artists.values():
+            artists["vline"].set_color(fg)
+            artists["hline"].set_color(fg)
+            artists["text"].set_color(fg)
+            box = artists["text"].get_bbox_patch()
+            if box is not None:
+                box.set_facecolor(bg)
+                box.set_edgecolor(fg)
         for _z in self._zoom_insets:
             _z.apply_theme(enabled)
         self._canvas.draw_idle()
 
     def _on_click(self, event):
         """Convert a matplotlib click to the nearest time-step index and emit it."""
-        if self._btn_pan.isChecked() or self._btn_zoom.isChecked() or self._btn_add_zoom.isChecked():
+        if (self._btn_pan.isChecked() or self._btn_zoom.isChecked()
+                or self._btn_add_zoom.isChecked() or self._btn_cursor.isChecked()):
             return
         if event.button != 1:
             return
@@ -319,8 +456,4 @@ class PlotCanvas(QWidget):
         t_click = event.xdata
         T = self._curves[0].T
         step = int(np.argmin(np.abs(T - t_click)))
-        for vline in self._vlines:
-            vline.set_xdata([t_click])
-            vline.set_visible(True)
-        self._canvas.draw_idle()
         self.step_requested.emit(step)
