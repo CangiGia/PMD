@@ -353,24 +353,25 @@ QSplitter#nav_splitter::handle:vertical:hover {{
 
 /* ── Nav footer buttons (sidebar) ───────────────────── */
 QPushButton[nav="true"] {{
-    background: {_BG};
+    background: transparent;
     border: 1px solid transparent;
-    border-radius: 4px;
+    border-radius: 8px;
     color: {_TEXT_DIM};
     text-align: left;
     padding: 10px 16px;
-    margin: 1px 4px;
+    margin: 1px 6px;
     min-height: 36px;
     font-size: 10pt;
 }}
 QPushButton[nav="true"]:hover {{
-    background: {_BG};
-    border: 1px solid #a0a8b8;
+    background: #e2e5ea;
+    border: 1px solid transparent;
     color: {_TEXT};
 }}
 QPushButton[nav="true"]:pressed {{
-    background: rgba(63, 140, 255, 0.10);
-    border: 1px solid {_ACCENT};
+    background: rgba(63, 140, 255, 0.12);
+    border: 1px solid transparent;
+    color: {_TEXT};
 }}
 """
 
@@ -718,24 +719,25 @@ QSplitter#nav_splitter::handle:vertical:hover {{
 
 /* ── Nav footer buttons (sidebar) ───────────────────── */
 QPushButton[nav="true"] {{
-    background: {_D_BG_DEEP};
+    background: transparent;
     border: 1px solid transparent;
-    border-radius: 4px;
+    border-radius: 8px;
     color: {_D_TEXT_DIM};
     text-align: left;
     padding: 10px 16px;
-    margin: 1px 4px;
+    margin: 1px 6px;
     min-height: 36px;
     font-size: 10pt;
 }}
 QPushButton[nav="true"]:hover {{
-    background: {_D_BG_DEEP};
-    border: 1px solid #666f80;
+    background: #222a3a;
+    border: 1px solid transparent;
     color: {_D_TEXT};
 }}
 QPushButton[nav="true"]:pressed {{
-    background: rgba(63, 140, 255, 0.12);
-    border: 1px solid {_D_ACCENT};
+    background: rgba(63, 140, 255, 0.15);
+    border: 1px solid transparent;
+    color: {_D_TEXT};
 }}
 """
 
