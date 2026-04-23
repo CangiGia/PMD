@@ -3,11 +3,13 @@
 Each ZoomInset owns:
   - A RectangleSelector (interactive=True, drag_from_anywhere=True) on the
     parent axes — users can move or resize the selected region with handles.
-  - An inset Axes with visible tick labels and axis scales (publication style).
+  - An inset Axes with a fully opaque background (no parent curves bleeding
+    through) and visible tick labels and axis scales (publication style).
   - Four ConnectionPatch connectors, one per corner of the selection rectangle,
     that update live as the selector or the inset moves.
   - A ✕ close label (top-right of inset) — click to remove.
-  - A drag strip (top 12 % of the inset border) — drag to reposition the inset.
+  - Full-body drag: clicking and dragging anywhere on the inset body (outside
+    the ✕ and the resize handle) repositions the inset panel.
   - A resize handle (bottom-right corner, small coloured square) — drag to
     resize the inset panel.
 """
@@ -93,6 +95,10 @@ class ZoomInset:
 
     def _build_inset(self) -> None:
         self._inset_ax = self._parent_ax.inset_axes(self._pos)
+        # Render the inset above all parent axes content.
+        self._inset_ax.set_zorder(5)
+        # Ensure a fully opaque background so parent curves do not bleed through.
+        self._inset_ax.patch.set_alpha(1.0)
         for c in self._curves:
             self._inset_ax.plot(c.T, c.data, color=c.color, linewidth=0.9)
         self._inset_ax.set_xlim(self._x0, self._x1)
@@ -115,7 +121,7 @@ class ZoomInset:
             spancoords="pixels",
             props=dict(
                 edgecolor="steelblue",
-                facecolor=(0.27, 0.51, 0.71, 0.06),
+                facecolor="none",   # no fill — dashed border is enough
                 linestyle="--",
                 linewidth=1.0,
             ),
@@ -240,11 +246,10 @@ class ZoomInset:
             self._start_pos = list(self._pos)
             return
 
-        # Drag strip — top 12 % of the inset border
-        if yf > 0.88:
-            self._drag_active = True
-            self._start_px  = (event.x, event.y)
-            self._start_pos = list(self._pos)
+        # Any other point inside the inset body → drag the inset panel
+        self._drag_active = True
+        self._start_px  = (event.x, event.y)
+        self._start_pos = list(self._pos)
 
     def _on_motion(self, event) -> None:
         if event.x is None or event.y is None:
@@ -305,6 +310,7 @@ class ZoomInset:
         c_col = _CONN_DARK if dark else _CONN_LIGHT
 
         self._inset_ax.set_facecolor(bg)
+        self._inset_ax.patch.set_alpha(1.0)  # re-assert opaque after theme change
         self._inset_ax.tick_params(colors=fg, which="both")
         for spine in self._inset_ax.spines.values():
             spine.set_edgecolor(fg)
