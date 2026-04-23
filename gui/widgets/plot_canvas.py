@@ -269,21 +269,73 @@ class PlotCanvas(QWidget):
     # -- Data cursor ---------------------------------------------------
 
     def _activate_cursor(self) -> None:
-        """Install per-axes crosshair artists and connect the motion handler."""
+        """Install per-axes vertical cursor + multi-curve readout artists.
+
+        For each axes we create:
+          * a vertical guide line that snaps to the mouse x;
+          * one annotation per curve, colored like the curve, listing the
+            (x, y) value at the cursor x;
+          * a header annotation showing the cursor x.
+        All annotations are anchored INSIDE the axes (blended transform:
+        x in data, y in axes fraction) so they never push the figure
+        layout outwards.
+        """
+        from matplotlib.transforms import blended_transform_factory
+
         self._deactivate_cursor()
         fg = CANVAS_FG_DARK if self._dark else CANVAS_FG_LIGHT
-        for ax in self._axes:
-            vline = ax.axvline(x=0, color=fg, linestyle=":", linewidth=0.8, visible=False)
-            hline = ax.axhline(y=0, color=fg, linestyle=":", linewidth=0.8, visible=False)
-            text = ax.annotate(
-                "", xy=(0, 0), xycoords="data",
-                xytext=(8, 8), textcoords="offset points",
-                fontsize=8, color=fg, visible=False, zorder=12,
-                bbox=dict(boxstyle="round,pad=0.25",
-                          facecolor=(CANVAS_BG_DARK if self._dark else CANVAS_BG_LIGHT),
-                          edgecolor=fg, linewidth=0.6, alpha=0.85),
+        bg = CANVAS_BG_DARK if self._dark else CANVAS_BG_LIGHT
+
+        # Group curves once, indexed by axes
+        groups: dict[str, list] = {}
+        for c in self._curves:
+            groups.setdefault(c.unit or "Value", []).append(c)
+        groups_list = list(groups.values())
+
+        for ax_idx, ax in enumerate(self._axes):
+            curves = groups_list[ax_idx] if ax_idx < len(groups_list) else []
+
+            vline = ax.axvline(
+                x=0, color=fg, linestyle=":", linewidth=1.2,
+                visible=False, zorder=11,
             )
-            self._cursor_artists[ax] = {"vline": vline, "hline": hline, "text": text}
+
+            blended = blended_transform_factory(ax.transData, ax.transAxes)
+            lines: list = []
+
+            # Header: shows the cursor x
+            header = ax.annotate(
+                "", xy=(0, 0.98), xycoords=blended,
+                xytext=(10, -10), textcoords="offset points",
+                ha="left", va="top",
+                fontsize=9, color=fg, visible=False, zorder=12,
+                annotation_clip=True,
+                bbox=dict(boxstyle="round,pad=0.30",
+                          facecolor=bg, edgecolor=fg,
+                          linewidth=0.7, alpha=0.92),
+            )
+            lines.append(header)
+
+            # One colored line per curve
+            for i, c in enumerate(curves):
+                ann = ax.annotate(
+                    "", xy=(0, 0.98), xycoords=blended,
+                    xytext=(10, -10 - 16 * (i + 1)), textcoords="offset points",
+                    ha="left", va="top",
+                    fontsize=9, color=c.color, visible=False, zorder=12,
+                    annotation_clip=True,
+                    bbox=dict(boxstyle="round,pad=0.30",
+                              facecolor=bg, edgecolor=c.color,
+                              linewidth=0.7, alpha=0.92),
+                )
+                lines.append(ann)
+
+            self._cursor_artists[ax] = {
+                "vline": vline,
+                "lines": lines,      # [header, curve_0, curve_1, ...]
+                "curves": curves,
+            }
+
         self._cid_cursor_motion = self._canvas.mpl_connect(
             "motion_notify_event", self._on_cursor_motion
         )
@@ -297,8 +349,12 @@ class PlotCanvas(QWidget):
             except Exception:
                 pass
             self._cid_cursor_motion = None
-        for artists in self._cursor_artists.values():
-            for a in artists.values():
+        for entry in self._cursor_artists.values():
+            try:
+                entry["vline"].remove()
+            except Exception:
+                pass
+            for a in entry.get("lines", []):
                 try:
                     a.remove()
                 except Exception:
@@ -306,66 +362,80 @@ class PlotCanvas(QWidget):
         self._cursor_artists.clear()
         self._canvas.draw_idle()
 
+    def _hide_all_cursors(self) -> None:
+        for entry in self._cursor_artists.values():
+            entry["vline"].set_visible(False)
+            for a in entry.get("lines", []):
+                a.set_visible(False)
+
     def _on_cursor_motion(self, event) -> None:
         ax = event.inaxes
         if ax is None or ax not in self._cursor_artists or event.xdata is None:
-            # Hide all cursors when the pointer is outside any tracked axes
-            changed = False
-            for artists in self._cursor_artists.values():
-                for a in artists.values():
-                    if a.get_visible():
-                        a.set_visible(False)
-                        changed = True
-            if changed:
-                self._canvas.draw_idle()
+            self._hide_all_cursors()
+            self._canvas.draw_idle()
             return
 
-        # Find the curves that belong to this axes
-        ax_idx = self._axes.index(ax)
-        groups: dict[str, list] = {}
-        for c in self._curves:
-            groups.setdefault(c.unit or "Value", []).append(c)
-        group_curves = list(groups.values())[ax_idx] if ax_idx < len(groups) else []
-        if not group_curves:
+        entry = self._cursor_artists[ax]
+        curves = entry["curves"]
+        if not curves:
             return
 
-        # Snap to the closest curve in y at the mouse x
         x_target = event.xdata
-        y_target = event.ydata
-        best_x = best_y = None
-        best_dy = float("inf")
-        for c in group_curves:
+        # Sample each curve at the column closest to x_target (shared T grid is
+        # not assumed: each curve is sampled independently).
+        samples: list[tuple[float, float]] = []
+        for c in curves:
             T = c.T
             i = int(np.searchsorted(T, x_target))
             if i >= len(T):
                 i = len(T) - 1
             elif i > 0 and abs(T[i - 1] - x_target) < abs(T[i] - x_target):
                 i -= 1
-            cx = float(T[i])
-            cy = float(c.data[i])
-            dy = abs(cy - y_target) if y_target is not None else 0.0
-            if dy < best_dy:
-                best_dy = dy
-                best_x, best_y = cx, cy
+            samples.append((float(T[i]), float(c.data[i])))
 
-        if best_x is None:
-            return
+        # Use the first curve's x as the anchor (typically all share the time grid)
+        anchor_x = samples[0][0]
 
-        # Hide cursors on other axes
-        for other_ax, artists in self._cursor_artists.items():
+        # Hide cursors on the other axes
+        for other_ax, other in self._cursor_artists.items():
             if other_ax is ax:
                 continue
-            for a in artists.values():
-                if a.get_visible():
-                    a.set_visible(False)
+            other["vline"].set_visible(False)
+            for a in other.get("lines", []):
+                a.set_visible(False)
 
-        artists = self._cursor_artists[ax]
-        artists["vline"].set_xdata([best_x])
-        artists["hline"].set_ydata([best_y])
-        artists["text"].xy = (best_x, best_y)
-        artists["text"].set_text(f"x={best_x:.4g}\ny={best_y:.4g}")
-        for a in artists.values():
-            a.set_visible(True)
+        # Update the vline
+        entry["vline"].set_xdata([anchor_x])
+        entry["vline"].set_visible(True)
+
+        # Decide left/right placement based on cursor pixel position to keep
+        # the readout inside the axes.
+        ax_bbox = ax.get_window_extent()
+        place_left = (event.x - ax_bbox.x0) > (ax_bbox.width * 0.6)
+        if place_left:
+            ha = "right"
+            ox = -10
+        else:
+            ha = "left"
+            ox = 10
+
+        # Header line (x value)
+        header = entry["lines"][0]
+        header.xy = (anchor_x, 0.98)
+        header.set_text(f"x = {anchor_x:.4g}")
+        header.set_ha(ha)
+        header.xyann = (ox, -10)
+        header.set_visible(True)
+
+        # Curve lines (●  label  y = value)
+        for i, (c, (cx, cy)) in enumerate(zip(curves, samples)):
+            ann = entry["lines"][i + 1]
+            ann.xy = (anchor_x, 0.98)
+            ann.set_text(f"\u25CF  {c.label}   y = {cy:.4g}")
+            ann.set_ha(ha)
+            ann.xyann = (ox, -10 - 16 * (i + 1))
+            ann.set_visible(True)
+
         self._canvas.draw_idle()
 
     def update_plot(self, curves: list[CurveItem]):
@@ -432,14 +502,17 @@ class PlotCanvas(QWidget):
                 frame.set_facecolor(bg)
                 frame.set_edgecolor(fg)
         # Re-skin existing cursor artists, if any
-        for artists in self._cursor_artists.values():
-            artists["vline"].set_color(fg)
-            artists["hline"].set_color(fg)
-            artists["text"].set_color(fg)
-            box = artists["text"].get_bbox_patch()
-            if box is not None:
-                box.set_facecolor(bg)
-                box.set_edgecolor(fg)
+        for entry in self._cursor_artists.values():
+            entry["vline"].set_color(fg)
+            for i, a in enumerate(entry.get("lines", [])):
+                box = a.get_bbox_patch()
+                if box is not None:
+                    box.set_facecolor(bg)
+                if i == 0:
+                    a.set_color(fg)
+                    if box is not None:
+                        box.set_edgecolor(fg)
+                # Curve lines keep their per-curve color and edge
         for _z in self._zoom_insets:
             _z.apply_theme(enabled)
         self._canvas.draw_idle()
