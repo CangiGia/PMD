@@ -101,6 +101,7 @@ class SimulationPanel(QWidget):
         btn = QPushButton(f"  {text}")
         btn.setProperty("nav", "true")
         btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        btn.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         if icon_name:
             btn.setIcon(_icons.icon(icon_name, dim=True))
             btn.setIconSize(QSize(32, 32))

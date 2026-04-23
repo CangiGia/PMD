@@ -373,14 +373,6 @@ QPushButton[nav="true"]:pressed {{
     border: 1px solid transparent;
     color: {_TEXT};
 }}
-QPushButton[nav="true"]:focus {{
-    background: transparent;
-    border: 1px solid transparent;
-    outline: none;
-}}
-QPushButton[nav="true"]:focus:hover {{
-    background: #e2e5ea;
-}}
 """
 
 # ---------------------------------------------------------------------------
@@ -746,14 +738,6 @@ QPushButton[nav="true"]:pressed {{
     background: rgba(63, 140, 255, 0.15);
     border: 1px solid transparent;
     color: {_D_TEXT};
-}}
-QPushButton[nav="true"]:focus {{
-    background: transparent;
-    border: 1px solid transparent;
-    outline: none;
-}}
-QPushButton[nav="true"]:focus:hover {{
-    background: #222a3a;
 }}
 """
 
