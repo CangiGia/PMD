@@ -134,8 +134,33 @@ class ZoomInset:
         )
         self._selector.extents = (x0, x1, y0, y1)
 
+        # Veto clicks that fall inside the inset axes — otherwise the selector
+        # (which has drag_from_anywhere=True) would react first and steal the
+        # event from our drag/resize/close handlers.
+        original_ignore = self._selector.ignore
+
+        def _patched_ignore(event):
+            if original_ignore(event):
+                return True
+            if event.x is None or event.y is None:
+                return False
+            try:
+                bbox = self._inset_ax.get_window_extent()
+            except Exception:
+                return False
+            if bbox.contains(event.x, event.y):
+                return True
+            return False
+
+        self._selector.ignore = _patched_ignore
+
     def _make_connectors(self) -> list:
-        """Four ConnectionPatch lines — one per corner of the selection region."""
+        """Four ConnectionPatch lines — one per corner of the selection region.
+
+        Connectors are added as children of the parent axes (low zorder) so
+        the inset axes (high zorder) renders on top of them and visually
+        clips the lines at the inset border.
+        """
         color = _CONN_DARK if self._dark else _CONN_LIGHT
         corners = [
             ((self._x0, self._y0), (0.0, 0.0)),
@@ -149,9 +174,9 @@ class ZoomInset:
                 xyA=pa_pt,  coordsA="data",          axesA=self._parent_ax,
                 xyB=ins_pt, coordsB="axes fraction",  axesB=self._inset_ax,
                 color=color, linestyle="--", linewidth=0.8, alpha=0.7,
-                zorder=3, clip_on=False,
+                zorder=2, clip_on=False,
             )
-            self._fig.add_artist(cp)
+            self._parent_ax.add_artist(cp)
             result.append(cp)
         return result
 
