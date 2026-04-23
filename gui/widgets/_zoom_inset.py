@@ -36,6 +36,40 @@ class ZoomInset:
     _MIN_W = 0.12
     _MIN_H = 0.10
 
+    # Class-level registry of all live insets. Used to veto mouse clicks that
+    # fall inside any existing inset on RectangleSelectors created by other
+    # ZoomInsets (or by the PlotCanvas "Add Zoom" mode).
+    _registry: list["ZoomInset"] = []
+
+    # ------------------------------------------------------------------
+    # Selector veto helper
+    # ------------------------------------------------------------------
+
+    @classmethod
+    def install_selector_veto(cls, selector) -> None:
+        """Patch a selector's ignore() to reject clicks inside any live inset.
+
+        Used both by ZoomInset itself (on its persistent selector) and by
+        PlotCanvas (on the temporary "Add Zoom" selectors).
+        """
+        original_ignore = selector.ignore
+
+        def _patched(event):
+            if original_ignore(event):
+                return True
+            if event.x is None or event.y is None:
+                return False
+            for z in cls._registry:
+                try:
+                    bbox = z._inset_ax.get_window_extent()
+                except Exception:
+                    continue
+                if bbox.contains(event.x, event.y):
+                    return True
+            return False
+
+        selector.ignore = _patched
+
     def __init__(
         self,
         parent_ax,
@@ -70,6 +104,9 @@ class ZoomInset:
         self._build_selector(x0, x1, y0, y1)
         self._connectors = self._make_connectors()
         self._build_overlays()
+
+        # Register this inset (must happen before connecting events)
+        ZoomInset._registry.append(self)
 
         # Connect canvas events
         canvas = self._fig.canvas
@@ -117,6 +154,8 @@ class ZoomInset:
             button=[1],
             interactive=True,
             drag_from_anywhere=True,
+            ignore_event_outside=True,   # clicks outside the rect are ignored,
+                                          # so the rectangle never disappears
             minspanx=2, minspany=2,
             spancoords="pixels",
             props=dict(
@@ -134,25 +173,10 @@ class ZoomInset:
         )
         self._selector.extents = (x0, x1, y0, y1)
 
-        # Veto clicks that fall inside the inset axes — otherwise the selector
-        # (which has drag_from_anywhere=True) would react first and steal the
-        # event from our drag/resize/close handlers.
-        original_ignore = self._selector.ignore
-
-        def _patched_ignore(event):
-            if original_ignore(event):
-                return True
-            if event.x is None or event.y is None:
-                return False
-            try:
-                bbox = self._inset_ax.get_window_extent()
-            except Exception:
-                return False
-            if bbox.contains(event.x, event.y):
-                return True
-            return False
-
-        self._selector.ignore = _patched_ignore
+        # Veto clicks that fall inside any live inset (including this one):
+        # without this, the selector — which has drag_from_anywhere=True —
+        # would steal events from our drag/resize/close handlers.
+        ZoomInset.install_selector_veto(self._selector)
 
     def _make_connectors(self) -> list:
         """Four ConnectionPatch lines — one per corner of the selection region.
@@ -344,11 +368,37 @@ class ZoomInset:
             cp.set_color(c_col)
 
     # ------------------------------------------------------------------
+    # Pause / resume — used by PlotCanvas during the "Add Zoom" mode
+    # ------------------------------------------------------------------
+
+    def pause_selector(self) -> None:
+        """Disable the persistent selector (e.g. while a new one is being drawn)."""
+        try:
+            self._selector.set_active(False)
+            self._selector.set_visible(False)
+        except Exception:
+            pass
+
+    def resume_selector(self) -> None:
+        """Re-enable the persistent selector and restore its visible rectangle."""
+        try:
+            self._selector.set_active(True)
+            self._selector.set_visible(True)
+            # extents are preserved across set_active toggles
+        except Exception:
+            pass
+        self._fig.canvas.draw_idle()
+
+    # ------------------------------------------------------------------
     # Removal
     # ------------------------------------------------------------------
 
     def remove(self) -> None:
         """Disconnect events, remove all artists, notify the parent canvas."""
+        # Unregister first so other selectors stop vetoing clicks at our bbox
+        if self in ZoomInset._registry:
+            ZoomInset._registry.remove(self)
+
         canvas = self._fig.canvas
         for cid in self._cids:
             try:

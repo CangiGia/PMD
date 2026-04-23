@@ -134,8 +134,18 @@ class PlotCanvas(QWidget):
     # -- Zoom-inset helpers ------------------------------------------------
 
     def _activate_pending_selectors(self) -> None:
-        """Create one temporary RectangleSelector per subplot axis."""
+        """Create one temporary RectangleSelector per subplot axis.
+
+        Existing zoom-inset selectors are paused so they do not steal events
+        while a new region is being drawn. Each pending selector also vetoes
+        clicks that fall inside any existing inset.
+        """
         self._deactivate_pending_selectors()
+
+        # Pause all existing inset selectors
+        for _z in self._zoom_insets:
+            _z.pause_selector()
+
         for idx, ax in enumerate(self._axes):
             sel = RectangleSelector(
                 ax,
@@ -151,6 +161,7 @@ class PlotCanvas(QWidget):
                     linestyle="--", linewidth=1,
                 ),
             )
+            ZoomInset.install_selector_veto(sel)
             self._pending_selectors.append(sel)
 
     def _deactivate_pending_selectors(self) -> None:
@@ -161,6 +172,9 @@ class PlotCanvas(QWidget):
             except Exception:
                 pass
         self._pending_selectors.clear()
+        # Resume all existing inset selectors
+        for _z in self._zoom_insets:
+            _z.resume_selector()
 
     def _on_temp_select(self, ax_idx: int, eclick, erelease) -> None:
         """Called when the user finishes drawing the initial selection region."""
