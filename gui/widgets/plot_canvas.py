@@ -297,10 +297,21 @@ class PlotCanvas(QWidget):
         self._nav.edit_parameters()
 
     def _on_grid(self, checked: bool):
-        """Toggle the dashed grid on every subplot."""
+        """Toggle the dashed grid on every subplot.
+
+        Note: matplotlib's ``Axes.grid()`` enables the grid as soon as any
+        line property is supplied, regardless of the boolean argument
+        (UserWarning: 'First parameter to grid() is false, but line
+        properties are supplied. The grid will be enabled.'). So we apply
+        the line properties only when turning the grid ON, and call
+        grid(False) without extras when turning it OFF.
+        """
         self._grid_on = checked
         for ax in self._axes:
-            ax.grid(checked, linestyle="--", alpha=0.5)
+            if checked:
+                ax.grid(True, linestyle="--", alpha=0.5)
+            else:
+                ax.grid(False)
         self._canvas.draw_idle()
 
     def _on_clear_tips(self):
@@ -808,7 +819,10 @@ class PlotCanvas(QWidget):
                 ax.plot(c.T, c.data, color=c.color, label=c.label)
             ax.set_ylabel(ylabel)
             ax.legend(fontsize="small", loc="best")
-            ax.grid(self._grid_on, linestyle="--", alpha=0.5)
+            if self._grid_on:
+                ax.grid(True, linestyle="--", alpha=0.5)
+            else:
+                ax.grid(False)
             if idx == n - 1:
                 ax.set_xlabel("Time [s]")
 
