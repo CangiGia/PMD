@@ -157,14 +157,20 @@ class SimulationPanel(QWidget):
 
     def _on_file(self):
         menu = QMenu(self)
-        menu.addAction("Export Plot...").triggered.connect(
+
+        export_plot_menu = menu.addMenu("Export Plot")
+        export_plot_menu.addAction("Export plot as image").triggered.connect(
             lambda: self.export_requested.emit("plot")
         )
-        menu.addAction("Export CSV...").triggered.connect(
+        export_plot_menu.addAction("Export plot as CSV").triggered.connect(
             lambda: self.export_requested.emit("csv")
         )
-        menu.addAction("Export TXT...").triggered.connect(
+        export_plot_menu.addAction("Export plot as TXT").triggered.connect(
             lambda: self.export_requested.emit("txt")
+        )
+
+        menu.addAction("Export").triggered.connect(
+            lambda: self.export_requested.emit("all")
         )
         menu.addSeparator()
         menu.addAction("Close").triggered.connect(self.close_requested.emit)

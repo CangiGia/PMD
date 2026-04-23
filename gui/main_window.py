@@ -215,6 +215,8 @@ class MainWindow(QMainWindow):
             self._on_export_csv()
         elif kind == "txt":
             self._on_export_txt()
+        elif kind == "all":
+            self._on_export_all()
 
     def _on_toggle_theme(self, checked: bool):
         """Switch both Qt widgets and Matplotlib between dark and light theme."""
@@ -275,6 +277,28 @@ class MainWindow(QMainWindow):
             return
         path, _ = QFileDialog.getSaveFileName(
             self, "Export Curves", "", "Text file (*.txt)"
+        )
+        if not path:
+            return
+        T_ref = curves[0].T
+        cols = ["time_s"] + [c.label for c in curves]
+        with open(path, "w", encoding="utf-8") as f:
+            f.write("\t".join(cols) + "\n")
+            for i, t in enumerate(T_ref):
+                row = [str(t)] + [
+                    str(float(c.data[i])) if i < len(c.data) else ""
+                    for c in curves
+                ]
+                f.write("\t".join(row) + "\n")
+
+    def _on_export_all(self):
+        """Export all loaded curves (visible and hidden) to a tab-separated text file."""
+        curves = self._result_set_panel._curves
+        if not curves:
+            QMessageBox.information(self, "Export", "No curves loaded to export.")
+            return
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Export All Curves", "", "Text file (*.txt)"
         )
         if not path:
             return
