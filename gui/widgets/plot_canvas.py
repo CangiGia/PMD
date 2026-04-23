@@ -9,6 +9,8 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg, NavigationToolb
 from matplotlib.figure import Figure
 from matplotlib.widgets import RectangleSelector
 from PySide6.QtCore import Signal
+
+from ._zoom_inset import ZoomInset
 from PySide6.QtWidgets import QToolBar, QToolButton, QVBoxLayout, QWidget
 
 from ..models import CurveItem
@@ -46,8 +48,8 @@ class PlotCanvas(QWidget):
         self._canvas.mpl_connect("button_press_event", self._on_click)
 
         # Zoom-inset state
-        self._zoom_insets: list[dict] = []  # list of {ax_inset, ax_parent, indicator, connectors}
-        self._zoom_selector: RectangleSelector | None = None
+        self._zoom_insets: list[ZoomInset] = []
+        self._pending_selectors: list = []  # temporary selectors during "Add Zoom" mode
 
         # Custom visible toolbar (built after instance vars)
         self._toolbar = self._build_toolbar()
@@ -110,14 +112,14 @@ class PlotCanvas(QWidget):
         if checked:
             self._btn_zoom.setChecked(False)
             self._btn_add_zoom.setChecked(False)
-            self._deactivate_zoom_selector()
+            self._deactivate_pending_selectors()
         self._nav.pan()
 
     def _on_zoom(self, checked: bool):
         if checked:
             self._btn_pan.setChecked(False)
             self._btn_add_zoom.setChecked(False)
-            self._deactivate_zoom_selector()
+            self._deactivate_pending_selectors()
         self._nav.zoom()
 
     def _on_add_zoom(self, checked: bool):
@@ -125,34 +127,43 @@ class PlotCanvas(QWidget):
         if checked:
             self._btn_pan.setChecked(False)
             self._btn_zoom.setChecked(False)
-            self._activate_zoom_selector()
+            self._activate_pending_selectors()
         else:
-            self._deactivate_zoom_selector()
+            self._deactivate_pending_selectors()
 
     # -- Zoom-inset helpers ------------------------------------------------
 
-    def _activate_zoom_selector(self) -> None:
-        if not self._axes:
-            return
-        ax = self._axes[0]
-        self._zoom_selector = RectangleSelector(
-            ax,
-            self._on_zoom_region_selected,
-            useblit=False,
-            button=[1],
-            minspanx=5, minspany=5,
-            spancoords="pixels",
-            interactive=False,
-            props=dict(edgecolor="steelblue", facecolor="none",
-                       linestyle="--", linewidth=1, alpha=0.8),
-        )
+    def _activate_pending_selectors(self) -> None:
+        """Create one temporary RectangleSelector per subplot axis."""
+        self._deactivate_pending_selectors()
+        for idx, ax in enumerate(self._axes):
+            sel = RectangleSelector(
+                ax,
+                lambda ec, er, i=idx: self._on_temp_select(i, ec, er),
+                useblit=False,
+                button=[1],
+                interactive=False,
+                minspanx=5, minspany=5,
+                spancoords="pixels",
+                props=dict(
+                    edgecolor="steelblue",
+                    facecolor=(0.27, 0.51, 0.71, 0.06),
+                    linestyle="--", linewidth=1,
+                ),
+            )
+            self._pending_selectors.append(sel)
 
-    def _deactivate_zoom_selector(self) -> None:
-        if self._zoom_selector is not None:
-            self._zoom_selector.set_active(False)
-            self._zoom_selector = None
+    def _deactivate_pending_selectors(self) -> None:
+        for sel in self._pending_selectors:
+            try:
+                sel.set_active(False)
+                sel.clear()
+            except Exception:
+                pass
+        self._pending_selectors.clear()
 
-    def _on_zoom_region_selected(self, eclick, erelease) -> None:
+    def _on_temp_select(self, ax_idx: int, eclick, erelease) -> None:
+        """Called when the user finishes drawing the initial selection region."""
         if eclick.xdata is None or erelease.xdata is None:
             return
         x0, x1 = sorted([eclick.xdata, erelease.xdata])
@@ -160,76 +171,30 @@ class PlotCanvas(QWidget):
         if x1 - x0 < 1e-10 or y1 - y0 < 1e-10:
             return
 
-        ax_parent = eclick.inaxes
-        if ax_parent is None or ax_parent not in self._axes:
-            return
+        self._deactivate_pending_selectors()
+        self._btn_add_zoom.setChecked(False)
 
-        # Place the inset in the horizontal half opposite the selected region
-        xlim = ax_parent.get_xlim()
-        xspan = xlim[1] - xlim[0] or 1.0
-        xmid_frac = (x0 + x1) / 2 / xspan
-        inset_left = 0.56 if xmid_frac < 0.5 else 0.02
-        # [left, bottom, width, height] in parent-axes coordinates
-        ax_inset = ax_parent.inset_axes([inset_left, 0.55, 0.42, 0.38])
+        ax_parent = self._axes[ax_idx]
 
-        # Plot the same curves that belong to this axes into the inset
-        parent_idx = self._axes.index(ax_parent)
+        # Identify the curves that belong to this subplot
         groups: dict[str, list] = {}
         for c in self._curves:
             groups.setdefault(c.unit or "Value", []).append(c)
-        group_curves = list(groups.values())[parent_idx] if parent_idx < len(groups) else []
-        for c in group_curves:
-            ax_inset.plot(c.T, c.data, color=c.color, linewidth=0.9)
+        group_curves = list(groups.values())[ax_idx] if ax_idx < len(groups) else []
 
-        ax_inset.set_xlim(x0, x1)
-        ax_inset.set_ylim(y0, y1)
-        ax_inset.set_xticklabels([])
-        ax_inset.set_yticklabels([])
-        ax_inset.tick_params(axis="both", which="both", length=2)
+        def _remove_cb(z: ZoomInset) -> None:
+            if z in self._zoom_insets:
+                self._zoom_insets.remove(z)
 
-        # Indicator rectangle + leader-line connectors on the parent
-        indicator, connectors = ax_parent.indicate_inset_zoom(
-            ax_inset, edgecolor="steelblue"
+        zoom = ZoomInset(
+            parent_ax=ax_parent,
+            curves=group_curves,
+            x0=x0, x1=x1,
+            y0=y0, y1=y1,
+            dark=self._dark,
+            on_remove=_remove_cb,
         )
-
-        self._style_inset(ax_inset)
-
-        self._zoom_insets.append({
-            "ax_inset": ax_inset,
-            "ax_parent": ax_parent,
-            "indicator": indicator,
-            "connectors": connectors,
-        })
-
-        self._deactivate_zoom_selector()
-        self._btn_add_zoom.setChecked(False)
-        self._canvas.draw_idle()
-
-    def _style_inset(self, ax_inset) -> None:
-        """Apply the current dark/light theme to a single inset axes."""
-        bg = CANVAS_BG_DARK if self._dark else CANVAS_BG_LIGHT
-        fg = CANVAS_FG_DARK if self._dark else CANVAS_FG_LIGHT
-        ax_inset.set_facecolor(bg)
-        ax_inset.tick_params(colors=fg, which="both")
-        for spine in ax_inset.spines.values():
-            spine.set_edgecolor(fg)
-
-    def _remove_inset(self, entry: dict) -> None:
-        """Remove an inset axes and its indicator/connectors from the figure."""
-        for con in entry.get("connectors", []):
-            try:
-                con.set_visible(False)
-            except Exception:
-                pass
-        try:
-            entry["indicator"].set_visible(False)
-        except Exception:
-            pass
-        try:
-            entry["ax_inset"].remove()
-        except Exception:
-            pass
-        self._zoom_insets.remove(entry)
+        self._zoom_insets.append(zoom)
         self._canvas.draw_idle()
 
     def _on_save(self):
@@ -238,9 +203,12 @@ class PlotCanvas(QWidget):
     def update_plot(self, curves: list[CurveItem]):
         """Clear figure, create one subplot per unit group, plot curves."""
         self._curves = curves
-        self._deactivate_zoom_selector()
+        self._deactivate_pending_selectors()
         self._btn_add_zoom.setChecked(False)
-        self._zoom_insets.clear()  # figure.clear() removes all axes anyway
+        # Remove each inset cleanly (disconnects events, clears selector)
+        for _z in list(self._zoom_insets):
+            _z.remove()
+        self._zoom_insets.clear()
         self._figure.clear()
         self._vlines = []
 
@@ -291,24 +259,15 @@ class PlotCanvas(QWidget):
             ax.title.set_color(fg)
             for spine in ax.spines.values():
                 spine.set_edgecolor(fg)
-        for entry in self._zoom_insets:
-            self._style_inset(entry["ax_inset"])
+        for _z in self._zoom_insets:
+            _z.apply_theme(enabled)
         self._canvas.draw_idle()
 
     def _on_click(self, event):
-        """Convert a matplotlib click to the nearest time-step index and emit it.
-
-        Right-click on any zoom inset removes that inset.
-        """
-        # Right-click: remove inset if clicked inside one
-        if event.button == 3:
-            for entry in list(self._zoom_insets):
-                if event.inaxes is entry["ax_inset"]:
-                    self._remove_inset(entry)
-                    return
-
-        # Standard left-click → time-step selection
+        """Convert a matplotlib click to the nearest time-step index and emit it."""
         if self._btn_pan.isChecked() or self._btn_zoom.isChecked() or self._btn_add_zoom.isChecked():
+            return
+        if event.button != 1:
             return
         if not self._curves or event.inaxes not in self._axes or event.xdata is None:
             return
