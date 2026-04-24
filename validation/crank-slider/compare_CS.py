@@ -97,8 +97,8 @@ for i, body in enumerate(bodies):
         ('y  [m]', yA[i], yP[i]),
     ]):
         ax = axes1[i, j]
-        ax.plot(tA_cm[i], col_A, color=C_ADAMS, lw=1.8, label='ADAMS')
-        ax.plot(tP_cm[i], col_P, color=C_PMD, lw=1.4, ls='--', label='PMD')
+        ax.plot(tA_cm[i], col_A, color=C_ADAMS, lw=4, label='ADAMS')
+        ax.plot(tP_cm[i], col_P, color=C_PMD, lw=1.5, ls='--', label='PMD')
         ax.set_ylabel(coord)
         ax.set_title(f'{body}  —  {"x" if j == 0 else "y"}')
         if i == 2:
@@ -126,22 +126,22 @@ for i, (name, A_df, P_df, has_fx) in enumerate(joints):
     tP = P_df.iloc[:, 0].values
 
     if has_fx:
-        ax_l.plot(tA, A_df.iloc[:, 1].values, color=C_ADAMS, lw=1.8, label='ADAMS')
-        ax_l.plot(tP, P_df.iloc[:, 1].values, color=C_PMD, lw=1.4, ls='--', label='PMD')
+        ax_l.plot(tA, A_df.iloc[:, 1].values, color=C_ADAMS, lw=4, label='ADAMS')
+        ax_l.plot(tP, P_df.iloc[:, 1].values, color=C_PMD, lw=1.5, ls='--', label='PMD')
         ax_l.set_ylabel('Fx  [N]')
         ax_l.set_title(f'{name}  —  Fx')
         ax_l.legend(loc='best')
 
-        ax_r.plot(tA, A_df.iloc[:, 2].values, color=C_ADAMS, lw=1.8, label='ADAMS')
-        ax_r.plot(tP, P_df.iloc[:, 2].values, color=C_PMD, lw=1.4, ls='--', label='PMD')
+        ax_r.plot(tA, A_df.iloc[:, 2].values, color=C_ADAMS, lw=4, label='ADAMS')
+        ax_r.plot(tP, P_df.iloc[:, 2].values, color=C_PMD, lw=1.5, ls='--', label='PMD')
         ax_r.set_ylabel('Fy  [N]')
         ax_r.set_title(f'{name}  —  Fy')
         ax_r.legend(loc='best')
     else:
         # PMD exports only F_perp (normal to sliding direction = Fy)
         ax_l.set_visible(False)
-        ax_r.plot(tA, A_df.iloc[:, 2].values, color=C_ADAMS, lw=1.8, label='ADAMS  Fy')
-        ax_r.plot(tP, P_df.iloc[:, 1].values, color=C_PMD, lw=1.4, ls='--', label='PMD  F\u22a5')
+        ax_r.plot(tA, A_df.iloc[:, 2].values, color=C_ADAMS, lw=4, label='ADAMS  Fy')
+        ax_r.plot(tP, P_df.iloc[:, 1].values, color=C_PMD, lw=1.5, ls='--', label='PMD  F\u22a5')
         ax_r.set_ylabel('F  [N]')
         ax_r.set_title(f'{name}  —  F\u22a5 / Fy')
         ax_r.legend(loc='best')

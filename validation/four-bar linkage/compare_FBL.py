@@ -87,8 +87,8 @@ for i, link in enumerate(links):
     for j, coord in enumerate(['x', 'y']):
         ax = axes1[i, j]
         col = 2 * i + j + 1  # columns: 1=link1_x, 2=link1_y, 3=link2_x, ...
-        ax.plot(tA_cm, A_cm.iloc[:, col].values, color=C_ADAMS, lw=1.8, label='ADAMS')
-        ax.plot(tP_cm, P_cm.iloc[:, col].values, color=C_PMD, lw=1.4, ls='--', label='PMD')
+        ax.plot(tA_cm, A_cm.iloc[:, col].values, color=C_ADAMS, lw=4, label='ADAMS')
+        ax.plot(tP_cm, P_cm.iloc[:, col].values, color=C_PMD, lw=1.5, ls='--', label='PMD')
         ax.set_ylabel(f'{coord}  [mm]')
         ax.set_title(f'{link}  —  {coord}')
         if i == 2:
@@ -114,8 +114,8 @@ for i, name in enumerate(joints):
     for j, (coord, lbl) in enumerate([('Fx', 'Fx  [N]'), ('Fy', 'Fy  [N]')]):
         ax = axes2[i, j]
         col = 2 * i + j + 1
-        ax.plot(tA_rf, A_rf.iloc[:, col].values, color=C_ADAMS, lw=1.8, label='ADAMS')
-        ax.plot(tP_rf, P_rf.iloc[:, col].values, color=C_PMD, lw=1.4, ls='--', label='PMD')
+        ax.plot(tA_rf, A_rf.iloc[:, col].values, color=C_ADAMS, lw=4, label='ADAMS')
+        ax.plot(tP_rf, P_rf.iloc[:, col].values, color=C_PMD, lw=1.5, ls='--', label='PMD')
         ax.set_ylabel(lbl)
         ax.set_title(f'{name}  —  {coord}')
         if i == 3:
@@ -135,8 +135,8 @@ fig3, ax3 = plt.subplots(figsize=(9, 4), constrained_layout=True)
 fig3.suptitle('Four-Bar Linkage  —  Motion Driver Torque: ADAMS vs PMD',
               fontsize=13, fontweight='bold')
 
-ax3.plot(tA_mot, torq_A, color=C_ADAMS, lw=1.8, label='ADAMS  (torque Z)')
-ax3.plot(tP_mot, torq_P, color=C_PMD, lw=1.4, ls='--',
+ax3.plot(tA_mot, torq_A, color=C_ADAMS, lw=4, label='ADAMS  (torque Z)')
+ax3.plot(tP_mot, torq_P, color=C_PMD, lw=1.5, ls='--',
          label=r'PMD  ($\lambda_0$, motion constraint)')
 ax3.set_ylabel('Torque  [N\u00b7m]')
 ax3.set_xlabel('Time  [s]')
