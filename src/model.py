@@ -34,11 +34,16 @@ class Base:
     def __new__(cls, *args, **kwargs):
         """Create a new instance and increment the instance count.
 
-        Args:
-            *args: Positional arguments passed to the constructor.
-            **kwargs: Keyword arguments passed to the constructor.
+        Parameters
+        ----------
+        *args : tuple
+            Positional arguments passed to the constructor.
+        **kwargs : dict
+            Keyword arguments passed to the constructor.
 
-        Returns:
+        Returns
+        -------
+        object
             A new instance of the class.
         """
         instance = super().__new__(cls)
@@ -49,16 +54,20 @@ class Base:
     def get_count(cls):
         """Retrieve the current count of instances.
 
-        Returns:
-            int: The total count of instances.
+        Returns
+        -------
+        int
+            The total count of instances.
         """
         return cls.COUNT
 
     def get_type(self):
         """Get the class name of this instance.
 
-        Returns:
-            str: The class name.
+        Returns
+        -------
+        str
+            The class name.
         """
         return self.__class__.__name__
 
@@ -78,15 +87,23 @@ class Marker:
     def __init__(self, body, local_position, theta=None, name=None):
         """Initialize a Marker.
 
-        Args:
-            body: The body this marker is attached to.
-            local_position: 2-element array-like of local coordinates.
-            theta: Optional orientation angle (radians) in the local frame.
-            name: Optional human-readable name.
+        Parameters
+        ----------
+        body : Body or _GroundType
+            The body this marker is attached to.
+        local_position : array_like
+            2-element array of local coordinates.
+        theta : float, optional
+            Orientation angle (radians) in the local frame.
+        name : str, optional
+            Human-readable name.
 
-        Raises:
-            ValueError: If local_position is not a 2-element array.
-            TypeError: If theta is not a float or None.
+        Raises
+        ------
+        ValueError
+            If local_position is not a 2-element array.
+        TypeError
+            If theta is not a float or None.
         """
         pos = np.asarray(local_position, dtype=float).flatten()
         if pos.shape != (2,):
@@ -179,13 +196,19 @@ class _GroundType:
     def add_marker(self, local_position, theta=None, name=None):
         """Create and attach a new Marker to Ground.
 
-        Args:
-            local_position: 2-element array-like of local coordinates.
-            theta: Optional orientation angle (radians).
-            name: Optional human-readable name.
+        Parameters
+        ----------
+        local_position : array_like
+            2-element array of local coordinates.
+        theta : float, optional
+            Orientation angle (radians).
+        name : str, optional
+            Human-readable name.
 
-        Returns:
-            Marker: The newly created marker.
+        Returns
+        -------
+        Marker
+            The newly created marker.
         """
         marker = Marker(body=self, local_position=local_position,
                         theta=theta, name=name)
@@ -234,21 +257,33 @@ class Body(Base):
                  angular_acceleration=0, name=None, shape=None):
         """Initialize a Body.
 
-        Args:
-            mass: Mass (must be positive).
-            inertia: Moment of inertia (must be non-negative).
-            position: Initial position [x, y] or None for default [0, 0].
-            orientation: Initial orientation angle phi or None for default 0.
-            velocity: Initial velocity [dx, dy] or None for default [0, 0].
-            angular_velocity: Initial angular velocity dphi.
-            acceleration: Initial acceleration [ddx, ddy] or None.
-            angular_acceleration: Initial angular acceleration ddphi.
-            name: Optional human-readable name.
-            shape: Optional shape descriptor (Rectangle, Circle, or Polygon)
-                for visualization.
+        Parameters
+        ----------
+        mass : float
+            Mass (must be positive).
+        inertia : float
+            Moment of inertia (must be non-negative).
+        position : array_like, optional
+            Initial position [x, y]. Defaults to [0, 0].
+        orientation : float, optional
+            Initial orientation angle phi (rad). Defaults to 0.
+        velocity : array_like, optional
+            Initial velocity [dx, dy]. Defaults to [0, 0].
+        angular_velocity : float
+            Initial angular velocity dphi (rad/s).
+        acceleration : array_like, optional
+            Initial acceleration [ddx, ddy]. Defaults to [0, 0].
+        angular_acceleration : float
+            Initial angular acceleration ddphi (rad/s²).
+        name : str, optional
+            Human-readable name.
+        shape : Rectangle or Circle or Polygon, optional
+            Shape descriptor for visualization.
 
-        Raises:
-            ValueError: If mass is not positive or inertia is negative.
+        Raises
+        ------
+        ValueError
+            If mass is not positive or inertia is negative.
         """
         super().__init__()
         if mass <= 0:
@@ -325,13 +360,19 @@ class Body(Base):
     def add_marker(self, local_position, theta=None, name=None):
         """Create and attach a new Marker to this body.
 
-        Args:
-            local_position: 2-element array-like of local coordinates.
-            theta: Optional orientation angle (radians) in the local frame.
-            name: Optional human-readable name.
+        Parameters
+        ----------
+        local_position : array_like
+            2-element array of local coordinates.
+        theta : float, optional
+            Orientation angle (radians) in the local frame.
+        name : str, optional
+            Human-readable name.
 
-        Returns:
-            Marker: The newly created marker.
+        Returns
+        -------
+        Marker
+            The newly created marker.
         """
         marker = Marker(body=self, local_position=local_position,
                         theta=theta, name=name)
@@ -351,14 +392,21 @@ class Body(Base):
         The marker's local position will be computed from a reference marker
         on another body plus a local offset.
 
-        Args:
-            reference_marker: A Marker on another body to use as reference.
-            offset: 2-element offset in the reference body's local frame.
-            theta: Optional orientation angle (radians).
-            name: Optional human-readable name.
+        Parameters
+        ----------
+        reference_marker : Marker
+            A Marker on another body to use as reference.
+        offset : array_like
+            2-element offset in the reference body's local frame.
+        theta : float, optional
+            Orientation angle (radians).
+        name : str, optional
+            Human-readable name.
 
-        Returns:
-            Marker: The newly created (deferred) marker.
+        Returns
+        -------
+        Marker
+            The newly created (deferred) marker.
         """
         marker = Marker(body=self, local_position=[0, 0], theta=theta,
                         name=name)
@@ -374,15 +422,22 @@ class Body(Base):
     def get_position(self, component):
         """Get a single position component time history.
 
-        Args:
-            component: One of 'x', 'y', 'phi'.
+        Parameters
+        ----------
+        component : {'x', 'y', 'phi'}
+            The position component to retrieve.
 
-        Returns:
-            NDArray: 1-D array over time steps.
+        Returns
+        -------
+        NDArray
+            1-D array over time steps.
 
-        Raises:
-            RuntimeError: If no results are available (solve() not called).
-            KeyError: If component is invalid.
+        Raises
+        ------
+        RuntimeError
+            If no results are available (solve() not called).
+        KeyError
+            If component is invalid.
         """
         if self._result_container is None:
             raise RuntimeError("No results available. Run solve() first.")
@@ -391,11 +446,16 @@ class Body(Base):
     def get_positions(self):
         """Get all position component time histories.
 
-        Returns:
-            dict: {'x': NDArray, 'y': NDArray, 'phi': NDArray}.
+        Returns
+        -------
+        dict
+            Dictionary with keys ``'x'``, ``'y'``, ``'phi'``, each
+            mapping to a 1-D NDArray over time steps.
 
-        Raises:
-            RuntimeError: If no results are available.
+        Raises
+        ------
+        RuntimeError
+            If no results are available.
         """
         if self._result_container is None:
             raise RuntimeError("No results available. Run solve() first.")
@@ -404,15 +464,22 @@ class Body(Base):
     def get_velocity(self, component):
         """Get a single velocity component time history.
 
-        Args:
-            component: One of 'dx', 'dy', 'dphi'.
+        Parameters
+        ----------
+        component : {'dx', 'dy', 'dphi'}
+            The velocity component to retrieve.
 
-        Returns:
-            NDArray: 1-D array over time steps.
+        Returns
+        -------
+        NDArray
+            1-D array over time steps.
 
-        Raises:
-            RuntimeError: If no results are available.
-            KeyError: If component is invalid.
+        Raises
+        ------
+        RuntimeError
+            If no results are available.
+        KeyError
+            If component is invalid.
         """
         if self._result_container is None:
             raise RuntimeError("No results available. Run solve() first.")
@@ -421,11 +488,16 @@ class Body(Base):
     def get_velocities(self):
         """Get all velocity component time histories.
 
-        Returns:
-            dict: {'dx': NDArray, 'dy': NDArray, 'dphi': NDArray}.
+        Returns
+        -------
+        dict
+            Dictionary with keys ``'dx'``, ``'dy'``, ``'dphi'``, each
+            mapping to a 1-D NDArray over time steps.
 
-        Raises:
-            RuntimeError: If no results are available.
+        Raises
+        ------
+        RuntimeError
+            If no results are available.
         """
         if self._result_container is None:
             raise RuntimeError("No results available. Run solve() first.")
@@ -434,15 +506,22 @@ class Body(Base):
     def get_acceleration(self, component):
         """Get a single acceleration component time history.
 
-        Args:
-            component: One of 'ddx', 'ddy', 'ddphi'.
+        Parameters
+        ----------
+        component : {'ddx', 'ddy', 'ddphi'}
+            The acceleration component to retrieve.
 
-        Returns:
-            NDArray: 1-D array over time steps.
+        Returns
+        -------
+        NDArray
+            1-D array over time steps.
 
-        Raises:
-            RuntimeError: If no results are available.
-            KeyError: If component is invalid.
+        Raises
+        ------
+        RuntimeError
+            If no results are available.
+        KeyError
+            If component is invalid.
         """
         if self._result_container is None:
             raise RuntimeError("No results available. Run solve() first.")
@@ -451,11 +530,16 @@ class Body(Base):
     def get_accelerations(self):
         """Get all acceleration component time histories.
 
-        Returns:
-            dict: {'ddx': NDArray, 'ddy': NDArray, 'ddphi': NDArray}.
+        Returns
+        -------
+        dict
+            Dictionary with keys ``'ddx'``, ``'ddy'``, ``'ddphi'``, each
+            mapping to a 1-D NDArray over time steps.
 
-        Raises:
-            RuntimeError: If no results are available.
+        Raises
+        ------
+        RuntimeError
+            If no results are available.
         """
         if self._result_container is None:
             raise RuntimeError("No results available. Run solve() first.")

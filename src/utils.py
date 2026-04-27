@@ -17,19 +17,23 @@ from numba import njit, prange
 
 def as_column_property(name):
     """
-    Creates a property that ensures the assigned value is always stored 
+    Creates a property that ensures the assigned value is always stored
     as a column numpy array.
 
-    This function converts the assigned value to a column numpy array of 
-    shape (n, 1), regardless of whether the input is a list, a 1D numpy 
+    This function converts the assigned value to a column numpy array of
+    shape (n, 1), regardless of whether the input is a list, a 1D numpy
     array, or a 2D numpy array.
 
-    Args:
-        name (str): The name of the property to define. The actual value is stored
-            in a private attribute named with an underscore prefix.
+    Parameters
+    ----------
+    name : str
+        Name of the property to define. The value is stored in a private
+        attribute with an underscore prefix.
 
-    Returns:
-        property: A property object that enforces column-vector format on assignment.
+    Returns
+    -------
+    property
+        A property object that enforces column-vector format on assignment.
     """
     # Determine the private attribute name based on the input
     if name.startswith("_"):
@@ -64,23 +68,28 @@ def colvect(*args):
     """
     Create a column vector from the provided values.
 
-    Args:
-        *args (float | int | list): A variable number of scalar arguments, or a
-            single list whose elements become the column vector entries.
+    Parameters
+    ----------
+    *args : float, int, or list
+        A variable number of scalars, or a single list whose elements
+        become the column vector entries.
 
-    Returns:
-        numpy.ndarray: A column vector with shape (n, 1).
+    Returns
+    -------
+    numpy.ndarray
+        A column vector with shape (n, 1).
 
-    Examples:
-        >>> colvect(1, 2, 3)
-        array([[1],
-               [2],
-               [3]])
+    Examples
+    --------
+    >>> colvect(1, 2, 3)
+    array([[1],
+           [2],
+           [3]])
 
-        >>> colvect([4, 5, 6])
-        array([[4],
-               [5],
-               [6]])
+    >>> colvect([4, 5, 6])
+    array([[4],
+           [5],
+           [6]])
     """
     # if a single list is passed, use it; otherwise, use *args
     if len(args) == 1 and isinstance(args[0], list):
@@ -93,19 +102,24 @@ def rowvect(*args):
     """
     Create a row vector from the provided values.
 
-    Args:
-        *args (float | int | list): A variable number of scalar arguments, or a
-            single list whose elements become the row vector entries.
+    Parameters
+    ----------
+    *args : float, int, or list
+        A variable number of scalars, or a single list whose elements
+        become the row vector entries.
 
-    Returns:
-        numpy.ndarray: A row vector with shape (1, n).
+    Returns
+    -------
+    numpy.ndarray
+        A row vector with shape (1, n).
 
-    Examples:
-        >>> rowvect(1, 2, 3)
-        array([[1, 2, 3]])
+    Examples
+    --------
+    >>> rowvect(1, 2, 3)
+    array([[1, 2, 3]])
 
-        >>> rowvect([4, 5, 6])
-        array([[4, 5, 6]])
+    >>> rowvect([4, 5, 6])
+    array([[4, 5, 6]])
     """
     # if a single list is passed, use it; otherwise, use *args
     if len(args) == 1 and isinstance(args[0], list):
@@ -117,13 +131,18 @@ def rowvect(*args):
 def validate_shape(vec: NDArray):
     """
     Check if the input vector is a column vector with 2 rows.
-    
-    Args:
-        vec (numpy.ndarray): The input vector to be checked.
 
-    Raises:
-        TypeError: If the input is not a numpy ndarray.
-        ValueError: If the input is not a column vector with shape (2, 1).
+    Parameters
+    ----------
+    vec : numpy.ndarray
+        The input vector to be checked.
+
+    Raises
+    ------
+    TypeError
+        If the input is not a numpy ndarray.
+    ValueError
+        If the input is not a column vector with shape (2, 1).
     """
     if not isinstance(vec, np.ndarray):
         raise TypeError("Input must be a numpy ndarray.")
@@ -137,10 +156,10 @@ def validate_shape(vec: NDArray):
 def resample(x_source: NDArray,
                 y_source: NDArray,
                 x_target: NDArray,
-                fill_value: bool = None, 
+                fill_value: bool = None,
                 kind: str = 'linear' # default interpolation method
             ) -> NDArray:
-    
+
     """
     Resample a time series or signal matrix to a new target domain.
 
@@ -149,31 +168,39 @@ def resample(x_source: NDArray,
     The result is a new matrix (or vector) with the same number of columns
     as `y_source` but resampled along `x_target`.
 
-    Args:
-        x_source (NDArray): 1D array of original time or sample points corresponding
-            to `y_source`.
-        y_source (NDArray): 2D array of shape (n_samples, n_channels) of data values
-            to be resampled.
-        x_target (NDArray): 1D array of new time or sample points at which to evaluate
-            the resampled data.
-        fill_value (bool, optional): If True, allows extrapolation outside the bounds
-            of `x_source`.
-        kind (str, optional): Type of interpolation to use. Default is ``'linear'``.
-            Other options include ``'nearest'``, ``'zero'``, ``'slinear'``,
-            ``'quadratic'``, ``'cubic'``. See ``scipy.interpolate.interp1d`` for more.
+    Parameters
+    ----------
+    x_source : NDArray
+        1-D array of original time or sample points corresponding to
+        `y_source`.
+    y_source : NDArray
+        2-D array of shape (n_samples, n_channels) of data values to be
+        resampled.
+    x_target : NDArray
+        1-D array of new time or sample points at which to evaluate the
+        resampled data.
+    fill_value : bool, optional
+        If True, allows extrapolation outside the bounds of `x_source`.
+    kind : str, optional
+        Type of interpolation to use. Default is ``'linear'``. Other
+        options include ``'nearest'``, ``'zero'``, ``'slinear'``,
+        ``'quadratic'``, ``'cubic'``. See ``scipy.interpolate.interp1d``.
 
-    Returns:
-        NDArray: 2D array of shape (len(x_target), n_channels) containing the
-            resampled values.
+    Returns
+    -------
+    NDArray
+        2-D array of shape (len(x_target), n_channels) containing the
+        resampled values.
 
-    Examples:
-        >>> import numpy as np
-        >>> x_source = np.linspace(0, 10, 100)
-        >>> y_source = np.vstack([np.sin(x_source), np.cos(x_source)]).T  # (100, 2)
-        >>> x_target = np.linspace(0, 10, 20)
-        >>> y_target = resample(x_source, y_source, x_target)
-        >>> y_target.shape
-        (20, 2)
+    Examples
+    --------
+    >>> import numpy as np
+    >>> x_source = np.linspace(0, 10, 100)
+    >>> y_source = np.vstack([np.sin(x_source), np.cos(x_source)]).T  # (100, 2)
+    >>> x_target = np.linspace(0, 10, 20)
+    >>> y_target = resample(x_source, y_source, x_target)
+    >>> y_target.shape
+    (20, 2)
     """
 
     PARALLEL_COL_THRESHOLD = 50  # minimum number of columns to enable parallel processing
@@ -219,9 +246,10 @@ def resample(x_source: NDArray,
     @njit(parallel=True)
     def parallel_resample(x_source, y_source, x_target):
         """
-        Fast interpolation using NumPy's np.interp(), fully compatible with Numba.
-        This function performs interpolation in parallel across multiple columns 
-        to enance performance for large datasets.
+        Fast parallel interpolation using NumPy's np.interp(), Numba-compatible.
+
+        Performs interpolation in parallel across multiple columns to enhance
+        performance for large datasets.
         """
         n_channels = y_source.shape[1]
         y_target_parallel = np.empty((len(x_target), n_channels))

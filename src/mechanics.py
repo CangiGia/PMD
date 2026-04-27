@@ -14,12 +14,15 @@ from numpy.typing import *
 def rotate_90(vect: NDArray) -> NDArray:
     """Compute a 90-degree counterclockwise rotation of a 2D vector.
 
-    Args:
-        vect: A NumPy array with two elements representing the vector to be
-            rotated. Can be shape (2,), (2,1), or (1,2).
+    Parameters
+    ----------
+    vect : NDArray
+        A 2-element NumPy array. Can be shape (2,), (2, 1), or (1, 2).
 
-    Returns:
-        NDArray: The rotated vector, same shape as input.
+    Returns
+    -------
+    NDArray
+        The rotated vector, same shape as input.
     """
     result = np.array([-vect[1], vect[0]])
     if vect.ndim == 2:
@@ -30,11 +33,15 @@ def rotate_90(vect: NDArray) -> NDArray:
 def rotation_matrix(phi: float) -> NDArray:
     """Compute the 2D rotation matrix for a given angle.
 
-    Args:
-        phi: Angle of rotation in radians.
+    Parameters
+    ----------
+    phi : float
+        Angle of rotation in radians.
 
-    Returns:
-        NDArray: A 2x2 rotation matrix.
+    Returns
+    -------
+    NDArray
+        A 2×2 rotation matrix.
     """
     cp = np.cos(phi)
     sp = np.sin(phi)
@@ -44,15 +51,18 @@ def rotation_matrix(phi: float) -> NDArray:
 
 def functData(Ci, Functs):
     """
-    Compute and store function coefficients for analytical constraint 
+    Compute and store function coefficients for analytical constraint
     functions of type 'a', 'b', or 'c'.
 
-    This function populates the `coeff` and `ncoeff` attributes of 
+    This function populates the `coeff` and `ncoeff` attributes of
     the Function object at index `Ci` in the `Functs` list.
 
-    Args:
-        Ci (int): Index of the function in the Functs list.
-        Functs (list): List of Function objects.
+    Parameters
+    ----------
+    Ci : int
+        Index of the function in the Functs list.
+    Functs : list of Function
+        List of Function objects.
     """
     funct = Functs[Ci]
     funct_type = funct.type
@@ -115,14 +125,18 @@ def functEval(funct, t):
     derivatives — suitable for use in ``rel-rot`` / ``rel-tran`` joint
     constraint equations.
 
-    Args:
-        funct (Function): A Function object previously processed by ``functData``.
-        t (float): Current simulation time.
+    Parameters
+    ----------
+    funct : Function
+        A Function object previously processed by ``functData``.
+    t : float
+        Current simulation time.
 
-    Returns:
-        tuple[float, float, float]: A tuple ``(f, f_d, f_dd)`` where ``f`` is the
-            function value at time ``t``, ``f_d`` is the first time derivative,
-            and ``f_dd`` is the second time derivative.
+    Returns
+    -------
+    tuple of float
+        ``(f, f_d, f_dd)``: function value, first derivative, and second
+        derivative at time ``t``.
     """
     ftype = funct.type
     c = funct.coeff
@@ -179,23 +193,33 @@ def friction_A(mu_s: float, mu_d: float, v_s: float, p: float, k_t: float, v: fl
     """
     Calculate the friction force based on the Anderson et al. model.
 
-    This function computes the friction force using a model where the 
-    viscous friction is not included. The formula takes into account the 
-    transition from static to dynamic friction, with an exponential decay 
-    controlled by the slip velocity `v` relative to a reference slip 
+    This function computes the friction force using a model where the
+    viscous friction is not included. The formula takes into account the
+    transition from static to dynamic friction, with an exponential decay
+    controlled by the slip velocity `v` relative to a reference slip
     velocity `v_s`.
 
-    Args:
-        mu_s (float): Coefficient of static friction.
-        mu_d (float): Coefficient of dynamic friction.
-        v_s (float): Reference slip velocity for friction transition (typical: 0.001 m/s).
-        p (float): Exponent parameter controlling exponential decay rate (typical: 2).
-        k_t (float): Parameter scaling the hyperbolic tangent function (typical: 10).
-        v (float): Relative slip velocity between contacting surfaces.
-        fN (float): Normal force perpendicular to the contact surface.
+    Parameters
+    ----------
+    mu_s : float
+        Coefficient of static friction.
+    mu_d : float
+        Coefficient of dynamic friction.
+    v_s : float
+        Reference slip velocity for friction transition (typical: 0.001 m/s).
+    p : float
+        Exponent controlling exponential decay rate (typical: 2).
+    k_t : float
+        Parameter scaling the hyperbolic tangent function (typical: 10).
+    v : float
+        Relative slip velocity between contacting surfaces.
+    fN : float
+        Normal force perpendicular to the contact surface.
 
-    Returns:
-        float: The computed friction force.
+    Returns
+    -------
+    float
+        The computed friction force.
     """
     friction_force = fN * (mu_d + (mu_s - mu_d) * np.exp(-(abs(v) / v_s) ** p)) * np.tanh(k_t * v)
     return friction_force

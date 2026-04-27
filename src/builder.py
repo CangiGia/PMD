@@ -19,9 +19,12 @@ def _assemble(bodies, joints):
     Uses BFS spanning tree from Ground, forward kinematics along tree
     edges, deferred marker resolution, and Newton-Raphson loop closing.
 
-    Args:
-        bodies: List of Body objects.
-        joints: List of Joint objects.
+    Parameters
+    ----------
+    bodies : list of Body
+        List of Body objects.
+    joints : list of Joint
+        List of Joint objects.
     """
     # Build spanning tree via BFS from Ground
     visited = {id(Ground): Ground}
@@ -68,8 +71,10 @@ def _assemble(bodies, joints):
 def _resolve_deferred_markers(bodies):
     """Compute local position of markers created with ``add_marker_at()``.
 
-    Args:
-        bodies: List of Body objects.
+    Parameters
+    ----------
+    bodies : list of Body
+        List of Body objects.
     """
     for body in bodies:
         for m in body._markers:
@@ -99,11 +104,15 @@ def _resolve_deferred_markers(bodies):
 def _eval_loop_phi(loop_joints):
     """Evaluate loop-closing constraint residuals.
 
-    Args:
-        loop_joints: List of loop-closing Joint objects.
+    Parameters
+    ----------
+    loop_joints : list of Joint
+        List of loop-closing Joint objects.
 
-    Returns:
-        1D ndarray of constraint residuals.
+    Returns
+    -------
+    ndarray
+        1-D array of constraint residuals.
     """
     rows = []
     for joint in loop_joints:
@@ -126,12 +135,17 @@ def _eval_loop_phi(loop_joints):
 def _eval_loop_jacobian(loop_joints, bodies):
     """Evaluate loop-closing constraint Jacobian.
 
-    Args:
-        loop_joints: List of loop-closing Joint objects.
-        bodies: List of Body objects.
+    Parameters
+    ----------
+    loop_joints : list of Joint
+        List of loop-closing Joint objects.
+    bodies : list of Body
+        List of Body objects.
 
-    Returns:
-        2D ndarray of shape (nRows, 3*nBodies).
+    Returns
+    -------
+    ndarray
+        2-D array of shape (nRows, 3*nBodies).
     """
     nq = 3 * len(bodies)
     body_idx = {id(b): i for i, b in enumerate(bodies)}
@@ -172,12 +186,17 @@ def _eval_loop_jacobian(loop_joints, bodies):
 def _close_loops(loop_joints, bodies):
     """Newton-Raphson to satisfy loop-closing constraints.
 
-    Args:
-        loop_joints: List of loop-closing Joint objects.
-        bodies: List of Body objects.
+    Parameters
+    ----------
+    loop_joints : list of Joint
+        List of loop-closing Joint objects.
+    bodies : list of Body
+        List of Body objects.
 
-    Raises:
-        RuntimeError: If convergence is not achieved in 50 iterations.
+    Raises
+    ------
+    RuntimeError
+        If convergence is not achieved in 50 iterations.
     """
     for iteration in range(50):
         phi = _eval_loop_phi(loop_joints)

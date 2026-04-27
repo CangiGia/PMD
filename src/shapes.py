@@ -14,9 +14,12 @@ from dataclasses import dataclass
 class Rectangle:
     """Rectangular body shape centered on the body's CoM.
 
-    Args:
-        width: Extent along the body's local x-axis (m).
-        height: Extent along the body's local y-axis (m).
+    Attributes
+    ----------
+    width : float
+        Extent along the body's local x-axis (m).
+    height : float
+        Extent along the body's local y-axis (m).
     """
     width: float
     height: float
@@ -26,8 +29,10 @@ class Rectangle:
 class Circle:
     """Circular body shape centered on the body's CoM.
 
-    Args:
-        radius: Circle radius (m).
+    Attributes
+    ----------
+    radius : float
+        Circle radius (m).
     """
     radius: float
 
@@ -36,8 +41,10 @@ class Circle:
 class Polygon:
     """Arbitrary polygon shape in the body's local frame.
 
-    Args:
-        vertices: (N, 2) array of vertices in local frame, CCW order.
+    Attributes
+    ----------
+    vertices : numpy.ndarray
+        Array of shape (N, 2) with vertices in local frame, CCW order.
     """
     vertices: np.ndarray
 

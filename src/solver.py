@@ -48,11 +48,16 @@ logger = logging.getLogger(__name__)
 class PlanarMultibodyModel:
     """Planar multi-body dynamics model and solver.
 
-    Attributes:
-        Bodies: List of Body objects.
-        Joints: List of Joint objects.
-        Forces: List of Force objects.
-        Functs: List of Function objects.
+    Attributes
+    ----------
+    Bodies : list of Body
+        List of Body objects.
+    Joints : list of Joint
+        List of Joint objects.
+    Forces : list of Force
+        List of Force objects.
+    Functs : list of Function
+        List of Function objects.
     """
 
     def __init__(self, bodies, joints=None, forces=None, functions=None, units=None):
@@ -209,8 +214,10 @@ class PlanarMultibodyModel:
     def _compute_constraints(self):
         """Evaluate all constraint equations.
 
-        Returns:
-            ndarray of shape (nConst, 1), or (0, 1) if no joints.
+        Returns
+        -------
+        ndarray
+            Array of shape (nConst, 1), or (0, 1) if no joints.
         """
         if not self.Joints:
             return np.zeros((0, 1))
@@ -228,8 +235,10 @@ class PlanarMultibodyModel:
     def _compute_jacobian(self):
         """Compute the Jacobian matrix for all constraints.
 
-        Returns:
-            ndarray of shape (nConst, nB3).
+        Returns
+        -------
+        ndarray
+            Array of shape (nConst, nB3).
         """
         nConst = self.Joints[-1]._rowe
         nB3 = 3 * len(self.Bodies)
@@ -256,8 +265,10 @@ class PlanarMultibodyModel:
     def _rhs_velocity(self):
         """Compute the right-hand side of velocity constraints.
 
-        Returns:
-            ndarray of shape (nConst, 1).
+        Returns
+        -------
+        ndarray
+            Array of shape (nConst, 1).
         """
         nConst = self.Joints[-1]._rowe if self.Joints else 0
         rhsv = np.zeros((nConst, 1))
@@ -274,8 +285,10 @@ class PlanarMultibodyModel:
     def _rhs_acceleration(self):
         """Compute the right-hand side of acceleration constraints (gamma).
 
-        Returns:
-            ndarray of shape (nConst, 1).
+        Returns
+        -------
+        ndarray
+            Array of shape (nConst, 1).
         """
         nConst = self.Joints[-1]._rowe
         rhsa = np.zeros([nConst, 1])
@@ -335,8 +348,10 @@ class PlanarMultibodyModel:
     def _compute_force(self):
         """Compute the array of forces acting on the system.
 
-        Returns:
-            ndarray of shape (nB3, 1).
+        Returns
+        -------
+        ndarray
+            Array of shape (nB3, 1).
         """
         for body in self.Bodies:
             body._force = colvect([0.0, 0.0])
@@ -427,11 +442,16 @@ class PlanarMultibodyModel:
     def _analysis(self, t, u):
         """Solve constrained equations of motion at time t.
 
-        Args:
-            t: Current time.
-            u: State vector.
+        Parameters
+        ----------
+        t : float
+            Current time.
+        u : ndarray
+            State vector.
 
-        Returns:
+        Returns
+        -------
+        ndarray
             Flattened derivative vector ud.
         """
         self._num += 1
@@ -506,9 +526,12 @@ class PlanarMultibodyModel:
     def _distribute_results(self, T, uT):
         """Push simulation results into Body and Joint _result_container dicts.
 
-        Args:
-            T: Time vector, shape (nSteps,).
-            uT: State matrix, shape (nSteps, 2*nB3).
+        Parameters
+        ----------
+        T : ndarray
+            Time vector, shape (nSteps,).
+        uT : ndarray
+            State matrix, shape (nSteps, 2*nB3).
         """
         nB3 = 3 * self.nB
         accelerations, reactions = self._post_process(T, uT)
@@ -703,12 +726,17 @@ class PlanarMultibodyModel:
     def _post_process(self, T, uT):
         """Recalculate accelerations and Lagrange multipliers on t_eval grid.
 
-        Args:
-            T: Time vector, shape (nSteps,).
-            uT: State matrix, shape (nSteps, 2*nB3).
+        Parameters
+        ----------
+        T : ndarray
+            Time vector, shape (nSteps,).
+        uT : ndarray
+            State matrix, shape (nSteps, 2*nB3).
 
-        Returns:
-            Tuple of (accelerations, reactions) arrays.
+        Returns
+        -------
+        tuple
+            ``(accelerations, reactions)`` arrays.
         """
         nB3 = 3 * self.nB
         nConst = self.Joints[-1]._rowe if self.Joints else 0
@@ -1045,6 +1073,17 @@ class PlanarMultibodyModel:
 
         Used by ``_solve_kinematic`` and ``_solve_static`` which compute
         accelerations and reactions analytically (not via ``_post_process``).
+
+        Parameters
+        ----------
+        T : ndarray
+            Time vector, shape (nSteps,).
+        uT : ndarray
+            State matrix, shape (nSteps, 2*nB3).
+        accelerations : ndarray
+            Acceleration matrix, shape (nSteps, nB3).
+        reactions : ndarray
+            Reaction matrix, shape (nSteps, nConst).
         """
         nB3 = 3 * self.nB
         for Bi, body in enumerate(self.Bodies):
@@ -1085,8 +1124,19 @@ class PlanarMultibodyModel:
         Supported joint types: RevJoint, TranJoint, RevRevJoint,
         RevTranJoint, RigidJoint, DiscJoint, RelRotJoint, RelTranJoint.
 
-        Returns:
-            ca.SX column vector of shape ``(nC, 1)``.
+        Parameters
+        ----------
+        ca : module
+            The CasADi module.
+        q_sym : ca.SX
+            Symbolic position vector of shape (nB3, 1).
+        t_sym : ca.SX
+            Symbolic time variable.
+
+        Returns
+        -------
+        ca.SX
+            Column vector of shape (nC, 1).
         """
         from .constraints import (RevJoint, TranJoint, RevRevJoint,
                                   RevTranJoint, RigidJoint, DiscJoint,
@@ -1273,8 +1323,21 @@ class PlanarMultibodyModel:
         Supported force types: Weight, PtpForce, RotSdaForce, LocalForce,
         GlobalForce, Torque.
 
-        Returns:
-            ca.SX column vector of shape ``(nB3, 1)``.
+        Parameters
+        ----------
+        ca : module
+            The CasADi module.
+        q_sym : ca.SX
+            Symbolic position vector of shape (nB3, 1).
+        v_sym : ca.SX
+            Symbolic velocity vector of shape (nB3, 1).
+        t_sym : ca.SX
+            Symbolic time variable.
+
+        Returns
+        -------
+        ca.SX
+            Column vector of shape (nB3, 1).
         """
         from .constraints import (Weight, PtpForce, RotSdaForce,
                                   LocalForce, GlobalForce, Torque,
@@ -1448,15 +1511,23 @@ class PlanarMultibodyModel:
             M v_dot = Q(t, q, v) - Phi_q^T(q, t) lam
             0 = Phi(q, t)
 
-        Args:
-            t_final:    Final simulation time.
-            dt:         Output time step (used when *t_eval* is absent).
-            ic_correct: Project initial conditions before integrating.
-            t_eval:     Explicit array of output time points.
-            t_span:     ``(t0, tf)`` shorthand; overrides *t_final*.
+        Parameters
+        ----------
+        t_final : float, optional
+            Final simulation time.
+        dt : float, optional
+            Output time step (used when *t_eval* is absent).
+        ic_correct : bool, optional
+            Project initial conditions before integrating.
+        t_eval : array-like, optional
+            Explicit array of output time points.
+        t_span : tuple of float, optional
+            ``(t0, tf)`` shorthand; overrides *t_final*.
 
-        Returns:
-            Tuple ``(T, uT)`` compatible with ``_solve_dynamic`` output.
+        Returns
+        -------
+        tuple
+            ``(T, uT)`` compatible with ``_solve_dynamic`` output.
         """
         try:
             import casadi as ca

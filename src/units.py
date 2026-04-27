@@ -117,6 +117,12 @@ class UnitSystem:
         Parameters
         ----------
         dimension : ``"length"`` | ``"force"`` | ``"angle"`` | ``"moment"``
+            The physical dimension to convert.
+
+        Returns
+        -------
+        float
+            Multiplicative factor such that ``value_SI = value * factor``.
         """
         if dimension == "moment":
             return _TO_SI[self.force] * _TO_SI[self.length]
@@ -153,8 +159,14 @@ def conversion_factor(model_us: "UnitSystem", display_us: "UnitSystem",
         Units in which the model data are stored.
     display_us : UnitSystem
         Units in which the GUI should display the data.
-    dimension : ``"length"`` | ``"velocity"`` | ``"acceleration"``
+    dimension : ``"length"`` | ``"velocity"`` | ``"acceleration"`` \\
                 | ``"force"`` | ``"moment"`` | ``"angle"``
+        The physical dimension to convert.
+
+    Returns
+    -------
+    float
+        Multiplicative factor to convert model values to display values.
     """
     if dimension == "velocity":
         # [length_model/s]  →  [length_display/s]

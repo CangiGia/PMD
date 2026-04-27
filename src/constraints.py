@@ -40,12 +40,18 @@ class Joint(ABC, Base):
                  iBody=None, jBody=None, name=None):
         """Initialize a Joint.
 
-        Args:
-            iMarker: Marker on body i.
-            jMarker: Marker on body j.
-            iBody: Explicit body i (used if iMarker is None).
-            jBody: Explicit body j (used if jMarker is None).
-            name: Optional human-readable name.
+        Parameters
+        ----------
+        iMarker : Marker, optional
+            Marker on body i.
+        jMarker : Marker, optional
+            Marker on body j.
+        iBody : Body, optional
+            Explicit body i (used if iMarker is None).
+        jBody : Body, optional
+            Explicit body j (used if jMarker is None).
+        name : str, optional
+            Human-readable name.
         """
         super().__init__()
         self.iMarker = iMarker
@@ -80,63 +86,85 @@ class Joint(ABC, Base):
 
         Called once by PlanarMultibodyModel._initialize().
 
-        Args:
-            model: The PlanarMultibodyModel instance.
+        Parameters
+        ----------
+        model : PlanarMultibodyModel
+            The model instance.
         """
 
     @abstractmethod
     def compute_phi(self, model):
         """Evaluate constraint equations.
 
-        Args:
-            model: The PlanarMultibodyModel instance.
+        Parameters
+        ----------
+        model : PlanarMultibodyModel
+            The model instance.
 
-        Returns:
-            ndarray: Constraint residual, shape (mrows, 1).
+        Returns
+        -------
+        ndarray
+            Constraint residual, shape (mrows, 1).
         """
 
     @abstractmethod
     def compute_jacobian_i(self, model):
         """Compute the Jacobian block for body i.
 
-        Args:
-            model: The PlanarMultibodyModel instance.
+        Parameters
+        ----------
+        model : PlanarMultibodyModel
+            The model instance.
 
-        Returns:
-            ndarray: Jacobian block for body i, shape (mrows, 3).
+        Returns
+        -------
+        ndarray
+            Jacobian block for body i, shape (mrows, 3).
         """
 
     @abstractmethod
     def compute_jacobian_j(self, model):
         """Compute the Jacobian block for body j.
 
-        Args:
-            model: The PlanarMultibodyModel instance.
+        Parameters
+        ----------
+        model : PlanarMultibodyModel
+            The model instance.
 
-        Returns:
-            ndarray: Jacobian block for body j, shape (mrows, 3).
+        Returns
+        -------
+        ndarray
+            Jacobian block for body j, shape (mrows, 3).
         """
 
     @abstractmethod
     def compute_rhs_velocity(self, model):
         """Compute right-hand side of velocity constraint.
 
-        Args:
-            model: The PlanarMultibodyModel instance.
+        Parameters
+        ----------
+        model : PlanarMultibodyModel
+            The model instance.
 
-        Returns:
-            ndarray or None: RHS velocity, shape (mrows, 1), or None if zero.
+        Returns
+        -------
+        ndarray or None
+            RHS velocity, shape (mrows, 1), or None if zero.
         """
 
     @abstractmethod
     def compute_rhs_acceleration(self, model):
         """Compute right-hand side of acceleration constraint (gamma).
 
-        Args:
-            model: The PlanarMultibodyModel instance.
+        Parameters
+        ----------
+        model : PlanarMultibodyModel
+            The model instance.
 
-        Returns:
-            ndarray: RHS acceleration, shape (mrows, 1).
+        Returns
+        -------
+        ndarray
+            RHS acceleration, shape (mrows, 1).
         """
 
     def fk_step(self, parent, child):
@@ -145,24 +173,34 @@ class Joint(ABC, Base):
         Default implementation does nothing (for joints without FK role).
         Override in subclasses that participate in assembly FK.
 
-        Args:
-            parent: The parent body.
-            child: The child body.
+        Parameters
+        ----------
+        parent : Body
+            The parent body.
+        child : Body
+            The child body.
         """
 
     def get_reaction(self, index=None):
         """Get reaction force time history for a single constraint row.
 
-        Args:
-            index: 0-based local row index within this joint's constraint rows.
-                If None and the joint has exactly 1 constraint row, returns that row.
+        Parameters
+        ----------
+        index : int, optional
+            0-based local row index within this joint's constraint rows.
+            If None and the joint has exactly 1 row, returns that row.
 
-        Returns:
-            NDArray: 1-D array of Lagrange multipliers over time steps.
+        Returns
+        -------
+        NDArray
+            1-D array of Lagrange multipliers over time steps.
 
-        Raises:
-            RuntimeError: If no results are available.
-            IndexError: If index is out of range or ambiguous.
+        Raises
+        ------
+        RuntimeError
+            If no results are available.
+        IndexError
+            If index is out of range or ambiguous.
         """
         if self._result_container is None:
             raise RuntimeError("No results available. Run solve() first.")
@@ -177,11 +215,15 @@ class Joint(ABC, Base):
     def get_reactions(self):
         """Get all reaction force time histories for this joint.
 
-        Returns:
-            NDArray: Array of shape (nSteps, mrows) with Lagrange multipliers.
+        Returns
+        -------
+        NDArray
+            Array of shape (nSteps, mrows) with Lagrange multipliers.
 
-        Raises:
-            RuntimeError: If no results are available.
+        Raises
+        ------
+        RuntimeError
+            If no results are available.
         """
         if self._result_container is None:
             raise RuntimeError("No results available. Run solve() first.")
@@ -862,12 +904,18 @@ class Force(ABC, Base):
                  iBody=None, jBody=None, name=None):
         """Initialize a Force.
 
-        Args:
-            iMarker: Marker on body i.
-            jMarker: Marker on body j.
-            iBody: Explicit body i (used if iMarker is None).
-            jBody: Explicit body j (used if jMarker is None).
-            name: Optional human-readable name.
+        Parameters
+        ----------
+        iMarker : Marker, optional
+            Marker on body i.
+        jMarker : Marker, optional
+            Marker on body j.
+        iBody : Body, optional
+            Explicit body i (used if iMarker is None).
+        jBody : Body, optional
+            Explicit body j (used if jMarker is None).
+        name : str, optional
+            Human-readable name.
         """
         super().__init__()
         self.iMarker = iMarker
@@ -880,8 +928,10 @@ class Force(ABC, Base):
     def apply(self, bodies):
         """Apply this force to the relevant bodies.
 
-        Args:
-            bodies: List of Body objects in the model.
+        Parameters
+        ----------
+        bodies : list of Body
+            List of Body objects in the model.
         """
 
     def __repr__(self):
@@ -917,8 +967,10 @@ class Weight(Force):
 
         Called once by PlanarMultibodyModel._initialize().
 
-        Args:
-            bodies: List of Body objects.
+        Parameters
+        ----------
+        bodies : list of Body
+            List of Body objects.
         """
         ug = self.gravity * self.gravity_direction
         for body in bodies:
