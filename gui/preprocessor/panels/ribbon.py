@@ -26,6 +26,57 @@ from PySide6.QtWidgets import (
 
 
 # ──────────────────────────────────────────────────────────────────
+# Local stylesheet — ensures tab + tool-button text are readable
+# regardless of what the global theme defines for QWidget.
+# ──────────────────────────────────────────────────────────────────
+_RIBBON_QSS = """
+QTabWidget::pane {
+    border: none;
+    background: #f5f6f8;
+}
+QTabBar::tab {
+    background: transparent;
+    color: #1c2033;
+    padding: 4px 14px;
+    margin: 0 1px;
+    border: none;
+    min-height: 18px;
+    font-size: 9pt;
+}
+QTabBar::tab:hover {
+    background: rgba(63, 140, 255, 0.10);
+    color: #1a5cbf;
+}
+QTabBar::tab:selected {
+    color: #1a5cbf;
+    border-bottom: 2px solid #3f8cff;
+    font-weight: 600;
+}
+QToolButton {
+    background: transparent;
+    color: #1c2033;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 2px 4px;
+    font-size: 9pt;
+}
+QToolButton:hover {
+    background: rgba(63, 140, 255, 0.10);
+    border-color: #c8d2e0;
+}
+QToolButton:checked {
+    background: rgba(63, 140, 255, 0.18);
+    border-color: #3f8cff;
+    color: #1a5cbf;
+}
+QWidget#RibbonGroup {
+    border-right: 1px solid #d6d6d6;
+    background: transparent;
+}
+"""
+
+
+# ──────────────────────────────────────────────────────────────────
 # Ribbon group (one labelled box inside a tab)
 # ──────────────────────────────────────────────────────────────────
 
@@ -41,27 +92,22 @@ class RibbonGroup(QWidget):
         self.setObjectName("RibbonGroup")
 
         outer = QVBoxLayout(self)
-        outer.setContentsMargins(6, 4, 6, 2)
-        outer.setSpacing(2)
+        outer.setContentsMargins(4, 2, 4, 1)
+        outer.setSpacing(1)
 
         self._buttons_host = QWidget()
         self._row = QHBoxLayout(self._buttons_host)
         self._row.setContentsMargins(0, 0, 0, 0)
-        self._row.setSpacing(2)
+        self._row.setSpacing(1)
         outer.addWidget(self._buttons_host, 1)
 
         self._title = QLabel(title)
         self._title.setAlignment(Qt.AlignCenter)
         f = self._title.font()
-        f.setPointSize(max(7, f.pointSize() - 1))
+        f.setPointSize(max(7, f.pointSize() - 2))
         self._title.setFont(f)
-        self._title.setStyleSheet("color: #666;")
+        self._title.setStyleSheet("color: #6b7280;")
         outer.addWidget(self._title, 0)
-
-        # Right-side separator (drawn via stylesheet on a sibling frame)
-        self.setStyleSheet(
-            "#RibbonGroup { border-right: 1px solid #d6d6d6; }"
-        )
 
     # ----------------------------------------------------------
     def add_button(self, label: str, tooltip: str = "",
@@ -75,10 +121,11 @@ class RibbonGroup(QWidget):
             Qt.ToolButtonTextUnderIcon if large else Qt.ToolButtonTextOnly
         )
         if large:
-            btn.setMinimumSize(QSize(64, 64))
-            btn.setIconSize(QSize(28, 28))
+            btn.setMinimumSize(QSize(56, 46))
+            btn.setMaximumHeight(50)
+            btn.setIconSize(QSize(20, 20))
         else:
-            btn.setMinimumHeight(26)
+            btn.setMinimumHeight(22)
         btn.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         self._row.addWidget(btn)
         return btn
@@ -99,8 +146,9 @@ class RibbonBar(QTabWidget):
         self.setDocumentMode(True)
         self.setMovable(False)
         self.setTabPosition(QTabWidget.North)
-        self.setMinimumHeight(120)
-        self.setMaximumHeight(140)
+        self.setMinimumHeight(86)
+        self.setMaximumHeight(96)
+        self.setStyleSheet(_RIBBON_QSS)
 
         self._tool_group = QButtonGroup(self)
         self._tool_group.setExclusive(True)
