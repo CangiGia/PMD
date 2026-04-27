@@ -1,14 +1,22 @@
-"""PreProcessorWindow — main shell of the model-builder GUI.
+"""PreProcessorWindow — Adams-style shell of the model-builder GUI.
 
-Layout (left → right):
+Layout
+------
 
-    ┌──────────┬──────────────┬──────────────────┬─────────────┐
-    │ Toolbox  │ Tree browser │  Canvas (centre) │  Inspector  │
-    │ (dock L) │ (dock L)     │                  │  (dock R)   │
-    └──────────┴──────────────┴──────────────────┴─────────────┘
+::
 
-All side panes are :class:`QDockWidget`-based so the user can
-re-arrange / detach / hide them as desired.
+    ┌─────────────────────────────────────────────────────────────┐
+    │  Menu bar                                                   │
+    ├─────────────────────────────────────────────────────────────┤
+    │  Ribbon  [Bodies | Connectors | Motions | Forces | …]       │
+    ├──────────────┬──────────────────────────────┬───────────────┤
+    │  Tree        │                              │               │
+    │  browser     │      Canvas (QGraphicsView)  │  Inspector    │
+    │  (dock L)    │                              │  (dock R)     │
+    │              │                              │               │
+    ├──────────────┴──────────────────────────────┴───────────────┤
+    │  Status bar:  x=…  y=…  | tool: …    | counts               │
+    └─────────────────────────────────────────────────────────────┘
 """
 
 from __future__ import annotations
@@ -20,23 +28,16 @@ from PySide6.QtWidgets import (
     QLabel,
     QMainWindow,
     QStatusBar,
+    QToolBar,
 )
 
 from .models import BodySpec, ModelSpec, ShapeSpec
-from .panels import InspectorPanel, ToolboxPanel, TreePanel
+from .panels import InspectorPanel, RibbonBar, TreePanel
 from .widgets import BodyItem, CanvasScene, CanvasView
 
 
 class PreProcessorWindow(QMainWindow):
-    """Top-level QMainWindow for the PMD pre-processor.
-
-    Parameters
-    ----------
-    spec : ModelSpec
-        The project specification edited by this window.
-    parent : QWidget or None
-        Optional parent widget.
-    """
+    """Top-level QMainWindow for the PMD pre-processor."""
 
     def __init__(self, spec: ModelSpec, parent=None):
         super().__init__(parent)
@@ -44,15 +45,17 @@ class PreProcessorWindow(QMainWindow):
         self._active_tool = "select"
 
         self.setWindowTitle("PMD Pre-Processor — Model Builder")
-        self.resize(1500, 850)
+        self.resize(1500, 900)
 
         self._build_central_canvas()
+        self._build_ribbon()
         self._build_docks()
         self._build_menu_bar()
         self._build_status_bar()
 
         # Wire up
-        self._toolbox.tool_changed.connect(self._on_tool_changed)
+        self._ribbon.tool_changed.connect(self._on_tool_changed)
+        self._ribbon.action_triggered.connect(self._on_action)
         self._tree.item_selected.connect(self._inspector.show_item)
         self._tree.set_spec(self.spec)
         self._inspector.set_spec(self.spec)
@@ -68,37 +71,38 @@ class PreProcessorWindow(QMainWindow):
         self._view.scene().selectionChanged.connect(self._on_selection_changed)
         self.setCentralWidget(self._view)
 
-    def _build_docks(self):
-        # Toolbox (left)
-        self._toolbox = ToolboxPanel()
-        dock_tools = QDockWidget("Tools", self)
-        dock_tools.setWidget(self._toolbox)
-        dock_tools.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
-        self.addDockWidget(Qt.LeftDockWidgetArea, dock_tools)
+    def _build_ribbon(self):
+        """Place the ribbon as a non-movable top toolbar."""
+        self._ribbon = RibbonBar(self)
+        ribbon_bar = QToolBar("Ribbon", self)
+        ribbon_bar.setObjectName("RibbonToolBar")
+        ribbon_bar.setMovable(False)
+        ribbon_bar.setFloatable(False)
+        ribbon_bar.addWidget(self._ribbon)
+        self.addToolBar(Qt.TopToolBarArea, ribbon_bar)
 
-        # Tree browser (left, beside toolbox)
+    def _build_docks(self):
+        # Tree browser (left)
         self._tree = TreePanel()
-        dock_tree = QDockWidget("Model Tree", self)
+        dock_tree = QDockWidget("Model Browser", self)
+        dock_tree.setObjectName("DockModelBrowser")
         dock_tree.setWidget(self._tree)
         dock_tree.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
         self.addDockWidget(Qt.LeftDockWidgetArea, dock_tree)
-        self.splitDockWidget(dock_tools, dock_tree, Qt.Horizontal)
 
         # Inspector (right)
         self._inspector = InspectorPanel()
         dock_inspect = QDockWidget("Inspector", self)
+        dock_inspect.setObjectName("DockInspector")
         dock_inspect.setWidget(self._inspector)
         dock_inspect.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
         self.addDockWidget(Qt.RightDockWidgetArea, dock_inspect)
 
-        # Default sizes
-        self.resizeDocks([dock_tools, dock_tree, dock_inspect],
-                         [120, 220, 280], Qt.Horizontal)
+        self.resizeDocks([dock_tree, dock_inspect], [260, 280], Qt.Horizontal)
 
     def _build_menu_bar(self):
         mbar = self.menuBar()
 
-        # File
         file_menu = mbar.addMenu("&File")
         act_new = QAction("&New Project", self)
         act_new.triggered.connect(self._on_new_project)
@@ -108,18 +112,20 @@ class PreProcessorWindow(QMainWindow):
         act_quit.triggered.connect(self.close)
         file_menu.addAction(act_quit)
 
-        # View
+        edit_menu = mbar.addMenu("&Edit")
+        act_undo = QAction("Undo", self); act_undo.setEnabled(False)
+        act_redo = QAction("Redo", self); act_redo.setEnabled(False)
+        edit_menu.addAction(act_undo)
+        edit_menu.addAction(act_redo)
+
         view_menu = mbar.addMenu("&View")
         act_fit = QAction("Zoom to &Fit", self)
         act_fit.setShortcut("F")
         act_fit.triggered.connect(self._view.zoom_to_fit)
         view_menu.addAction(act_fit)
 
-        # Simulate (placeholder)
-        sim_menu = mbar.addMenu("&Simulate")
-        act_run = QAction("&Run…", self)
-        act_run.setEnabled(False)  # not implemented yet
-        sim_menu.addAction(act_run)
+        mbar.addMenu("&Settings")
+        mbar.addMenu("&Tools")
 
     def _build_status_bar(self):
         sb = QStatusBar(self)
@@ -143,19 +149,20 @@ class PreProcessorWindow(QMainWindow):
     def _on_tool_changed(self, name: str):
         self._active_tool = name
         self._lbl_tool.setText(f"tool: {name}")
-        # Click-to-add proof of concept: rectangle body
+        # TEMP: rectangular body proof-of-concept
         if name == "body_rect":
-            # Place a default body at origin for now (real tool comes later).
             self._add_demo_body()
-            self._toolbox.set_tool("select")
+            self._ribbon.set_tool("select")
+
+    def _on_action(self, name: str):
+        # Real handlers will be wired in subsequent steps.
+        self.statusBar().showMessage(f"Action: {name}", 2000)
 
     def _on_selection_changed(self):
         items = [it for it in self._scene.selectedItems()
                  if isinstance(it, BodyItem)]
         if items:
             self._inspector.show_item("body", items[0].spec.id)
-        # Note: tree refresh on every change is fine for small models;
-        # optimise later if needed.
 
     def _on_new_project(self):
         self._scene.clear()
@@ -170,7 +177,6 @@ class PreProcessorWindow(QMainWindow):
     # ──────────────────────────────────────────────────────────
 
     def _add_demo_body(self):
-        """Create a default rectangular body at the origin (placeholder)."""
         spec = BodySpec(
             name=f"body{len(self.spec.bodies) + 1}",
             mass=1.0,

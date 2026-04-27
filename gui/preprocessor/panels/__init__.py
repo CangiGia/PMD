@@ -1,7 +1,7 @@
-"""Side panels (dock widgets) for the pre-processor."""
+"""Side panels and ribbon for the pre-processor."""
 
-from .toolbox_panel import ToolboxPanel
+from .ribbon import RibbonBar, RibbonGroup
 from .tree_panel import TreePanel
 from .inspector_panel import InspectorPanel
 
-__all__ = ["ToolboxPanel", "TreePanel", "InspectorPanel"]
+__all__ = ["RibbonBar", "RibbonGroup", "TreePanel", "InspectorPanel"]
