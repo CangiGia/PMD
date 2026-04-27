@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+
 from PySide6.QtCore import QRectF, Qt
 from PySide6.QtGui import QBrush, QColor, QPen
 from PySide6.QtWidgets import QGraphicsItem, QGraphicsObject
@@ -35,15 +37,20 @@ class BodyItem(QGraphicsObject):
         self.setFlag(QGraphicsItem.ItemSendsGeometryChanges, True)
         self.setAcceptHoverEvents(True)
         self.setPos(spec.position[0], spec.position[1])
-        self.setRotation(0.0)  # rotation handled separately
+        self.setRotation(math.degrees(spec.orientation))
 
-        # Default rectangle dimensions (used when shape is None).
-        if spec.shape and spec.shape.kind == "rectangle":
-            self._w = float(spec.shape.params.get("width",  0.20))
-            self._h = float(spec.shape.params.get("height", 0.10))
+        kind = spec.shape.kind if spec.shape else "rectangle"
+        params = spec.shape.params if spec.shape else {}
+        if kind == "link":
+            self._w = float(params.get("length",    0.30))
+            self._h = float(params.get("thickness", 0.02))
+        elif kind == "rectangle":
+            self._w = float(params.get("width",  0.20))
+            self._h = float(params.get("height", 0.10))
         else:
             self._w = 0.20
             self._h = 0.10
+        self._kind = kind
 
     # ──────────────────────────────────────────────────────────
     # QGraphicsItem mandatory overrides
@@ -80,4 +87,6 @@ class BodyItem(QGraphicsObject):
     def itemChange(self, change, value):
         if change == QGraphicsItem.ItemPositionHasChanged:
             self.spec.position = (float(self.pos().x()), float(self.pos().y()))
+        elif change == QGraphicsItem.ItemRotationHasChanged:
+            self.spec.orientation = math.radians(float(self.rotation()))
         return super().itemChange(change, value)

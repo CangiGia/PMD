@@ -1,23 +1,4 @@
-"""PreProcessorWindow — Adams-style shell of the model-builder GUI.
-
-Layout
-------
-
-::
-
-    ┌─────────────────────────────────────────────────────────────┐
-    │  Menu bar                                                   │
-    ├─────────────────────────────────────────────────────────────┤
-    │  Ribbon  [Bodies | Connectors | Motions | Forces | …]       │
-    ├──────────────┬──────────────────────────────┬───────────────┤
-    │  Tree        │                              │               │
-    │  browser     │      Canvas (QGraphicsView)  │  Inspector    │
-    │  (dock L)    │                              │  (dock R)     │
-    │              │                              │               │
-    ├──────────────┴──────────────────────────────┴───────────────┤
-    │  Status bar:  x=…  y=…  | tool: …    | counts               │
-    └─────────────────────────────────────────────────────────────┘
-"""
+"""PreProcessorWindow — Adams-style shell of the model-builder GUI."""
 
 from __future__ import annotations
 
@@ -31,9 +12,16 @@ from PySide6.QtWidgets import (
     QToolBar,
 )
 
-from .models import BodySpec, ModelSpec, ShapeSpec
+from .models import BodySpec, JointSpec, MarkerSpec, ModelSpec
 from .panels import InspectorPanel, RibbonBar, TreePanel
-from .widgets import BodyItem, CanvasScene, CanvasView
+from .tools  import make_tool, Tool
+from .widgets import (
+    BodyItem,
+    CanvasScene,
+    CanvasView,
+    JointItem,
+    MarkerItem,
+)
 
 
 class PreProcessorWindow(QMainWindow):
@@ -42,7 +30,11 @@ class PreProcessorWindow(QMainWindow):
     def __init__(self, spec: ModelSpec, parent=None):
         super().__init__(parent)
         self.spec = spec
-        self._active_tool = "select"
+
+        # spec.id → graphics item registries
+        self._body_items:   dict[str, BodyItem]   = {}
+        self._marker_items: dict[str, MarkerItem] = {}
+        self._joint_items:  dict[str, JointItem]  = {}
 
         self.setWindowTitle("PMD Pre-Processor — Model Builder")
         self.resize(1500, 900)
@@ -54,11 +46,15 @@ class PreProcessorWindow(QMainWindow):
         self._build_status_bar()
 
         # Wire up
-        self._ribbon.tool_changed.connect(self._on_tool_changed)
+        self._ribbon.tool_changed.connect(self.set_active_tool)
         self._ribbon.action_triggered.connect(self._on_action)
         self._tree.item_selected.connect(self._inspector.show_item)
         self._tree.set_spec(self.spec)
         self._inspector.set_spec(self.spec)
+
+        # Default tool
+        self._active_tool: Tool | None = None
+        self.set_active_tool("select")
 
     # ──────────────────────────────────────────────────────────
     # Build helpers
@@ -72,7 +68,6 @@ class PreProcessorWindow(QMainWindow):
         self.setCentralWidget(self._view)
 
     def _build_ribbon(self):
-        """Place the ribbon as a non-movable top toolbar."""
         self._ribbon = RibbonBar(self)
         ribbon_bar = QToolBar("Ribbon", self)
         ribbon_bar.setObjectName("RibbonToolBar")
@@ -82,7 +77,6 @@ class PreProcessorWindow(QMainWindow):
         self.addToolBar(Qt.TopToolBarArea, ribbon_bar)
 
     def _build_docks(self):
-        # Tree browser (left)
         self._tree = TreePanel()
         dock_tree = QDockWidget("Model Browser", self)
         dock_tree.setObjectName("DockModelBrowser")
@@ -90,7 +84,6 @@ class PreProcessorWindow(QMainWindow):
         dock_tree.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
         self.addDockWidget(Qt.LeftDockWidgetArea, dock_tree)
 
-        # Inspector (right)
         self._inspector = InspectorPanel()
         dock_inspect = QDockWidget("Inspector", self)
         dock_inspect.setObjectName("DockInspector")
@@ -133,11 +126,59 @@ class PreProcessorWindow(QMainWindow):
 
         self._lbl_coords = QLabel("x=0.000  y=0.000 m")
         self._lbl_tool   = QLabel("tool: select")
-        self._lbl_count  = QLabel("bodies=0  joints=0  forces=0")
+        self._lbl_count  = QLabel("bodies=0  markers=0  joints=0  forces=0")
 
         sb.addWidget(self._lbl_coords, 1)
         sb.addPermanentWidget(self._lbl_tool)
         sb.addPermanentWidget(self._lbl_count)
+
+    # ──────────────────────────────────────────────────────────
+    # Tool dispatch
+    # ──────────────────────────────────────────────────────────
+
+    def set_active_tool(self, name: str) -> None:
+        """Activate the tool registered under ``name`` (and update UI)."""
+        if self._active_tool is not None:
+            self._active_tool.deactivate()
+        self._active_tool = make_tool(name, self)
+        self._scene.active_tool = self._active_tool
+        self._active_tool.activate()
+        self._lbl_tool.setText(f"tool: {name}")
+        self._ribbon.set_tool(name)
+
+    # ──────────────────────────────────────────────────────────
+    # Item registry helpers (used by tools)
+    # ──────────────────────────────────────────────────────────
+
+    def add_body_item(self, spec: BodySpec) -> BodyItem:
+        item = BodyItem(spec)
+        self._scene.addItem(item)
+        self._body_items[spec.id] = item
+        return item
+
+    def add_marker_item(self, spec: MarkerSpec) -> MarkerItem:
+        parent_body = self._body_items.get(spec.body_id)
+        if parent_body is None:
+            # ground (or stale) → place directly in scene
+            item = MarkerItem(spec)
+            item.setPos(*spec.local_position)
+            self._scene.addItem(item)
+        else:
+            item = MarkerItem(spec, parent_body=parent_body)
+        self._marker_items[spec.id] = item
+        return item
+
+    def add_joint_visual(self, spec: JointSpec) -> JointItem | None:
+        i_marker = self._marker_items.get(spec.i_marker_id)
+        if i_marker is None:
+            return None
+        item = JointItem(spec)
+        # place at i-marker world position
+        wp = i_marker.scenePos()
+        item.setPos(wp.x(), wp.y())
+        self._scene.addItem(item)
+        self._joint_items[spec.id] = item
+        return item
 
     # ──────────────────────────────────────────────────────────
     # Slots
@@ -146,26 +187,27 @@ class PreProcessorWindow(QMainWindow):
     def _on_cursor_moved(self, x: float, y: float):
         self._lbl_coords.setText(f"x={x:+.3f}  y={y:+.3f} m")
 
-    def _on_tool_changed(self, name: str):
-        self._active_tool = name
-        self._lbl_tool.setText(f"tool: {name}")
-        # TEMP: rectangular body proof-of-concept
-        if name == "body_rect":
-            self._add_demo_body()
-            self._ribbon.set_tool("select")
-
     def _on_action(self, name: str):
         # Real handlers will be wired in subsequent steps.
         self.statusBar().showMessage(f"Action: {name}", 2000)
 
     def _on_selection_changed(self):
-        items = [it for it in self._scene.selectedItems()
-                 if isinstance(it, BodyItem)]
-        if items:
-            self._inspector.show_item("body", items[0].spec.id)
+        items = self._scene.selectedItems()
+        if not items:
+            return
+        top = items[0]
+        if isinstance(top, BodyItem):
+            self._inspector.show_item("body", top.spec.id)
+        elif isinstance(top, MarkerItem):
+            self._inspector.show_item("marker", top.spec.id)
+        elif isinstance(top, JointItem):
+            self._inspector.show_item("joint", top.spec.id)
 
     def _on_new_project(self):
         self._scene.clear()
+        self._body_items.clear()
+        self._marker_items.clear()
+        self._joint_items.clear()
         self.spec = ModelSpec()
         self._tree.set_spec(self.spec)
         self._inspector.set_spec(self.spec)
@@ -173,27 +215,10 @@ class PreProcessorWindow(QMainWindow):
         self._update_count_label()
 
     # ──────────────────────────────────────────────────────────
-    # Demo / placeholder
-    # ──────────────────────────────────────────────────────────
-
-    def _add_demo_body(self):
-        spec = BodySpec(
-            name=f"body{len(self.spec.bodies) + 1}",
-            mass=1.0,
-            inertia=0.01,
-            position=(0.0, 0.0),
-            shape=ShapeSpec(kind="rectangle",
-                            params={"width": 0.20, "height": 0.10}),
-        )
-        self.spec.bodies.append(spec)
-        item = BodyItem(spec)
-        self._scene.addItem(item)
-        self._tree.refresh()
-        self._update_count_label()
-
     def _update_count_label(self):
         self._lbl_count.setText(
             f"bodies={len(self.spec.bodies)}  "
+            f"markers={len(self.spec.markers)}  "
             f"joints={len(self.spec.joints)}  "
             f"forces={len(self.spec.forces)}"
         )

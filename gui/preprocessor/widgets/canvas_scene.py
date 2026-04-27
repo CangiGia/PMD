@@ -38,9 +38,39 @@ class CanvasScene(QGraphicsScene):
         self.grid_step = grid_step
         self.major_every = 10  # one major line every N minor steps
 
+        self.active_tool = None  # set by PreProcessorWindow
+
         # Generous initial scene rect — expanded automatically by items.
         self.setSceneRect(-1.0, -1.0, 2.0, 2.0)
         self.setBackgroundBrush(self._BG)
+
+    # ───────────────────────────────────────────────────────
+    # Tool dispatch
+    # ───────────────────────────────────────────────────────
+
+    def mousePressEvent(self, event):
+        if self.active_tool is not None and self.active_tool.mouse_press(event):
+            event.accept()
+            return
+        super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if self.active_tool is not None and self.active_tool.mouse_move(event):
+            event.accept()
+            return
+        super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        if self.active_tool is not None and self.active_tool.mouse_release(event):
+            event.accept()
+            return
+        super().mouseReleaseEvent(event)
+
+    def keyPressEvent(self, event):
+        if self.active_tool is not None and self.active_tool.key_press(event):
+            event.accept()
+            return
+        super().keyPressEvent(event)
 
     # ──────────────────────────────────────────────────────────
     # Background grid
