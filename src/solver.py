@@ -573,31 +573,41 @@ class PlanarMultibodyModel:
         * ``"static"``    — static equilibrium search; returns a single-step
           result (``T = [0.0]``).
 
-        Args:
-            analysis: Type of analysis: ``"dynamic"`` (default), ``"kinematic"``
-                or ``"static"``. Case-insensitive.
-            method: ODE solver method for dynamic analysis (default ``"LSODA"``).
-                Pass ``"CASADI-DAE"`` to use a CasADi DAE solver (Radau
-                collocation) with symbolically-built constraints and forces.
-                Ignored for kinematic and static analyses.
-            t_final: Final simulation time. If *None* and interactive, prompts
-                the user. Not used for static analysis.
-            dt: Output time step. Used only when *t_eval* is not given.
-            ic_correct: Whether to project initial conditions onto the constraint
-                manifold before solving.
-            t_eval: Explicit array of output time points.
-            t_span: ``(t_start, t_end)`` shorthand; sets *t_final* when given.
-            baumgarte_alpha: Velocity-level Baumgarte gain (default 5.0).
-                Dynamic analysis only.
-            baumgarte_beta: Position-level Baumgarte gain (default 5.0).
-                Dynamic analysis only.
-            ggl_penalty: GGL regularisation parameter (default 1e8).
-                Dynamic analysis only.
+        Parameters
+        ----------
+        analysis : str
+            Type of analysis: ``"dynamic"`` (default), ``"kinematic"``
+            or ``"static"``. Case-insensitive.
+        method : str
+            ODE solver method for dynamic analysis (default ``"LSODA"``). Pass
+            ``"CASADI-DAE"`` to use a CasADi DAE solver (Radau collocation)
+            with symbolically-built constraints and forces. Ignored for
+            kinematic and static analyses.
+        t_final : float, optional
+            Final simulation time. If *None* and interactive, prompts the user.
+            Not used for static analysis.
+        dt : float, optional
+            Output time step. Used only when *t_eval* is not given.
+        ic_correct : bool
+            Whether to project initial conditions onto the constraint manifold
+            before solving.
+        t_eval : array-like, optional
+            Explicit array of output time points.
+        t_span : tuple of float, optional
+            ``(t_start, t_end)`` shorthand; sets *t_final* when given.
+        baumgarte_alpha : float
+            Velocity-level Baumgarte gain (default 5.0). Dynamic analysis only.
+        baumgarte_beta : float
+            Position-level Baumgarte gain (default 5.0). Dynamic analysis only.
+        ggl_penalty : float
+            GGL regularisation parameter (default 1e8). Dynamic analysis only.
 
-        Returns:
-            Tuple ``(T, uT)``: time vector of shape ``(nSteps,)`` and state
-            matrix of shape ``(nSteps, 2*nB3)``.  Results are also distributed
-            into each ``Body`` and ``Joint`` via ``_result_container``.
+        Returns
+        -------
+        tuple
+            ``(T, uT)``: time vector of shape ``(nSteps,)`` and state matrix of
+            shape ``(nSteps, 2*nB3)``.  Results are also distributed into each
+            ``Body`` and ``Joint`` via ``_result_container``.
         """
         analysis = analysis.lower()
         _valid = ("dynamic", "kinematic", "static")

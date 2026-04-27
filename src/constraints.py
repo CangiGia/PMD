@@ -28,12 +28,18 @@ class Joint(ABC, Base):
 
     Every concrete joint must implement the abstract methods below.
 
-    Attributes:
-        iMarker: Marker on body i (or None).
-        jMarker: Marker on body j (or None).
-        iBody: Body i (derived from iMarker or explicit).
-        jBody: Body j (derived from jMarker or explicit).
-        name: Optional human-readable name for identification and legends.
+    Attributes
+    ----------
+    iMarker : Marker or None
+        Marker on body i.
+    jMarker : Marker or None
+        Marker on body j.
+    iBody : Body
+        Body i (derived from iMarker or explicit).
+    jBody : Body
+        Body j (derived from jMarker or explicit).
+    name : str or None
+        Optional human-readable name for identification and legends.
     """
 
     def __init__(self, *, iMarker=None, jMarker=None,
@@ -242,9 +248,12 @@ class Joint(ABC, Base):
 class RevJoint(Joint):
     """Revolute (pin) joint between two bodies.
 
-    Attributes:
-        fix: If 1, the relative rotation is also constrained.
-        q0: Initial DOF value used by the assembler.
+    Attributes
+    ----------
+    fix : int
+        If 1, the relative rotation is also constrained.
+    q0 : float
+        Initial DOF value used by the assembler.
     """
 
     def __init__(self, *, iMarker=None, jMarker=None, fix=0, q0=0,
@@ -340,9 +349,12 @@ class RevJoint(Joint):
 class TranJoint(Joint):
     """Translational (prismatic) joint between two bodies.
 
-    Attributes:
-        fix: If 1, the relative translation is also constrained.
-        q0: Initial DOF value used by the assembler.
+    Attributes
+    ----------
+    fix : int
+        If 1, the relative translation is also constrained.
+    q0 : float
+        Initial DOF value used by the assembler.
     """
 
     def __init__(self, *, iMarker=None, jMarker=None, fix=0, q0=0,
@@ -500,9 +512,12 @@ class TranJoint(Joint):
 class RevRevJoint(Joint):
     """Constant-length link between two revolute joints.
 
-    Attributes:
-        L: Length of the link.
-        q0: Initial DOF value used by the assembler.
+    Attributes
+    ----------
+    L : float
+        Length of the link.
+    q0 : float
+        Initial DOF value used by the assembler.
     """
 
     def __init__(self, *, iMarker=None, jMarker=None, L=0, q0=0,
@@ -588,9 +603,12 @@ class RevRevJoint(Joint):
 class RevTranJoint(Joint):
     """Revolute-translational composite joint.
 
-    Attributes:
-        L: Initial length parameter.
-        q0: Initial DOF value used by the assembler.
+    Attributes
+    ----------
+    L : float
+        Initial length parameter.
+    q0 : float
+        Initial DOF value used by the assembler.
     """
 
     def __init__(self, *, iMarker=None, jMarker=None, L=0, q0=0,
@@ -661,8 +679,10 @@ class RevTranJoint(Joint):
 class RigidJoint(Joint):
     """Rigid (weld) joint between two bodies.
 
-    Attributes:
-        d0: Initial displacement vector.
+    Attributes
+    ----------
+    d0 : ndarray
+        Initial displacement vector.
     """
 
     def __init__(self, *, iBody=None, jBody=None, d0=None,
@@ -737,9 +757,12 @@ class RigidJoint(Joint):
 class DiscJoint(Joint):
     """Rolling disc (wheel) constraint.
 
-    Attributes:
-        R: Disc radius.
-        x0: Initial x-position.
+    Attributes
+    ----------
+    R : float
+        Disc radius.
+    x0 : float
+        Initial x-position.
     """
 
     def __init__(self, *, iBody=None, R=1, x0=0,
@@ -782,8 +805,10 @@ class DiscJoint(Joint):
 class RelRotJoint(Joint):
     """Relative rotation driven by an analytical function.
 
-    Attributes:
-        iFunct: Function object driving the constraint.
+    Attributes
+    ----------
+    iFunct : Function
+        Function object driving the constraint.
     """
 
     def __init__(self, *, iBody=None, jBody=None, iFunct=None,
@@ -827,8 +852,10 @@ class RelRotJoint(Joint):
 class RelTranJoint(Joint):
     """Relative translation driven by an analytical function.
 
-    Attributes:
-        iFunct: Function object driving the constraint.
+    Attributes
+    ----------
+    iFunct : Function
+        Function object driving the constraint.
     """
 
     def __init__(self, *, iMarker=None, jMarker=None, iFunct=None,
@@ -892,12 +919,18 @@ class Force(ABC, Base):
 
     Every concrete force must implement the ``apply`` method.
 
-    Attributes:
-        iMarker: Marker on body i (or None).
-        jMarker: Marker on body j (or None).
-        iBody: Body i.
-        jBody: Body j.
-        name: Optional human-readable name for identification and legends.
+    Attributes
+    ----------
+    iMarker : Marker or None
+        Marker on body i.
+    jMarker : Marker or None
+        Marker on body j.
+    iBody : Body
+        Body i.
+    jBody : Body
+        Body j.
+    name : str or None
+        Optional human-readable name for identification and legends.
     """
 
     def __init__(self, *, iMarker=None, jMarker=None,
@@ -947,9 +980,12 @@ class Force(ABC, Base):
 class Weight(Force):
     """Gravitational force applied to all bodies.
 
-    Attributes:
-        gravity: Gravitational acceleration magnitude (m/s^2).
-        gravity_direction: Unit direction of gravity, shape (2, 1).
+    Attributes
+    ----------
+    gravity : float
+        Gravitational acceleration magnitude (m/s²).
+    gravity_direction : ndarray
+        Unit direction of gravity, shape (2, 1).
     """
 
     DEFAULT_GRAVITY = 9.81
@@ -991,11 +1027,16 @@ class Weight(Force):
 class PtpForce(Force):
     """Point-to-point spring-damper-actuator force.
 
-    Attributes:
-        k: Spring stiffness (N/m).
-        L0: Undeformed spring length (m).
-        dc: Damping coefficient (N*s/m).
-        f_a: Constant actuator force (N).
+    Attributes
+    ----------
+    k : float
+        Spring stiffness (N/m).
+    L0 : float
+        Undeformed spring length (m).
+    dc : float
+        Damping coefficient (N·s/m).
+    f_a : float
+        Constant actuator force (N).
     """
 
     def __init__(self, *, iMarker=None, jMarker=None, k=0, L0=0, dc=0,
@@ -1036,11 +1077,16 @@ class PtpForce(Force):
 class RotSdaForce(Force):
     """Rotational spring-damper-actuator torque.
 
-    Attributes:
-        k: Torsional stiffness (N*m/rad).
-        theta0: Undeformed angle (rad).
-        dc: Damping coefficient (N*m*s/rad).
-        T_a: Constant actuator torque (N*m).
+    Attributes
+    ----------
+    k : float
+        Torsional stiffness (N·m/rad).
+    theta0 : float
+        Undeformed angle (rad).
+    dc : float
+        Damping coefficient (N·m·s/rad).
+    T_a : float
+        Constant actuator torque (N·m).
     """
 
     def __init__(self, *, iBody=None, jBody=None, k=0, theta0=0, dc=0,
@@ -1078,8 +1124,10 @@ class RotSdaForce(Force):
 class LocalForce(Force):
     """Constant force in the body-local reference frame.
 
-    Attributes:
-        force_local: Force vector in local coordinates, shape (2, 1).
+    Attributes
+    ----------
+    force_local : ndarray
+        Force vector in local coordinates, shape (2, 1).
     """
 
     def __init__(self, *, iBody=None, force_local=None, iMarker=None,
@@ -1101,8 +1149,10 @@ class LocalForce(Force):
 class GlobalForce(Force):
     """Constant force in the global reference frame.
 
-    Attributes:
-        force_global: Force vector in global coordinates, shape (2, 1).
+    Attributes
+    ----------
+    force_global : ndarray
+        Force vector in global coordinates, shape (2, 1).
     """
 
     def __init__(self, *, iBody=None, force_global=None, iMarker=None,
@@ -1124,8 +1174,10 @@ class GlobalForce(Force):
 class Torque(Force):
     """Constant torque in the global reference frame.
 
-    Attributes:
-        torque_value: Scalar torque value (N*m).
+    Attributes
+    ----------
+    torque_value : float
+        Scalar torque value (N·m).
     """
 
     def __init__(self, *, iBody=None, torque_value=0, iMarker=None,
@@ -1147,8 +1199,10 @@ class UserForce(Force):
     dicts, each with keys ``'body'``, ``'force'`` (2-element), and
     ``'torque'`` (scalar).
 
-    Attributes:
-        callback: Callable returning list of force contribution dicts.
+    Attributes
+    ----------
+    callback : callable
+        Callable returning list of force contribution dicts.
     """
 
     def __init__(self, *, callback=None, iMarker=None, jMarker=None,
@@ -1186,15 +1240,24 @@ class UserForce(Force):
 class Function(Base):
     """Analytical function for driving constraint equations.
 
-    Attributes:
-        type: Function type ``'a'``, ``'b'``, or ``'c'``.
-        t_start: Start time for time-based functions.
-        f_start: Start value for time-based functions.
-        t_end: End time for time-based functions.
-        f_end: End value for time-based functions.
-        dfdt_end: Max first derivative value (type ``'c'``).
-        ncoeff: Number of coefficients.
-        coeff: Coefficient array.
+    Attributes
+    ----------
+    type : str
+        Function type ``'a'``, ``'b'``, or ``'c'``.
+    t_start : float
+        Start time for time-based functions.
+    f_start : float
+        Start value for time-based functions.
+    t_end : float
+        End time for time-based functions.
+    f_end : float
+        End value for time-based functions.
+    dfdt_end : float
+        Max first derivative value (type ``'c'``).
+    ncoeff : int
+        Number of coefficients.
+    coeff : numpy.ndarray
+        Coefficient array.
     """
 
     def __init__(self, type='a', t_start=0, f_start=0, t_end=1, f_end=1,

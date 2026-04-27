@@ -54,14 +54,20 @@ def run_model_subprocess(model_name: str) -> tuple:
     contamination (Base.COUNT and subclass counters).
     Matplotlib is forced to 'Agg' backend to prevent plt.show() blocking.
 
-    Args:
-        model_name: Model name without .py extension (e.g., '_test_SP')
+    Parameters
+    ----------
+    model_name : str
+        Model name without .py extension (e.g., ``'_test_SP'``).
 
-    Returns:
-        Tuple of (T, uT) numpy arrays
+    Returns
+    -------
+    tuple
+        Tuple of (T, uT) numpy arrays.
 
-    Raises:
-        RuntimeError: If the subprocess fails
+    Raises
+    ------
+    RuntimeError
+        If the subprocess fails.
     """
     # Temp files for output
     tmp_dir = os.path.join(PMD_ROOT, 'tests', '_tmp')
@@ -110,14 +116,20 @@ def load_reference(model_name: str) -> tuple:
     """
     Load golden reference data for a model.
 
-    Args:
-        model_name: Model name without .py extension (e.g., '_test_SP')
+    Parameters
+    ----------
+    model_name : str
+        Model name without .py extension (e.g., ``'_test_SP'``).
 
-    Returns:
-        Tuple of (T_ref, uT_ref) numpy arrays
+    Returns
+    -------
+    tuple
+        Tuple of (T_ref, uT_ref) numpy arrays.
 
-    Raises:
-        FileNotFoundError: If reference files don't exist
+    Raises
+    ------
+    FileNotFoundError
+        If reference files don't exist.
     """
     t_path = os.path.join(NPY_REF_DIR, f'{model_name}_T.npy')
     ut_path = os.path.join(NPY_REF_DIR, f'{model_name}_uT.npy')

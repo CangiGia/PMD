@@ -28,11 +28,16 @@ def plot_comparison(T: np.ndarray, uT: np.ndarray, matlab_filename: str, model_t
 
     Each subplot shows Python result (solid line) vs MATLAB result (dashed line).
 
-    Args:
-        T:               Time vector from Python simulation, shape (nSteps,)
-        uT:              State matrix from Python simulation, shape (nSteps, 2*nB3)
-        matlab_filename: Name of the MATLAB .txt file (e.g., 'AA.txt')
-        model_title:     Title for the figure (e.g., 'AA')
+    Parameters
+    ----------
+    T : ndarray
+        Time vector from Python simulation, shape (nSteps,).
+    uT : ndarray
+        State matrix from Python simulation, shape (nSteps, 2*nB3).
+    matlab_filename : str
+        Name of the MATLAB .txt file (e.g., ``'AA.txt'``).
+    model_title : str
+        Title for the figure (e.g., ``'AA'``).
     """
     # --- Derive number of bodies ---
     nB3 = uT.shape[1] // 2          # nB3 = 3 * nB

@@ -25,8 +25,10 @@ class Base:
 
     Provides automatic instance counting for each subclass.
 
-    Attributes:
-        COUNT: Class variable tracking the number of instances created.
+    Attributes
+    ----------
+    COUNT : int
+        Class variable tracking the number of instances created.
     """
 
     COUNT = 0
@@ -77,11 +79,16 @@ class Base:
 class Marker:
     """Body-fixed reference frame (point + optional orientation).
 
-    Attributes:
-        body: The body this marker is attached to.
-        local_position: Flat (2,) array of local coordinates [xi, eta].
-        theta: Optional orientation angle in the local frame.
-        name: Optional human-readable name.
+    Attributes
+    ----------
+    body : Body or _GroundType
+        The body this marker is attached to.
+    local_position : ndarray
+        Flat (2,) array of local coordinates [xi, eta].
+    theta : float or None
+        Optional orientation angle in the local frame.
+    name : str or None
+        Optional human-readable name.
     """
 
     def __init__(self, body, local_position, theta=None, name=None):
@@ -238,18 +245,28 @@ Ground = _GroundType()
 class Body(Base):
     """Rigid body in a planar multi-body dynamic simulation.
 
-    Attributes:
-        name: Optional human-readable name.
-        mass: Mass of the body (kg).
-        inertia: Moment of inertia of the body (kg*m^2).
-        position: Position vector (x, y), shape (2, 1).
-        orientation: Orientation angle phi (rad).
-        velocity: Velocity vector (dx, dy), shape (2, 1).
-        angular_velocity: Angular velocity dphi (rad/s).
-        acceleration: Acceleration vector (ddx, ddy), shape (2, 1).
-        angular_acceleration: Angular acceleration ddphi (rad/s^2).
-        name: Optional human-readable name.
-        shape: Optional shape descriptor for visualization.
+    Attributes
+    ----------
+    name : str or None
+        Optional human-readable name.
+    mass : float
+        Mass of the body (kg).
+    inertia : float
+        Moment of inertia of the body (kg·m²).
+    position : ndarray
+        Position vector (x, y), shape (2, 1).
+    orientation : float
+        Orientation angle phi (rad).
+    velocity : ndarray
+        Velocity vector (dx, dy), shape (2, 1).
+    angular_velocity : float
+        Angular velocity dphi (rad/s).
+    acceleration : ndarray
+        Acceleration vector (ddx, ddy), shape (2, 1).
+    angular_acceleration : float
+        Angular acceleration ddphi (rad/s²).
+    shape : Rectangle or Circle or Polygon or None
+        Optional shape descriptor for visualization.
     """
 
     def __init__(self, mass=1, inertia=1, position=None, orientation=None,
