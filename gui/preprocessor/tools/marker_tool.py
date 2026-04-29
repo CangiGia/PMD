@@ -52,4 +52,6 @@ class MarkerTool(Tool):
         self.spec.markers.append(spec)
         self.window.add_marker_item(spec)
         self._commit()
+        # One-shot: revert to Select after placing the marker.
+        self.window.set_active_tool("select")
         return True

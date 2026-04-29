@@ -59,6 +59,8 @@ class PtpForceTool(Tool):
         self._first = None
         self.window.statusBar().clearMessage()
         self._commit()
+        # One-shot: revert to Select after the PtP force is created.
+        self.window.set_active_tool("select")
         return True
 
     # ─────────────────────────────────────────────────────────

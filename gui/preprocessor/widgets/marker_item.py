@@ -20,14 +20,15 @@ class MarkerItem(QGraphicsObject):
     """
 
     # Screen-space sizes (pixels)
-    _AXIS_LEN_PX  = 34.0
-    _ARROW_W_PX   = 9.0
-    _ARROW_H_PX   = 12.0
-    _ORIGIN_R_PX  = 3.5
-    _PICK_R_PX    = 10.0
-    _LABEL_DX_PX  = 6.0
-    _LABEL_DY_PX  = -6.0
-    _LABEL_PT     = 10.0
+    _AXIS_LEN_PX  = 44.0
+    _ARROW_W_PX   = 11.0
+    _ARROW_H_PX   = 14.0
+    _ORIGIN_R_PX  = 4.0
+    _PICK_R_PX    = 12.0
+    _LABEL_DX_PX  = 12.0
+    _LABEL_DY_PX  = -10.0
+    _LABEL_PT     = 11.0
+    _AXIS_W_PX    = 2.2
 
     # Colors
     _C_X      = QColor("#d65a5a")
@@ -79,7 +80,7 @@ class MarkerItem(QGraphicsObject):
         cd = self._C_DOT_HI if (self._highlight or self.isSelected()) else self._C_DOT
 
         # ── X axis (red) ──────────────────────────────────
-        pen_x = QPen(cx); pen_x.setCosmetic(True); pen_x.setWidthF(1.8)
+        pen_x = QPen(cx); pen_x.setCosmetic(True); pen_x.setWidthF(self._AXIS_W_PX)
         painter.setPen(pen_x)
         painter.drawLine(QPointF(0.0, 0.0), QPointF(L - ah, 0.0))
         painter.setBrush(QBrush(cx))
@@ -89,8 +90,8 @@ class MarkerItem(QGraphicsObject):
             QPointF(L - ah, -aw / 2.0),
         ]))
 
-        # ── Y axis (green) ────────────────────────────────
-        pen_y = QPen(cy); pen_y.setCosmetic(True); pen_y.setWidthF(1.8)
+        # ── Y axis (green) ──────────────────────────────────────────────
+        pen_y = QPen(cy); pen_y.setCosmetic(True); pen_y.setWidthF(self._AXIS_W_PX)
         painter.setPen(pen_y)
         painter.drawLine(QPointF(0.0, 0.0), QPointF(0.0, L - ah))
         painter.setBrush(QBrush(cy))
@@ -119,11 +120,20 @@ class MarkerItem(QGraphicsObject):
         # ── Label ─────────────────────────────────────────
         name = self.spec.name or self.spec.id
         if name:
+            # Total scene-rotation = parent body rotation + marker theta.
+            # We *cancel* it so the label stays parallel to the global X
+            # axis regardless of how the body is oriented. The y-flip of
+            # the canvas view is also cancelled so the text reads upright.
+            parent = self.parentItem()
+            total_deg = float(self.rotation())
+            if parent is not None:
+                total_deg += float(parent.rotation())
+
             painter.save()
-            painter.translate(self._LABEL_DX_PX / s, self._LABEL_DY_PX / s)
-            # Cancel the world-units transform AND the canvas' y-flip
-            # so the label is always horizontal and right-side up.
-            painter.scale(1.0 / s, -1.0 / s)
+            painter.rotate(-total_deg)
+            painter.scale(1.0 / s, -1.0 / s)        # painter local = pixels
+            painter.translate(self._LABEL_DX_PX,
+                              -self._LABEL_DY_PX)   # +DY = below origin
             font = QFont()
             font.setPointSizeF(self._LABEL_PT)
             font.setBold(True)

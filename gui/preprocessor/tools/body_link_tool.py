@@ -90,6 +90,8 @@ class BodyLinkTool(Tool):
         self.window.add_marker_item(m_a)
         self.window.add_marker_item(m_b)
         self._commit()
+        # One-shot: revert to Select after a successful link creation.
+        self.window.set_active_tool("select")
 
     # ─────────────────────────────────────────────────────────
     def _make_preview(self, p0, p1):

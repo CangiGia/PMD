@@ -83,7 +83,9 @@ class BodyRectTool(Tool):
         self.window.add_body_item(spec)
         self._press_pt = None
         self._commit()
-        # stay in tool so the user can drop several bodies in a row
+        # One-shot: revert to Select so the body cannot be accidentally
+        # moved / re-edited by stray clicks right after creation.
+        self.window.set_active_tool("select")
         return True
 
     # ─────────────────────────────────────────────────────────

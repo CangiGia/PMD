@@ -176,6 +176,9 @@ class PreProcessorWindow(QMainWindow):
         self._active_tool.activate()
         self._lbl_tool.setText(f"tool: {name}")
         self._ribbon.set_tool(name)
+        # Give keyboard focus to the canvas so Esc (and other shortcuts)
+        # reach the active tool without requiring a click first.
+        self._view.setFocus(Qt.OtherFocusReason)
 
     # ──────────────────────────────────────────────────────────
     # Item registry helpers (used by tools)

@@ -34,6 +34,10 @@ class CanvasView(QGraphicsView):
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         self.setMouseTracking(True)
+        # Make sure the view can receive key events (e.g. Esc to cancel
+        # the active tool). Without StrongFocus the scene never sees the
+        # key press unless something inside it already has focus.
+        self.setFocusPolicy(Qt.StrongFocus)
 
         # Engineering convention: +y points UP.
         # Default scale: 400 px / m (≈ 50 mm grid step shown ~20 px).
@@ -63,6 +67,9 @@ class CanvasView(QGraphicsView):
     # ──────────────────────────────────────────────────────────
 
     def mousePressEvent(self, event):
+        # Take keyboard focus so Esc (and other tool shortcuts) reach
+        # the active tool via the scene's keyPressEvent dispatch.
+        self.setFocus(Qt.MouseFocusReason)
         if event.button() == Qt.MiddleButton:
             self._panning = True
             self._pan_start = event.position()

@@ -223,6 +223,9 @@ class RibbonBar(QTabWidget):
         self._add_tool(g, "body_link",   "Link",    "Two-point link / rod")
         self._add_tool(g, "body_circle", "Circle",  "Circular rigid body")
         self._add_tool(g, "body_poly",   "Polygon", "Polygonal rigid body")
+
+        g2 = RibbonGroup("Edit"); lay.addWidget(g2)
+        self._add_tool(g2, "move", "Move", "Drag bodies to translate (orientation: Inspector only)")
         lay.addStretch(1)
 
     # ── Connectors (joints) ───────────────────────────────────

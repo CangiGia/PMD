@@ -32,7 +32,10 @@ class BodyItem(QGraphicsObject):
     def __init__(self, spec: BodySpec):
         super().__init__()
         self.spec = spec
-        self.setFlag(QGraphicsItem.ItemIsMovable, True)
+        # Movability is controlled by the active tool. By default a body
+        # is *not* draggable so the user can't accidentally displace it
+        # while editing — the dedicated MoveTool re-enables this flag.
+        self.setFlag(QGraphicsItem.ItemIsMovable, False)
         self.setFlag(QGraphicsItem.ItemIsSelectable, True)
         self.setFlag(QGraphicsItem.ItemSendsGeometryChanges, True)
         self.setAcceptHoverEvents(True)
