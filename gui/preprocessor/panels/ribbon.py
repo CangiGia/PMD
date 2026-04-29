@@ -31,46 +31,68 @@ from PySide6.QtWidgets import (
 # ──────────────────────────────────────────────────────────────────
 _RIBBON_QSS = """
 QTabWidget::pane {
-    border: none;
-    background: #f5f6f8;
+    border: 1px solid #8a9bb4;
+    border-top: none;
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #f4f6fa, stop:1 #dfe4ec);
+}
+QTabBar {
+    background: transparent;
+    qproperty-drawBase: 0;
 }
 QTabBar::tab {
-    background: transparent;
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #fbfcfe, stop:1 #cdd6e3);
     color: #1c2033;
-    padding: 4px 14px;
-    margin: 0 1px;
-    border: none;
+    padding: 5px 18px 4px 18px;
+    margin: 2px 1px 0 1px;
+    border: 1px solid #8a9bb4;
+    border-bottom: none;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
     min-height: 18px;
     font-size: 9pt;
 }
 QTabBar::tab:hover {
-    background: rgba(63, 140, 255, 0.10);
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #ffffff, stop:1 #dde6f2);
     color: #1a5cbf;
 }
 QTabBar::tab:selected {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #ffffff, stop:1 #eef2f8);
     color: #1a5cbf;
-    border-bottom: 2px solid #3f8cff;
     font-weight: 600;
+    margin-top: 0px;
+    padding-top: 7px;
+    border-color: #5a6f8f;
+}
+QTabBar::tab:!selected {
+    margin-top: 3px;
 }
 QToolButton {
-    background: transparent;
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #ffffff, stop:0.5 #eef2f8, stop:1 #c9d3e2);
     color: #1c2033;
-    border: 1px solid transparent;
+    border: 1px solid #8a9bb4;
     border-radius: 4px;
-    padding: 2px 4px;
+    padding: 3px 8px;
     font-size: 9pt;
 }
 QToolButton:hover {
-    background: rgba(63, 140, 255, 0.10);
-    border-color: #c8d2e0;
-}
-QToolButton:checked {
-    background: rgba(63, 140, 255, 0.18);
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #ffffff, stop:0.5 #e1ebf9, stop:1 #b6c8e3);
     border-color: #3f8cff;
     color: #1a5cbf;
 }
+QToolButton:pressed, QToolButton:checked {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #b6c8e3, stop:0.5 #cddaee, stop:1 #e6ecf6);
+    border: 1px solid #2f6fcf;
+    color: #1a5cbf;
+}
 QWidget#RibbonGroup {
-    border-right: 1px solid #d6d6d6;
+    border-right: 1px solid #b6bfd0;
     background: transparent;
 }
 """
@@ -116,7 +138,7 @@ class RibbonGroup(QWidget):
         btn = QToolButton()
         btn.setText(label)
         btn.setToolTip(tooltip or label)
-        btn.setAutoRaise(True)
+        btn.setAutoRaise(False)
         btn.setToolButtonStyle(
             Qt.ToolButtonTextUnderIcon if large else Qt.ToolButtonTextOnly
         )

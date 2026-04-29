@@ -156,10 +156,12 @@ class BodyEditor(EditorBase):
         self.density.valueChanged.connect(self._on_density)
         self.form.addRow("Density", self.density)
 
+        # NOTE: ``thickness_z`` is shown lower down inside the Shape
+        # block — it's a shape parameter (not part of the rigid-body
+        # state) used only to derive mass / inertia.
         self.thickness_z = _spinbox(s.thickness_z, decimals=4, step=0.001,
-                                    vmin=1e-6, vmax=10.0, suffix="m (depth)")
+                                    vmin=1e-6, vmax=10.0, suffix="m")
         self.thickness_z.valueChanged.connect(self._on_thickness_z)
-        self.form.addRow("Depth (z)", self.thickness_z)
 
         # Mass / inertia (auto by default, blue; or override → editable)
         self.mass = _spinbox(s.mass, decimals=4, step=0.1, vmin=1e-9,
@@ -217,8 +219,23 @@ class BodyEditor(EditorBase):
                 )
                 self._shape_widgets[key] = w
                 self.form.addRow(key, w)
+            # Depth (out-of-plane). Belongs to the shape conceptually
+            # — it's only consumed by the mass-property calculator.
+            self.form.addRow("depth (z)", self.thickness_z)
+            note = QLabel(
+                "Note: the z dimension is used only to compute mass "
+                "properties; it has no other effect on the simulation."
+            )
+            note.setWordWrap(True)
+            f = note.font(); f.setPointSize(max(7, f.pointSize() - 2))
+            note.setFont(f)
+            note.setStyleSheet("color: #6b7280;")
+            self.form.addRow("", note)
         else:
             self._shape_widgets = {}
+            # No shape: still expose depth so the user can tweak the
+            # mass-property thickness directly.
+            self.form.addRow("depth (z)", self.thickness_z)
 
         # Apply visual states last so all widgets exist.
         self.setStyleSheet(_LOCKED_QSS)
