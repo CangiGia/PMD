@@ -71,6 +71,9 @@ class Tool(QObject):
         """Refresh tree/inspector/status after spec mutation."""
         self.window._tree.refresh()
         self.window._update_count_label()
+        # Drop any leftover canvas selection so the user is free to
+        # click the next entity without an old highlight lingering.
+        self.scene.clearSelection()
         # Record an undo snapshot if the host supports it.
         if hasattr(self.window, "_history_record"):
             self.window._history_record()

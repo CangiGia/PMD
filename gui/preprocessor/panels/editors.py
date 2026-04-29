@@ -391,9 +391,10 @@ class MarkerEditor(EditorBase):
         self.name.editingFinished.connect(self._on_name)
         self.form.addRow("Name", self.name)
 
-        # Owning body (combo of all bodies + ground)
+        # Owning body (combo of all bodies + ground). Ground is
+        # already part of ``self._model.bodies`` (auto-injected by
+        # ``ModelSpec``), so we just iterate to avoid a duplicate.
         self.body = QComboBox()
-        self.body.addItem("ground", "ground")
         for b in self._model.bodies:
             self.body.addItem(b.name or b.id, b.id)
         idx = self.body.findData(s.body_id)
@@ -402,12 +403,18 @@ class MarkerEditor(EditorBase):
         self.body.currentIndexChanged.connect(self._on_body)
         self.form.addRow("Body", self.body)
 
-        self.xi  = _spinbox(s.local_position[0], suffix="m (ξ)")
-        self.eta = _spinbox(s.local_position[1], suffix="m (η)")
+        # Coordinate labels switch between (x, y) when the marker
+        # belongs to ground (defined in the global frame) and
+        # (ξ, η) otherwise (defined in the body's local frame).
+        self.xi  = _spinbox(s.local_position[0])
+        self.eta = _spinbox(s.local_position[1])
         self.xi.valueChanged.connect(self._on_pos)
         self.eta.valueChanged.connect(self._on_pos)
-        self.form.addRow("ξ (local x)", self.xi)
-        self.form.addRow("η (local y)", self.eta)
+        self._lbl_xi  = QLabel()
+        self._lbl_eta = QLabel()
+        self.form.addRow(self._lbl_xi,  self.xi)
+        self.form.addRow(self._lbl_eta, self.eta)
+        self._refresh_pos_labels()
 
         self.theta_deg = _spinbox(math.degrees(s.theta),
                                   decimals=3, step=1.0,
@@ -416,11 +423,28 @@ class MarkerEditor(EditorBase):
         self.form.addRow("θ", self.theta_deg)
 
     def _on_name(self):    self.spec.name = self.name.text();          self._emit()
-    def _on_body(self, _): self.spec.body_id = self.body.currentData(); self._emit()
+    def _on_body(self, _):
+        self.spec.body_id = self.body.currentData()
+        self._refresh_pos_labels()
+        self._emit()
     def _on_pos(self, _=0):
         self.spec.local_position = (self.xi.value(), self.eta.value())
         self._emit()
     def _on_theta(self, v): self.spec.theta = math.radians(v);          self._emit()
+
+    def _refresh_pos_labels(self) -> None:
+        """Re-label coordinate fields based on the owning body."""
+        is_ground = self.spec.body_id == "ground"
+        if is_ground:
+            self._lbl_xi.setText("x")
+            self._lbl_eta.setText("y")
+            self.xi.setSuffix("  m")
+            self.eta.setSuffix("  m")
+        else:
+            self._lbl_xi.setText("ξ (local x)")
+            self._lbl_eta.setText("η (local y)")
+            self.xi.setSuffix("  m (ξ)")
+            self.eta.setSuffix("  m (η)")
 
 
 # ──────────────────────────────────────────────────────────────────

@@ -43,7 +43,8 @@ class BodyLinkTool(Tool):
     # ─────────────────────────────────────────────────────────
     def activate(self) -> None:
         super().activate()
-        n = len(self.spec.bodies) + 1
+        # Exclude the implicit ground body from the running counter.
+        n = sum(1 for b in self.spec.bodies if b.id != "ground") + 1
         self._draft = BodySpec(
             name=f"link{n}",
             mass=1.0,

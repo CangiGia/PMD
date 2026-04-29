@@ -23,11 +23,17 @@ class JointTool(Tool):
         super().__init__(window)
         self._first: MarkerItem | None = None
 
+    def activate(self):
+        super().activate()
+        self.window.statusBar().showMessage(
+            f"{self.KIND}: pick first marker (Esc to cancel)…", 0)
+
     def deactivate(self):
         super().deactivate()
         if self._first is not None:
             self._first.set_highlighted(False)
         self._first = None
+        self.window.statusBar().clearMessage()
 
     def mouse_press(self, event) -> bool:
         if event.button() != Qt.LeftButton:

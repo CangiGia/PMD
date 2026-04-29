@@ -191,6 +191,12 @@ class PreProcessorWindow(QMainWindow):
     def _build_status_bar(self):
         sb = QStatusBar(self)
         self.setStatusBar(sb)
+        # Slightly larger font so prompts ("pick first marker…") are
+        # easy to read while the user's eye is on the canvas.
+        sb.setStyleSheet(
+            "QStatusBar { font-size: 12pt; }"
+            "QStatusBar QLabel { font-size: 11pt; }"
+        )
 
         self._lbl_coords = QLabel("x=0.000  y=0.000 m")
         self._lbl_tool   = QLabel("tool: select")
