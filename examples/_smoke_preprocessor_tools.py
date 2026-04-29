@@ -54,6 +54,24 @@ def main():
         t.mouse_press(FakeEv(a.scenePos().x(), a.scenePos().y()))
         t.mouse_press(FakeEv(b.scenePos().x(), b.scenePos().y()))
     print("after joint: joints =", len(w.spec.joints))
+
+    # PtP spring between same two markers
+    w.set_active_tool("force_ptp")
+    t = w._scene.active_tool
+    if len(m_items) >= 2:
+        a, b = m_items[0], m_items[1]
+        t.mouse_press(FakeEv(a.scenePos().x(), a.scenePos().y()))
+        t.mouse_press(FakeEv(b.scenePos().x(), b.scenePos().y()))
+    print("after ptp:   forces =", len(w.spec.forces))
+    assert any(f.kind == "PtpForce" for f in w.spec.forces)
+
+    # Gravity toggle ON
+    w._on_action("force_grav")
+    assert any(f.kind == "Weight" for f in w.spec.forces)
+    # Gravity toggle OFF
+    w._on_action("force_grav")
+    assert not any(f.kind == "Weight" for f in w.spec.forces)
+    print("gravity toggle OK")
     print("OK")
 
 

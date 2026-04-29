@@ -249,7 +249,7 @@ class RibbonBar(QTabWidget):
     def _build_forces_tab(self):
         lay = self._new_tab("Forces")
         g1 = RibbonGroup("Global"); lay.addWidget(g1)
-        self._add_tool(g1, "force_grav", "Gravity", "Toggle global weight")
+        self._add_action(g1, "force_grav", "Gravity", "Toggle global weight (–9.81 m/s² in Y)")
 
         g2 = RibbonGroup("Applied"); lay.addWidget(g2)
         self._add_tool(g2, "force_ptp",    "PtP Spring",  "Point-to-point spring/damper")

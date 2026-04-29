@@ -226,8 +226,27 @@ class PreProcessorWindow(QMainWindow):
             self._open_solver_dialog()
         elif name == "post_open":
             self._open_post_processor()
+        elif name == "force_grav":
+            self._toggle_gravity()
         else:
             self.statusBar().showMessage(f"Action: {name}", 2000)
+
+    def _toggle_gravity(self):
+        """Add (or remove) a global Weight ForceSpec."""
+        from .models import ForceSpec
+        existing = next(
+            (f for f in self.spec.forces if f.kind == "Weight"), None)
+        if existing is not None:
+            self.spec.forces.remove(existing)
+            self.statusBar().showMessage("Gravity: OFF", 2000)
+        else:
+            self.spec.forces.append(ForceSpec(
+                name="gravity", kind="Weight",
+                params={"gravity": 9.80665},
+            ))
+            self.statusBar().showMessage("Gravity: ON  (9.80665 m/s², -Y)", 2000)
+        self._tree.refresh()
+        self._update_count_label()
 
     def _on_spec_edited(self, kind: str, item_id: str) -> None:
         """Re-sync graphics + tree after the inspector mutates a spec."""
