@@ -28,6 +28,19 @@ from ..models import (
 )
 
 
+# QSS applied to widgets that are locked after creation: light red fill
+# + dark red text + red border so the user clearly sees the field is
+# read-only and cannot be changed without breaking the model geometry.
+_LOCKED_QSS = (
+    "QDoubleSpinBox:disabled, QLineEdit:disabled, QComboBox:disabled {"
+    "  background: rgba(214, 90, 90, 0.12);"
+    "  color: #8b1c1c;"
+    "  border: 1px solid rgba(184, 50, 50, 0.55);"
+    "  border-radius: 3px;"
+    "}"
+)
+
+
 # ──────────────────────────────────────────────────────────────────
 # Helpers
 # ──────────────────────────────────────────────────────────────────
@@ -139,6 +152,35 @@ class BodyEditor(EditorBase):
                 )
                 self._shape_widgets[key] = w
                 self.form.addRow(key, w)
+        else:
+            self._shape_widgets = {}
+
+        # Apply locking last so all widgets exist.
+        if getattr(s, "locked", False):
+            self.set_locked(True)
+
+    # ──────────────────────────────────────────────────────────
+    def set_locked(self, on: bool) -> None:
+        """Freeze geometry-defining fields once the body is committed.
+
+        When ``on`` is True the position, orientation and shape-param
+        widgets become read-only and adopt a red highlight; mass,
+        inertia, name, and initial velocities stay editable.
+        """
+        for w in (self.x, self.y, self.phi_deg):
+            w.setReadOnly(on)
+            w.setEnabled(not on)
+        for w in self._shape_widgets.values():
+            w.setReadOnly(on)
+            w.setEnabled(not on)
+        self.setStyleSheet(_LOCKED_QSS if on else "")
+
+    def set_position_field_enabled(self, on: bool) -> None:
+        """Enable/disable just the (x, y, phi) trio — used for drafts."""
+        for w in (self.x, self.y, self.phi_deg):
+            w.setEnabled(on)
+            w.setReadOnly(not on)
+        self.setStyleSheet("" if on else _LOCKED_QSS)
 
     # ----------------------------------------------------------
     def _on_name(self):     self.spec.name = self.name.text();           self._emit()

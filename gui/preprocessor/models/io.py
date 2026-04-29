@@ -73,6 +73,7 @@ def _body_from_dict(d: dict) -> BodySpec:
         velocity=_xy(d.get("velocity")),
         angular_velocity=float(d.get("angular_velocity", 0.0)),
         shape=_shape_from_dict(d.get("shape")),
+        locked=bool(d.get("locked", False)),
     )
 
 

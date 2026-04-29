@@ -115,6 +115,11 @@ class BodySpec:
     velocity: tuple[float, float] = (0.0, 0.0)
     angular_velocity: float = 0.0
     shape: ShapeSpec | None = None
+    # If True, geometry-defining fields (position, orientation, shape
+    # dimensions) are considered frozen by the GUI: editors render them
+    # read-only with a red highlight so the user can't accidentally
+    # invalidate the markers tied to this body.
+    locked: bool = False
 
 
 # ────────────────────────────────────────────────────────────────────

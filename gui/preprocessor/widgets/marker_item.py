@@ -25,8 +25,8 @@ class MarkerItem(QGraphicsObject):
     _ARROW_H_PX   = 14.0
     _ORIGIN_R_PX  = 4.0
     _PICK_R_PX    = 12.0
-    _LABEL_DX_PX  = 12.0
-    _LABEL_DY_PX  = -10.0
+    _LABEL_DX_PX  = -2.0   # small horizontal nudge
+    _LABEL_DY_PX  = 22.0   # below the origin (positive = screen-down)
     _LABEL_PT     = 11.0
     _AXIS_W_PX    = 2.2
 
@@ -133,10 +133,9 @@ class MarkerItem(QGraphicsObject):
             painter.rotate(-total_deg)
             painter.scale(1.0 / s, -1.0 / s)        # painter local = pixels
             painter.translate(self._LABEL_DX_PX,
-                              -self._LABEL_DY_PX)   # +DY = below origin
+                              self._LABEL_DY_PX)    # +Y = screen-down here
             font = QFont()
             font.setPointSizeF(self._LABEL_PT)
-            font.setBold(True)
             painter.setFont(font)
             pen_l = QPen(self._C_LABEL); pen_l.setCosmetic(True)
             painter.setPen(pen_l)

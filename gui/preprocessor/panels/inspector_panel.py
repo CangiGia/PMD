@@ -86,6 +86,21 @@ class InspectorPanel(QWidget):
         self._title.setText("<i>No selection</i>")
         self._set_editor(None)
 
+    def show_draft_body(self, spec) -> None:
+        """Edit a not-yet-committed body during canvas placement.
+
+        The position/orientation fields are disabled (they get set by
+        the next mouse clicks) but the user can freely tune mass,
+        inertia, and the shape's principal dimensions before anchoring.
+        """
+        self._title.setText(
+            "<b>Body</b> &nbsp; "
+            "<span style='color:#a7350c;'>(draft — pick A, then orientation)</span>"
+        )
+        editor = BodyEditor(spec)
+        editor.set_position_field_enabled(False)
+        self._set_editor(editor)
+
     # ──────────────────────────────────────────────────────────
     def _make_editor(self, kind: str, item) -> EditorBase | None:
         assert self._spec is not None

@@ -29,16 +29,18 @@ def main():
 
     w.set_active_tool("body_rect")
     t = w._scene.active_tool
-    t.mouse_press(FakeEv(0.0, 0.0))
-    t.mouse_release(FakeEv(0.0, 0.0))
+    t.mouse_press(FakeEv(0.0, 0.0))   # anchor centre
+    t.mouse_press(FakeEv(0.1, 0.0))   # second click → orientation
     print("after rect:  bodies =", len(w.spec.bodies))
+    assert w.spec.bodies[-1].locked is True
 
     w.set_active_tool("body_link")
     t = w._scene.active_tool
-    t.mouse_press(FakeEv(0.5, 0.5))
-    t.mouse_press(FakeEv(0.8, 0.5))
+    t.mouse_press(FakeEv(0.5, 0.5))   # anchor A
+    t.mouse_press(FakeEv(0.8, 0.5))   # orientation
     print("after link:  bodies =", len(w.spec.bodies),
           "markers =", len(w.spec.markers))
+    assert w.spec.bodies[-1].locked is True
 
     w.set_active_tool("marker")
     t = w._scene.active_tool

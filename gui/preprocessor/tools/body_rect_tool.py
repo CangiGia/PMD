@@ -1,6 +1,17 @@
-"""BodyRectTool — click-drag to create a rectangular rigid body."""
+"""BodyRectTool \u2014 inspector-driven 2-click placement of a rectangle.
+
+Workflow mirrors :class:`BodyLinkTool`:
+
+1. Pick the *Rect* tool. A draft :class:`BodySpec` is shown in the
+   Inspector so the user can edit width / height / mass / inertia.
+2. First click anchors the body's centre at the click point.
+3. Mouse rotates the rectangle about its centre.
+4. Second click commits the body, locks geometry and reverts to Select.
+"""
 
 from __future__ import annotations
+
+import math
 
 from PySide6.QtCore import QRectF, Qt
 from PySide6.QtGui import QBrush, QColor, QPen
@@ -11,108 +22,113 @@ from .tool_base import Tool
 
 
 class BodyRectTool(Tool):
-    """Click on the canvas to drop a default rectangular body.
-
-    Behaviour
-    ---------
-    * Press → record start point (snapped).
-    * Drag  → live preview rectangle.
-    * Release → commit:
-        - if the drag is degenerate (≈ click), use the default
-          size 200 × 100 mm centred on the press point;
-        - otherwise the rectangle's bounding box defines the body.
-    """
-
     name = "body_rect"
     cursor = Qt.CrossCursor
 
-    _DEFAULT_W = 0.20
-    _DEFAULT_H = 0.10
-    _MIN_SIZE  = 0.01  # below this the drag is treated as a click
+    _DEF_W = 0.20
+    _DEF_H = 0.10
 
     def __init__(self, window):
         super().__init__(window)
-        self._press_pt = None
+        self._draft: BodySpec | None = None
+        self._phase: str = "anchor"
+        self._a: tuple[float, float] | None = None
         self._preview: QGraphicsRectItem | None = None
 
-    def deactivate(self):
+    # ─────────────────────────────────────────────────────────
+    def activate(self) -> None:
+        super().activate()
+        n = len(self.spec.bodies) + 1
+        self._draft = BodySpec(
+            name=f"body{n}",
+            mass=1.0,
+            inertia=(self._DEF_W ** 2 + self._DEF_H ** 2) / 12.0,
+            position=(0.0, 0.0),
+            orientation=0.0,
+            shape=ShapeSpec(kind="rectangle",
+                            params={"width": self._DEF_W,
+                                    "height": self._DEF_H}),
+        )
+        self._phase = "anchor"
+        self._a = None
+        self.window._inspector.show_draft_body(self._draft)
+        self.window.statusBar().showMessage(
+            "Rect: set the dimensions in the Inspector, then click on the "
+            "canvas to place the body's centre (Esc to cancel)\u2026", 0)
+
+    def deactivate(self) -> None:
         super().deactivate()
         self._clear_preview()
-        self._press_pt = None
+        self._draft = None
+        self._a = None
+        self._phase = "anchor"
+        self.window.statusBar().clearMessage()
 
     # ─────────────────────────────────────────────────────────
     def mouse_press(self, event) -> bool:
-        if event.button() != Qt.LeftButton:
+        if event.button() != Qt.LeftButton or self._draft is None:
             return False
-        self._press_pt = self.scene.snap(event.scenePos())
-        self._make_preview(self._press_pt, self._press_pt)
-        return True
-
-    def mouse_move(self, event) -> bool:
-        if self._press_pt is None or self._preview is None:
-            return False
-        end = self.scene.snap(event.scenePos())
-        self._update_preview(self._press_pt, end)
-        return True
-
-    def mouse_release(self, event) -> bool:
-        if event.button() != Qt.LeftButton or self._press_pt is None:
-            return False
-        end = self.scene.snap(event.scenePos())
-        self._clear_preview()
-
-        x0, y0 = self._press_pt
-        x1, y1 = end
-        w = abs(x1 - x0)
-        h = abs(y1 - y0)
-        if w < self._MIN_SIZE or h < self._MIN_SIZE:
-            cx, cy = x0, y0
-            w, h = self._DEFAULT_W, self._DEFAULT_H
-        else:
-            cx = 0.5 * (x0 + x1)
-            cy = 0.5 * (y0 + y1)
-
-        spec = BodySpec(
-            name=f"body{len(self.spec.bodies) + 1}",
-            mass=1.0, inertia=0.01,
-            position=(cx, cy),
-            shape=ShapeSpec(kind="rectangle",
-                            params={"width": w, "height": h}),
-        )
-        self.spec.bodies.append(spec)
-        self.window.add_body_item(spec)
-        self._press_pt = None
-        self._commit()
-        # One-shot: revert to Select so the body cannot be accidentally
-        # moved / re-edited by stray clicks right after creation.
+        p = self.scene.snap(event.scenePos())
+        if self._phase == "anchor":
+            self._a = p
+            self._phase = "rotate"
+            self._make_preview(p)
+            self.window.statusBar().showMessage(
+                "Rect: move the mouse to set the orientation, click to "
+                "confirm (Esc to cancel)\u2026", 0)
+            return True
+        # commit
+        self._commit_rect(self._a, p)
         self.window.set_active_tool("select")
         return True
 
+    def mouse_move(self, event) -> bool:
+        if (self._phase != "rotate" or self._a is None
+                or self._preview is None):
+            return False
+        p = self.scene.snap(event.scenePos())
+        ax, ay = self._a
+        phi = math.atan2(p[1] - ay, p[0] - ax)
+        self._preview.setRotation(math.degrees(phi))
+        return True
+
     # ─────────────────────────────────────────────────────────
-    def _make_preview(self, p0, p1):
-        rect = self._rect_from_points(p0, p1)
+    def _commit_rect(self, a, mouse_b) -> None:
+        assert self._draft is not None
+        ax, ay = a
+        phi = math.atan2(mouse_b[1] - ay, mouse_b[0] - ax)
+        body = self._draft
+        body.position = (ax, ay)
+        body.orientation = phi
+        # Re-derive inertia from the (possibly user-edited) sides.
+        w = float(body.shape.params.get("width", self._DEF_W))
+        h = float(body.shape.params.get("height", self._DEF_H))
+        body.inertia = body.mass * (w * w + h * h) / 12.0
+        body.locked = True
+        self.spec.bodies.append(body)
+        self.window.add_body_item(body)
+        self._clear_preview()
+        self._commit()
+
+    # ─────────────────────────────────────────────────────────
+    def _make_preview(self, anchor) -> None:
+        w = float(self._draft.shape.params.get("width", self._DEF_W))
+        h = float(self._draft.shape.params.get("height", self._DEF_H))
+        rect = QRectF(-w / 2, -h / 2, w, h)
         self._preview = QGraphicsRectItem(rect)
         pen = QPen(QColor("#3f8cff"))
         pen.setCosmetic(True)
-        pen.setWidthF(1.0)
+        pen.setWidthF(1.5)
         pen.setStyle(Qt.DashLine)
         self._preview.setPen(pen)
         self._preview.setBrush(QBrush(QColor(63, 140, 255, 60)))
         self._preview.setZValue(1000)
         self.scene.addItem(self._preview)
+        ax, ay = anchor
+        self._preview.setPos(ax, ay)
+        self._preview.setRotation(0.0)
 
-    def _update_preview(self, p0, p1):
-        if self._preview is not None:
-            self._preview.setRect(self._rect_from_points(p0, p1))
-
-    def _clear_preview(self):
-        if self._preview is not None:
+    def _clear_preview(self) -> None:
+        if self._preview is not None and self._preview.scene() is not None:
             self.scene.removeItem(self._preview)
-            self._preview = None
-
-    @staticmethod
-    def _rect_from_points(p0, p1) -> QRectF:
-        x0, y0 = p0
-        x1, y1 = p1
-        return QRectF(min(x0, x1), min(y0, y1),
-                      abs(x1 - x0), abs(y1 - y0))
+        self._preview = None
