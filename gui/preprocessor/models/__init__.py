@@ -13,6 +13,7 @@ from .spec import (
     ModelSpec,
     ShapeSpec,
 )
+from .io import load_model, save_model, to_dict, from_dict
 
 __all__ = [
     "BodySpec",
@@ -21,4 +22,8 @@ __all__ = [
     "MarkerSpec",
     "ModelSpec",
     "ShapeSpec",
+    "load_model",
+    "save_model",
+    "to_dict",
+    "from_dict",
 ]

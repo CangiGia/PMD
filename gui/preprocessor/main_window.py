@@ -3,16 +3,25 @@
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QAction
+from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
     QDockWidget,
+    QFileDialog,
     QLabel,
     QMainWindow,
+    QMessageBox,
     QStatusBar,
     QToolBar,
 )
 
-from .models import BodySpec, JointSpec, MarkerSpec, ModelSpec
+from .models import (
+    BodySpec,
+    JointSpec,
+    MarkerSpec,
+    ModelSpec,
+    load_model,
+    save_model,
+)
 from .panels import InspectorPanel, RibbonBar, TreePanel
 from .tools  import make_tool, Tool
 from .widgets import (
@@ -30,6 +39,7 @@ class PreProcessorWindow(QMainWindow):
     def __init__(self, spec: ModelSpec, parent=None):
         super().__init__(parent)
         self.spec = spec
+        self._project_path: str | None = None
 
         # spec.id → graphics item registries
         self._body_items:   dict[str, BodyItem]   = {}
@@ -99,8 +109,25 @@ class PreProcessorWindow(QMainWindow):
 
         file_menu = mbar.addMenu("&File")
         act_new = QAction("&New Project", self)
+        act_new.setShortcut(QKeySequence.New)
         act_new.triggered.connect(self._on_new_project)
         file_menu.addAction(act_new)
+
+        act_open = QAction("&Open…", self)
+        act_open.setShortcut(QKeySequence.Open)
+        act_open.triggered.connect(self._on_open)
+        file_menu.addAction(act_open)
+
+        act_save = QAction("&Save", self)
+        act_save.setShortcut(QKeySequence.Save)
+        act_save.triggered.connect(self._on_save)
+        file_menu.addAction(act_save)
+
+        act_save_as = QAction("Save &As…", self)
+        act_save_as.setShortcut(QKeySequence.SaveAs)
+        act_save_as.triggered.connect(self._on_save_as)
+        file_menu.addAction(act_save_as)
+
         file_menu.addSeparator()
         act_quit = QAction("&Quit", self)
         act_quit.triggered.connect(self.close)
@@ -263,15 +290,80 @@ class PreProcessorWindow(QMainWindow):
             self._inspector.show_item("joint", top.spec.id)
 
     def _on_new_project(self):
-        self._scene.clear()
-        self._body_items.clear()
-        self._marker_items.clear()
-        self._joint_items.clear()
+        self._reset_scene()
         self.spec = ModelSpec()
+        self._project_path = None
         self._tree.set_spec(self.spec)
         self._inspector.set_spec(self.spec)
         self._inspector.clear()
         self._update_count_label()
+        self._update_title()
+
+    # -- Project I/O ------------------------------------------------
+
+    PROJECT_FILTER = "PMD Model (*.pmdmodel.json *.json);;All files (*.*)"
+
+    def _on_open(self):
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Open Project", "", self.PROJECT_FILTER)
+        if not path:
+            return
+        try:
+            self.load_project(path)
+        except Exception as exc:  # surface to user
+            QMessageBox.critical(self, "Open failed", str(exc))
+
+    def _on_save(self):
+        if not self._project_path:
+            return self._on_save_as()
+        self.save_project(self._project_path)
+
+    def _on_save_as(self):
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Save Project As", "untitled.pmdmodel.json",
+            self.PROJECT_FILTER)
+        if not path:
+            return
+        self.save_project(path)
+
+    def save_project(self, path: str) -> None:
+        save_model(self.spec, path)
+        self._project_path = path
+        self._update_title()
+        self.statusBar().showMessage(f"Saved: {path}", 3000)
+
+    def load_project(self, path: str) -> None:
+        spec = load_model(path)
+        self._reset_scene()
+        self.spec = spec
+        self._project_path = path
+        self._tree.set_spec(self.spec)
+        self._inspector.set_spec(self.spec)
+        self._inspector.clear()
+
+        # Rebuild scene from spec (bodies first, then markers, then joints).
+        for b in self.spec.bodies:
+            self.add_body_item(b)
+        for m in self.spec.markers:
+            self.add_marker_item(m)
+        for j in self.spec.joints:
+            self.add_joint_visual(j)
+
+        self._update_count_label()
+        self._update_title()
+        self._view.zoom_to_fit()
+        self.statusBar().showMessage(f"Loaded: {path}", 3000)
+
+    def _reset_scene(self) -> None:
+        self._scene.clear()
+        self._body_items.clear()
+        self._marker_items.clear()
+        self._joint_items.clear()
+
+    def _update_title(self) -> None:
+        suffix = self._project_path or "<unsaved>"
+        self.setWindowTitle(
+            f"PMD Pre-Processor \u2014 {self.spec.name} [{suffix}]")
 
     # ──────────────────────────────────────────────────────────
     def _update_count_label(self):
