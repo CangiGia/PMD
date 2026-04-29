@@ -33,34 +33,35 @@ _RIBBON_QSS = """
 QTabWidget::pane {
     border: 1px solid #8a9bb4;
     border-top: none;
-    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-        stop:0 #f4f6fa, stop:1 #dfe4ec);
+    background: #f5f6f8;
 }
 QTabBar {
     background: transparent;
     qproperty-drawBase: 0;
 }
+/* Unselected tabs: bluette, raised */
 QTabBar::tab {
     background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-        stop:0 #fbfcfe, stop:1 #cdd6e3);
-    color: #1c2033;
+        stop:0 #d6e4f7, stop:1 #8fb3df);
+    color: #1a3a66;
     padding: 5px 18px 4px 18px;
     margin: 2px 1px 0 1px;
-    border: 1px solid #8a9bb4;
+    border: 1px solid #5a7fae;
     border-bottom: none;
     border-top-left-radius: 4px;
     border-top-right-radius: 4px;
     min-height: 18px;
     font-size: 9pt;
 }
-QTabBar::tab:hover {
+QTabBar::tab:hover:!selected {
     background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-        stop:0 #ffffff, stop:1 #dde6f2);
-    color: #1a5cbf;
+        stop:0 #e6efff, stop:1 #a4c2e8);
+    color: #134a99;
 }
+/* Selected tab: pale neutral, like the reference image */
 QTabBar::tab:selected {
     background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-        stop:0 #ffffff, stop:1 #eef2f8);
+        stop:0 #ffffff, stop:1 #eef1f6);
     color: #1a5cbf;
     font-weight: 600;
     margin-top: 0px;
@@ -70,29 +71,26 @@ QTabBar::tab:selected {
 QTabBar::tab:!selected {
     margin-top: 3px;
 }
+/* Tool buttons inside the pane: flat (no relief) */
 QToolButton {
-    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-        stop:0 #ffffff, stop:0.5 #eef2f8, stop:1 #c9d3e2);
+    background: transparent;
     color: #1c2033;
-    border: 1px solid #8a9bb4;
+    border: 1px solid transparent;
     border-radius: 4px;
-    padding: 3px 8px;
+    padding: 2px 4px;
     font-size: 9pt;
 }
 QToolButton:hover {
-    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-        stop:0 #ffffff, stop:0.5 #e1ebf9, stop:1 #b6c8e3);
+    background: rgba(63, 140, 255, 0.10);
+    border-color: #c8d2e0;
+}
+QToolButton:checked {
+    background: rgba(63, 140, 255, 0.18);
     border-color: #3f8cff;
     color: #1a5cbf;
 }
-QToolButton:pressed, QToolButton:checked {
-    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-        stop:0 #b6c8e3, stop:0.5 #cddaee, stop:1 #e6ecf6);
-    border: 1px solid #2f6fcf;
-    color: #1a5cbf;
-}
 QWidget#RibbonGroup {
-    border-right: 1px solid #b6bfd0;
+    border-right: 1px solid #d6d6d6;
     background: transparent;
 }
 """
@@ -138,7 +136,7 @@ class RibbonGroup(QWidget):
         btn = QToolButton()
         btn.setText(label)
         btn.setToolTip(tooltip or label)
-        btn.setAutoRaise(False)
+        btn.setAutoRaise(True)
         btn.setToolButtonStyle(
             Qt.ToolButtonTextUnderIcon if large else Qt.ToolButtonTextOnly
         )
