@@ -53,12 +53,10 @@ C_PMD = '#2E7EC1'  # steel blue
 
 
 def _load_pmd(path):
-    """Load a PMD validation file (space/tab-separated, 1 header row)."""
     return pd.read_csv(path, sep=r'\s+', header=0, engine='python')
 
 
 def _load_adams(path):
-    """Load an ADAMS validation file (model title + blank line before header)."""
     return pd.read_csv(
         path, sep=r'\s+', header=0, skiprows=2, quotechar='"', engine='python'
     )
