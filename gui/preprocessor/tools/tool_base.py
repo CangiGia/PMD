@@ -74,6 +74,9 @@ class Tool(QObject):
         # Drop any leftover canvas selection so the user is free to
         # click the next entity without an old highlight lingering.
         self.scene.clearSelection()
+        # Also dismiss the Inspector contents (the draft body editor
+        # used during placement, or the previously selected entity).
+        self.window._inspector.clear()
         # Record an undo snapshot if the host supports it.
         if hasattr(self.window, "_history_record"):
             self.window._history_record()

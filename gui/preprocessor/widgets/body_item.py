@@ -66,6 +66,19 @@ class BodyItem(QGraphicsObject):
                        self._w + 2 * m,
                        self._h + 2 * m)
 
+    def shape(self):
+        # Picking is constrained to the *actual* body rectangle (in
+        # local coords). Without this the default shape() == bounding
+        # rect, which carries the stroke-width margin in scene units
+        # (i.e. ~1 m halo around every body) and makes everything
+        # near a body select that body instead of what the user
+        # actually clicked on.
+        from PySide6.QtGui import QPainterPath
+        path = QPainterPath()
+        path.addRect(QRectF(-self._w / 2, -self._h / 2,
+                            self._w, self._h))
+        return path
+
     def paint(self, painter, option, widget=None):
         rect = QRectF(-self._w / 2, -self._h / 2, self._w, self._h)
 

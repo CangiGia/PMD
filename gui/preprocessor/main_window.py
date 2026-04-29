@@ -381,6 +381,9 @@ class PreProcessorWindow(QMainWindow):
     def _on_selection_changed(self):
         items = self._scene.selectedItems()
         if not items:
+            # Nothing is selected anymore → reset the Inspector so the
+            # last-selected entity's editor doesn't linger.
+            self._inspector.clear()
             return
         top = items[0]
         if isinstance(top, BodyItem):
