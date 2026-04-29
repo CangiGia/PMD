@@ -40,6 +40,9 @@ class PreProcessorWindow(QMainWindow):
         super().__init__(parent)
         self.spec = spec
         self._project_path: str | None = None
+        self._solver_settings = None  # lazy SolverSettings, last used
+        self._last_run = None         # (model, T, uT) of the last solve
+        self._post_window = None      # keep ref so it isn't GC'd
 
         # spec.id → graphics item registries
         self._body_items:   dict[str, BodyItem]   = {}
@@ -216,8 +219,15 @@ class PreProcessorWindow(QMainWindow):
         self._lbl_coords.setText(f"x={x:+.3f}  y={y:+.3f} m")
 
     def _on_action(self, name: str):
-        # Real handlers will be wired in subsequent steps.
-        self.statusBar().showMessage(f"Action: {name}", 2000)
+        if name in ("sim_dynamic", "sim_kinematic", "sim_static"):
+            analysis = name.split("_", 1)[1]
+            self._run_simulation(analysis=analysis)
+        elif name == "sim_settings":
+            self._open_solver_dialog()
+        elif name == "post_open":
+            self._open_post_processor()
+        else:
+            self.statusBar().showMessage(f"Action: {name}", 2000)
 
     def _on_spec_edited(self, kind: str, item_id: str) -> None:
         """Re-sync graphics + tree after the inspector mutates a spec."""
@@ -373,3 +383,77 @@ class PreProcessorWindow(QMainWindow):
             f"joints={len(self.spec.joints)}  "
             f"forces={len(self.spec.forces)}"
         )
+
+    # ──────────────────────────────────────────────────────────
+    # Simulation bridge
+    # ──────────────────────────────────────────────────────────
+
+    def _open_solver_dialog(self):
+        from .dialogs import SolverDialog
+        dlg = SolverDialog(self, initial=self._solver_settings)
+        if dlg.exec() == dlg.Accepted:
+            self._solver_settings = dlg.settings()
+            self.statusBar().showMessage("Solver settings updated", 2000)
+
+    def _run_simulation(self, *, analysis: str = "dynamic"):
+        from .builder import build_model, BuilderError
+        from .dialogs import SolverDialog, SolverSettings
+
+        if not self.spec.bodies:
+            QMessageBox.warning(self, "Run", "Model has no bodies.")
+            return
+
+        # Show dialog seeded with the requested analysis.
+        seed = self._solver_settings or SolverSettings()
+        seed.analysis = analysis
+        dlg = SolverDialog(self, initial=seed)
+        if dlg.exec() != dlg.Accepted:
+            return
+        cfg = dlg.settings()
+        self._solver_settings = cfg
+
+        # Compile + solve.
+        import numpy as np
+        try:
+            model = build_model(self.spec)
+        except BuilderError as exc:
+            QMessageBox.critical(self, "Build failed", str(exc))
+            return
+
+        self.statusBar().showMessage(
+            f"Solving ({cfg.analysis}, {cfg.method}) …")
+        try:
+            t_eval = np.linspace(cfg.t_start, cfg.t_end, cfg.n_steps)
+            T, uT = model.solve(
+                analysis=cfg.analysis,
+                method=cfg.method,
+                t_span=(cfg.t_start, cfg.t_end),
+                t_eval=t_eval,
+                ic_correct=cfg.ic_correct,
+                baumgarte_alpha=cfg.baumgarte_alpha,
+                baumgarte_beta=cfg.baumgarte_beta,
+            )
+        except Exception as exc:
+            QMessageBox.critical(self, "Solve failed", str(exc))
+            self.statusBar().clearMessage()
+            return
+
+        self._last_run = (model, T, uT)
+        self.statusBar().showMessage(
+            f"Solve OK: {len(T)} steps. Use Results → Open to view.", 5000)
+
+    def _open_post_processor(self):
+        if self._last_run is None:
+            QMessageBox.information(
+                self, "Post-processor",
+                "No simulation results yet \u2014 run an analysis first.")
+            return
+        model, T, uT = self._last_run
+        # Build the post-processor's main window in our running event loop;
+        # avoid PostProcessor.show() (which would call app.exec() again).
+        from ..main_window import MainWindow as _PostMain
+        from ..models import Session
+        model._distribute_results(T, uT)
+        sessions = [Session(model, T, uT, name=self.spec.name)]
+        self._post_window = _PostMain(sessions)
+        self._post_window.show()
