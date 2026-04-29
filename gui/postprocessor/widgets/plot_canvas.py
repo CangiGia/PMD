@@ -14,8 +14,8 @@ from ._zoom_inset import ZoomInset
 from PySide6.QtWidgets import QToolBar, QToolButton, QVBoxLayout, QWidget
 
 from ..models import CurveItem
-from .. import icons as _icons
-from ..style import CANVAS_BG_DARK, CANVAS_BG_LIGHT, CANVAS_FG_DARK, CANVAS_FG_LIGHT
+from ... import icons as _icons
+from ...style import CANVAS_BG_DARK, CANVAS_BG_LIGHT, CANVAS_FG_DARK, CANVAS_FG_LIGHT
 
 
 class PlotCanvas(QWidget):

@@ -17,8 +17,8 @@ from PySide6.QtWidgets import (
 from PMD.src.units import UnitSystem
 from .models import build_curves
 from .panels import FilterPanel, ResultSetPanel, SimulationPanel, UnitsToolbar
-from .style import apply_dark_theme, apply_light_theme
-from . import icons as _icons
+from ..style import apply_dark_theme, apply_light_theme
+from .. import icons as _icons
 from .widgets import AnimationCanvas, PlotCanvas
 
 logger = logging.getLogger(__name__)

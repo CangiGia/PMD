@@ -48,7 +48,7 @@ ACTIVE FORCES
 
 import numpy as np
 from PMD.src import *
-from gui.app import PostProcessor
+from PMD.gui import PostProcessor
 
 
 L1 = 40.0e-3    # m  crank length

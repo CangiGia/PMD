@@ -25,8 +25,8 @@ from PySide6.QtWidgets import (
 from PMD.src.shapes import Rectangle, Circle, Polygon
 from PMD.src.constraints import RevJoint, TranJoint, PtpForce
 from PMD.src.mechanics import rotation_matrix
-from .. import icons as _icons
-from ..style import CANVAS_BG_DARK, CANVAS_BG_LIGHT, CANVAS_FG_DARK, CANVAS_FG_LIGHT
+from ... import icons as _icons
+from ...style import CANVAS_BG_DARK, CANVAS_BG_LIGHT, CANVAS_FG_DARK, CANVAS_FG_LIGHT
 
 # Colour palette for bodies (tab10)
 _BODY_COLORS = [

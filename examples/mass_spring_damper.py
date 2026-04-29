@@ -4,35 +4,40 @@ MSD (Mass-Spring-Damper) Model - Planar Multibody Dynamics (PMD)
 KINEMATIC SCHEME & INITIAL STATE
 ---------------------------------
 
-         |   (ground anchor, y = 0)
-         |
-        /\/\/\/\   spring (k = 1e6 N/m, L0 = 1.5 m, dc = 6500 N·s/m)
-        |      |
-        +------+
-        |      |   mass (m = 1000 kg, 1 m × 1 m)    v0 = +10 m/s (↑)
-        +------+
-          (CM at y = 2.0 m, bottom face at y = 1.5 m = L0)
+          +---------+
+          |         |
+          |    m    |  mass
+          |         |
+          +---------+
+            |     |
+            /     |  
+            \    _|_
+    spring  /   |   | 
+            \   |___| damper
+            /     |
+            |     |
+         ===+=====+=== ground
 
 BODY PARAMETERS
 ---------------
 +------+----------+---------------+------------+--------------+
 | Body | m  [kg]  |  I  [kg·m²]   | pos  [m]   | vel  [m/s]   |
 +------+----------+---------------+------------+--------------+
-| mass | 1000.0   |  1.0  (†)     | (0.0, 2.0) | (0.0, 10.0)  |
+| mass | 1000.0   |  0.5  (†)     | (0.0, 2.0) | (0.0, 10.0)  |
 +------+----------+---------------+------------+--------------+
 (†) Placeholder — rotation is blocked by TranJoint, so I has no effect.
 """
 
 import numpy as np
 from PMD.src import *
-from gui.app import PostProcessor
+from PMD.gui import PostProcessor
 
 
 #%% Bodies
 mass = Body(
     mass=1000.0,           # kg
-    inertia=1.0,           # kg·m² — placeholder, rotation blocked by TranJoint
-    position=[0.0, 2.0],   # m  — CM; bottom face at y = 1.5 m = L0
+    inertia=0.5,           # kg·m² — placeholder, rotation blocked by TranJoint
+    position=[0.0, 0.0],   # m  — CM; bottom face at y = 1.5 m = L0
     velocity=[0.0, 10.0],  # m/s — initial velocity upward
     name='mass',
 )
@@ -40,8 +45,8 @@ mass = Body(
 
 #%% Markers
 # Ground markers
-mk_g_spring = Ground.add_marker([0.0, 0.0])                    # spring lower anchor
-mk_g_tran   = Ground.add_marker([0.0, 0.0], theta=np.pi / 2)   # TranJoint guide (Y-axis)
+mk_g_spring = Ground.add_marker([0.0, -2.0])                    # spring lower anchor
+mk_g_tran   = Ground.add_marker([0.0, 0.0], theta=np.pi / 2)    # TranJoint guide (Y-axis)
 
 # Mass markers (local frame, CM at origin)
 mk_m_spring = mass.add_marker([0.0, -0.5])                    # spring upper anchor (bottom face)

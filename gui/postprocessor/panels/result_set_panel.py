@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
 )
 
 from ..models import CurveItem
-from .. import icons as _icons
+from ... import icons as _icons
 
 
 def _color_icon(hex_color: str, size: int = 12) -> QIcon:

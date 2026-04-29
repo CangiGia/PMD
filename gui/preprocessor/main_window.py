@@ -473,8 +473,7 @@ class PreProcessorWindow(QMainWindow):
         model, T, uT = self._last_run
         # Build the post-processor's main window in our running event loop;
         # avoid PostProcessor.show() (which would call app.exec() again).
-        from ..main_window import MainWindow as _PostMain
-        from ..models import Session
+        from ..postprocessor import MainWindow as _PostMain, Session
         model._distribute_results(T, uT)
         sessions = [Session(model, T, uT, name=self.spec.name)]
         self._post_window = _PostMain(sessions)

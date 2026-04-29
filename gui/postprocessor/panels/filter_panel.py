@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
 )
 
 from ..models import reaction_labels
-from .. import icons as _icons
+from ... import icons as _icons
 
 # Map from display name → (result‑container key, list of component keys)
 _BODY_CATEGORIES = {

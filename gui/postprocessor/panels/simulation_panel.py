@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .. import icons as _icons
+from ... import icons as _icons
 
 
 class SimulationPanel(QWidget):

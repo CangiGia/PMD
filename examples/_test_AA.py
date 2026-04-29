@@ -5,7 +5,7 @@ from PMD.src import *
 from PMD.src.model import _GroundType
 import matplotlib.pyplot as plt
 from PMD.examples._plot_utils import plot_comparison
-from PMD.gui.app import PostProcessor
+from PMD.gui import PostProcessor
 
 #%% bodies
 B1 = Body(mass=2, inertia=0.5, position=[0.4398, 0.2512], orientation=-0.0367)   # lower suspension arm
