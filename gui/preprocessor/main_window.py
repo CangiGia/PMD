@@ -21,6 +21,8 @@ from .models import (
     ModelSpec,
     load_model,
     save_model,
+    to_dict,
+    from_dict,
 )
 from .panels import InspectorPanel, RibbonBar, TreePanel
 from .tools  import make_tool, Tool
@@ -31,6 +33,10 @@ from .widgets import (
     JointItem,
     MarkerItem,
 )
+
+
+# Maximum number of states retained in the undo/redo history.
+_HISTORY_CAP = 100
 
 
 class PreProcessorWindow(QMainWindow):
@@ -62,9 +68,17 @@ class PreProcessorWindow(QMainWindow):
         self._ribbon.tool_changed.connect(self.set_active_tool)
         self._ribbon.action_triggered.connect(self._on_action)
         self._tree.item_selected.connect(self._inspector.show_item)
+        self._tree.item_delete_requested.connect(self._on_delete_requested)
         self._inspector.spec_changed.connect(self._on_spec_edited)
+        self._inspector.body_renamed.connect(self._on_body_renamed)
+        self._view.delete_pressed.connect(self._on_canvas_delete_shortcut)
         self._tree.set_spec(self.spec)
         self._inspector.set_spec(self.spec)
+
+        # Undo/redo history (list of JSON-serialisable snapshots).
+        self._history: list[dict] = []
+        self._history_idx: int = -1
+        self._history_record(initial=True)
 
         # Default tool
         self._active_tool: Tool | None = None
@@ -137,10 +151,33 @@ class PreProcessorWindow(QMainWindow):
         file_menu.addAction(act_quit)
 
         edit_menu = mbar.addMenu("&Edit")
-        act_undo = QAction("Undo", self); act_undo.setEnabled(False)
-        act_redo = QAction("Redo", self); act_redo.setEnabled(False)
-        edit_menu.addAction(act_undo)
-        edit_menu.addAction(act_redo)
+        self._act_undo = QAction("Undo", self)
+        self._act_undo.setShortcut(QKeySequence.Undo)
+        self._act_undo.triggered.connect(self._undo)
+        edit_menu.addAction(self._act_undo)
+
+        self._act_redo = QAction("Redo", self)
+        self._act_redo.setShortcuts([QKeySequence.Redo,
+                                     QKeySequence("Ctrl+Y")])
+        self._act_redo.triggered.connect(self._redo)
+        edit_menu.addAction(self._act_redo)
+
+        edit_menu.addSeparator()
+        self._act_delete = QAction("Delete selection", self)
+        self._act_delete.setShortcut(QKeySequence.Delete)
+        self._act_delete.setShortcutContext(Qt.ApplicationShortcut)
+        self._act_delete.triggered.connect(self._on_canvas_delete_shortcut)
+        edit_menu.addAction(self._act_delete)
+
+        # Global Esc → cancel current tool / revert to Select. Using
+        # ApplicationShortcut so it fires regardless of which child
+        # widget currently has focus.
+        self._act_cancel = QAction("Cancel tool", self)
+        self._act_cancel.setShortcut(QKeySequence(Qt.Key_Escape))
+        self._act_cancel.setShortcutContext(Qt.ApplicationShortcut)
+        self._act_cancel.triggered.connect(
+            lambda: self.set_active_tool("select"))
+        self.addAction(self._act_cancel)
 
         view_menu = mbar.addMenu("&View")
         act_fit = QAction("Zoom to &Fit", self)
@@ -260,6 +297,28 @@ class PreProcessorWindow(QMainWindow):
         elif kind == "joint":
             self._refresh_joint_visual(item_id)
         # forces have no visual yet
+        self._tree.refresh()
+        self._history_record()
+
+    def _on_body_renamed(self, body_id: str, old_name: str, new_name: str):
+        """Rename markers prefixed with the body's old name to track it.
+
+        Markers whose name starts with ``"<old_name>."`` (e.g. the
+        auto-CM marker ``"<old_name>.cm"`` or end markers
+        ``"<old_name>.A"`` / ``".B"``) are updated so they stay in sync
+        with the body label shown in the tree.
+        """
+        if not old_name or new_name == old_name:
+            return
+        prefix_old = f"{old_name}."
+        prefix_new = f"{new_name}."
+        for m in self.spec.markers:
+            if m.body_id != body_id:
+                continue
+            if m.name == old_name:
+                m.name = new_name
+            elif m.name.startswith(prefix_old):
+                m.name = prefix_new + m.name[len(prefix_old):]
         self._tree.refresh()
 
     def _refresh_body_visual(self, body_id: str) -> None:
@@ -405,6 +464,169 @@ class PreProcessorWindow(QMainWindow):
             f"joints={len(self.spec.joints)}  "
             f"forces={len(self.spec.forces)}"
         )
+
+    # ──────────────────────────────────────────────────────────
+    # Auto-marker / body creation hooks (called by tools)
+    # ──────────────────────────────────────────────────────────
+
+    def auto_create_cm_marker(self, body: BodySpec) -> MarkerSpec:
+        """Create the canonical centre-of-mass marker for ``body``.
+
+        Tools that commit a new body should call this so every body
+        always has a ``"<name>.cm"`` marker at its origin.
+        """
+        cm = MarkerSpec(name=f"{body.name}.cm", body_id=body.id,
+                        local_position=(0.0, 0.0), theta=0.0)
+        self.spec.markers.append(cm)
+        self.add_marker_item(cm)
+        return cm
+
+    # ──────────────────────────────────────────────────────────
+    # Deletion
+    # ──────────────────────────────────────────────────────────
+
+    def _on_delete_requested(self, kind: str, item_id: str) -> None:
+        self._delete_spec(kind, item_id)
+
+    def _on_canvas_delete_shortcut(self) -> None:
+        """Delete every currently selected scene item."""
+        items = self._scene.selectedItems()
+        if not items:
+            return
+        targets: list[tuple[str, str]] = []
+        for it in items:
+            if isinstance(it, BodyItem):
+                targets.append(("body", it.spec.id))
+            elif isinstance(it, MarkerItem):
+                targets.append(("marker", it.spec.id))
+            elif isinstance(it, JointItem):
+                targets.append(("joint", it.spec.id))
+        for kind, _id in targets:
+            self._delete_spec(kind, _id, _record=False)
+        self._history_record()
+
+    def _delete_spec(self, kind: str, item_id: str,
+                     *, _record: bool = True) -> None:
+        """Remove a spec (and its dependents) from the model + scene."""
+        if kind == "body":
+            body = self.spec.body(item_id)
+            if body is None:
+                return
+            # Cascade: remove markers belonging to the body, then any
+            # joints / forces referencing those markers.
+            mids = {m.id for m in self.spec.markers if m.body_id == item_id}
+            self.spec.markers = [m for m in self.spec.markers
+                                 if m.body_id != item_id]
+            self.spec.joints = [j for j in self.spec.joints
+                                if j.i_marker_id not in mids
+                                and j.j_marker_id not in mids]
+            self.spec.forces = [f for f in self.spec.forces
+                                if f.i_marker_id not in mids
+                                and f.j_marker_id not in mids]
+            self.spec.bodies = [b for b in self.spec.bodies
+                                if b.id != item_id]
+            # Scene cleanup
+            for mid in mids:
+                self._scene_remove_marker(mid)
+            self._scene_remove_body(item_id)
+            self._scene_remove_joints_orphans()
+        elif kind == "marker":
+            marker = self.spec.marker(item_id)
+            if marker is None:
+                return
+            self.spec.markers = [m for m in self.spec.markers
+                                 if m.id != item_id]
+            self.spec.joints = [j for j in self.spec.joints
+                                if j.i_marker_id != item_id
+                                and j.j_marker_id != item_id]
+            self.spec.forces = [f for f in self.spec.forces
+                                if f.i_marker_id != item_id
+                                and f.j_marker_id != item_id]
+            self._scene_remove_marker(item_id)
+            self._scene_remove_joints_orphans()
+        elif kind == "joint":
+            self.spec.joints = [j for j in self.spec.joints
+                                if j.id != item_id]
+            self._scene_remove_joint(item_id)
+        elif kind == "force":
+            self.spec.forces = [f for f in self.spec.forces
+                                if f.id != item_id]
+        else:
+            return
+
+        self._inspector.clear()
+        self._tree.refresh()
+        self._update_count_label()
+        if _record:
+            self._history_record()
+
+    # ── Scene-removal helpers ─────────────────────────────────
+    def _scene_remove_body(self, body_id: str) -> None:
+        item = self._body_items.pop(body_id, None)
+        if item is not None and item.scene() is not None:
+            self._scene.removeItem(item)
+
+    def _scene_remove_marker(self, marker_id: str) -> None:
+        item = self._marker_items.pop(marker_id, None)
+        if item is not None and item.scene() is not None:
+            self._scene.removeItem(item)
+
+    def _scene_remove_joint(self, joint_id: str) -> None:
+        item = self._joint_items.pop(joint_id, None)
+        if item is not None and item.scene() is not None:
+            self._scene.removeItem(item)
+
+    def _scene_remove_joints_orphans(self) -> None:
+        live = {j.id for j in self.spec.joints}
+        for jid in [j for j in self._joint_items if j not in live]:
+            self._scene_remove_joint(jid)
+
+    # ──────────────────────────────────────────────────────────
+    # Undo / Redo
+    # ──────────────────────────────────────────────────────────
+
+    def _history_record(self, *, initial: bool = False) -> None:
+        """Snapshot the current spec to the undo history."""
+        snap = to_dict(self.spec)
+        if (not initial and self._history
+                and self._history_idx >= 0
+                and self._history[self._history_idx] == snap):
+            return  # no-op edit
+        # Drop redo tail.
+        del self._history[self._history_idx + 1:]
+        self._history.append(snap)
+        # Cap history to avoid unbounded memory growth.
+        if len(self._history) > _HISTORY_CAP:
+            self._history = self._history[-_HISTORY_CAP:]
+        self._history_idx = len(self._history) - 1
+
+    def _undo(self) -> None:
+        if self._history_idx <= 0:
+            return
+        self._history_idx -= 1
+        self._restore_snapshot(self._history[self._history_idx])
+
+    def _redo(self) -> None:
+        if self._history_idx >= len(self._history) - 1:
+            return
+        self._history_idx += 1
+        self._restore_snapshot(self._history[self._history_idx])
+
+    def _restore_snapshot(self, snap: dict) -> None:
+        spec = from_dict(snap)
+        self._reset_scene()
+        self.spec = spec
+        self._tree.set_spec(self.spec)
+        self._inspector.set_spec(self.spec)
+        for b in self.spec.bodies:
+            self.add_body_item(b)
+        for m in self.spec.markers:
+            self.add_marker_item(m)
+        for j in self.spec.joints:
+            self.add_joint_visual(j)
+        self._update_count_label()
+        self.statusBar().showMessage(
+            f"History: {self._history_idx + 1}/{len(self._history)}", 2000)
 
     # ──────────────────────────────────────────────────────────
     # Simulation bridge

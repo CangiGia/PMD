@@ -12,6 +12,8 @@ from .spec import (
     MarkerSpec,
     ModelSpec,
     ShapeSpec,
+    MATERIALS,
+    compute_mass_props,
 )
 from .io import load_model, save_model, to_dict, from_dict
 
@@ -22,6 +24,8 @@ __all__ = [
     "MarkerSpec",
     "ModelSpec",
     "ShapeSpec",
+    "MATERIALS",
+    "compute_mass_props",
     "load_model",
     "save_model",
     "to_dict",

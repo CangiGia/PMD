@@ -17,6 +17,62 @@ def _new_id(prefix: str) -> str:
 
 
 # ────────────────────────────────────────────────────────────────────
+#  Materials database (used by the GUI to auto-derive mass props)
+# ────────────────────────────────────────────────────────────────────
+
+#: Common engineering materials → density in kg/m³.
+MATERIALS: dict[str, float] = {
+    "Steel":         7850.0,
+    "Stainless":     7900.0,
+    "Cast Iron":     7200.0,
+    "Aluminum":      2700.0,
+    "Titanium":      4500.0,
+    "Brass":         8500.0,
+    "Copper":        8960.0,
+    "Plastic (PLA)": 1240.0,
+    "Plastic (ABS)": 1050.0,
+    "Wood (Oak)":     750.0,
+    "Custom":           0.0,
+}
+
+
+def compute_mass_props(spec: "BodySpec") -> tuple[float, float] | None:
+    """Return ``(mass, inertia)`` derived from a body's shape + density.
+
+    The model is treated as a planar slab of out-of-plane thickness
+    ``spec.thickness_z`` and uniform density ``spec.density``. Returns
+    ``None`` if the body has no shape (so the caller can keep the
+    user-typed values).
+    """
+    if spec.shape is None:
+        return None
+    p = spec.shape.params
+    kind = spec.shape.kind
+    rho = float(spec.density)
+    tz  = float(spec.thickness_z)
+    if kind == "rectangle":
+        w = float(p.get("width", 0.0)); h = float(p.get("height", 0.0))
+        area = w * h
+        mass = rho * area * tz
+        inertia = mass * (w * w + h * h) / 12.0
+        return mass, inertia
+    if kind == "link":
+        L = float(p.get("length", 0.0)); t = float(p.get("thickness", 0.0))
+        area = L * t
+        mass = rho * area * tz
+        inertia = mass * L * L / 12.0
+        return mass, inertia
+    if kind == "circle":
+        r = float(p.get("radius", 0.0))
+        import math as _m
+        area = _m.pi * r * r
+        mass = rho * area * tz
+        inertia = 0.5 * mass * r * r
+        return mass, inertia
+    return None
+
+
+# ────────────────────────────────────────────────────────────────────
 #  Geometry
 # ────────────────────────────────────────────────────────────────────
 
@@ -120,6 +176,15 @@ class BodySpec:
     # read-only with a red highlight so the user can't accidentally
     # invalidate the markers tied to this body.
     locked: bool = False
+    # Material / mass-properties strategy (GUI-only — the runtime model
+    # only ever reads ``mass`` and ``inertia``). When ``mass_override``
+    # is False the GUI re-derives mass + inertia from ``density`` and
+    # the shape footprint times ``thickness_z`` (out-of-plane depth);
+    # otherwise the user-typed mass/inertia values are kept verbatim.
+    material: str = "Steel"
+    density: float = 7850.0       # kg / m³
+    thickness_z: float = 0.01     # m  (out-of-plane depth)
+    mass_override: bool = False
 
 
 # ────────────────────────────────────────────────────────────────────

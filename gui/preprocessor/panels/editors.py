@@ -25,20 +25,53 @@ from ..models import (
     JointSpec,
     MarkerSpec,
     ModelSpec,
+    MATERIALS,
+    compute_mass_props,
 )
+
+
+from PySide6.QtWidgets import QCheckBox, QFrame
 
 
 # QSS applied to widgets that are locked after creation: light red fill
 # + dark red text + red border so the user clearly sees the field is
 # read-only and cannot be changed without breaking the model geometry.
 _LOCKED_QSS = (
-    "QDoubleSpinBox:disabled, QLineEdit:disabled, QComboBox:disabled {"
+    "QDoubleSpinBox[locked=\"true\"], QLineEdit[locked=\"true\"], "
+    "QComboBox[locked=\"true\"] {"
     "  background: rgba(214, 90, 90, 0.12);"
     "  color: #8b1c1c;"
     "  border: 1px solid rgba(184, 50, 50, 0.55);"
     "  border-radius: 3px;"
     "}"
+    "QDoubleSpinBox[autoval=\"true\"], QLineEdit[autoval=\"true\"] {"
+    "  background: rgba(63, 140, 255, 0.10);"
+    "  color: #1d3f73;"
+    "  border: 1px solid rgba(63, 140, 255, 0.55);"
+    "  border-radius: 3px;"
+    "}"
 )
+
+
+def _set_locked(widget, on: bool) -> None:
+    """Tag a widget as 'locked' (red) and disable it accordingly."""
+    widget.setProperty("locked", bool(on))
+    widget.setProperty("autoval", False)
+    widget.setReadOnly(on) if hasattr(widget, "setReadOnly") else None
+    widget.setEnabled(not on)
+    widget.style().unpolish(widget)
+    widget.style().polish(widget)
+
+
+def _set_autoval(widget, on: bool) -> None:
+    """Tag a widget as auto-computed (blue) and disable user input."""
+    widget.setProperty("autoval", bool(on))
+    widget.setProperty("locked", False)
+    if hasattr(widget, "setReadOnly"):
+        widget.setReadOnly(on)
+    widget.setEnabled(not on)
+    widget.style().unpolish(widget)
+    widget.style().polish(widget)
 
 
 # ──────────────────────────────────────────────────────────────────
@@ -92,27 +125,59 @@ class EditorBase(QWidget):
 class BodyEditor(EditorBase):
     """Editor for :class:`BodySpec` — name / inertia / state / shape."""
 
+    # Notifies the main window that this body's name changed so it can
+    # cascade-rename its child markers ("<old>.cm" → "<new>.cm" etc.).
+    body_renamed = Signal(str, str, str)   # (body_id, old_name, new_name)
+
     def __init__(self, spec: BodySpec, parent=None):
         super().__init__(spec, "body", parent)
 
     def _build(self) -> None:
         s: BodySpec = self.spec
+        self._old_name = s.name
 
         self.name = QLineEdit(s.name)
         self.name.editingFinished.connect(self._on_name)
         self.form.addRow("Name", self.name)
 
-        self.mass = _spinbox(s.mass, decimals=4, step=0.1, vmin=1e-6,
-                             suffix="kg")
+        # ── Material / density block ───────────────────────────
+        self.material = QComboBox()
+        for mat in MATERIALS:
+            self.material.addItem(mat, mat)
+        if s.material in MATERIALS:
+            self.material.setCurrentText(s.material)
+        else:
+            self.material.setCurrentText("Custom")
+        self.material.currentTextChanged.connect(self._on_material)
+        self.form.addRow("Material", self.material)
+
+        self.density = _spinbox(s.density, decimals=2, step=10.0,
+                                vmin=0.0, vmax=2.5e4, suffix="kg/m³")
+        self.density.valueChanged.connect(self._on_density)
+        self.form.addRow("Density", self.density)
+
+        self.thickness_z = _spinbox(s.thickness_z, decimals=4, step=0.001,
+                                    vmin=1e-6, vmax=10.0, suffix="m (depth)")
+        self.thickness_z.valueChanged.connect(self._on_thickness_z)
+        self.form.addRow("Depth (z)", self.thickness_z)
+
+        # Mass / inertia (auto by default, blue; or override → editable)
+        self.mass = _spinbox(s.mass, decimals=4, step=0.1, vmin=1e-9,
+                             vmax=1e9, suffix="kg")
         self.mass.valueChanged.connect(self._on_mass)
         self.form.addRow("Mass", self.mass)
 
-        self.inertia = _spinbox(s.inertia, decimals=6, step=0.001, vmin=1e-9,
-                                suffix="kg·m²")
+        self.inertia = _spinbox(s.inertia, decimals=6, step=0.001, vmin=1e-12,
+                                vmax=1e9, suffix="kg·m²")
         self.inertia.valueChanged.connect(self._on_inertia)
         self.form.addRow("Inertia", self.inertia)
 
-        # Position
+        self.override = QCheckBox("Override mass / inertia manually")
+        self.override.setChecked(bool(s.mass_override))
+        self.override.toggled.connect(self._on_override_toggled)
+        self.form.addRow("", self.override)
+
+        # ── Position ───────────────────────────────────────────
         self.x = _spinbox(s.position[0], suffix="m")
         self.y = _spinbox(s.position[1], suffix="m")
         self.x.valueChanged.connect(self._on_pos)
@@ -127,7 +192,7 @@ class BodyEditor(EditorBase):
         self.phi_deg.valueChanged.connect(self._on_phi)
         self.form.addRow("Orientation", self.phi_deg)
 
-        # Velocity
+        # ── Velocity ───────────────────────────────────────────
         self.vx = _spinbox(s.velocity[0], suffix="m/s")
         self.vy = _spinbox(s.velocity[1], suffix="m/s")
         self.omega = _spinbox(s.angular_velocity, decimals=4, step=0.1,
@@ -139,7 +204,7 @@ class BodyEditor(EditorBase):
         self.form.addRow("vy", self.vy)
         self.form.addRow("ω", self.omega)
 
-        # Shape params (depend on kind)
+        # ── Shape params ───────────────────────────────────────
         if s.shape is not None:
             self.form.addRow(QLabel(
                 f"<b>Shape</b> &nbsp; <span style='color:#6b7280'>"
@@ -155,45 +220,116 @@ class BodyEditor(EditorBase):
         else:
             self._shape_widgets = {}
 
-        # Apply locking last so all widgets exist.
+        # Apply visual states last so all widgets exist.
+        self.setStyleSheet(_LOCKED_QSS)
+        self._refresh_mass_visuals()
         if getattr(s, "locked", False):
             self.set_locked(True)
 
     # ──────────────────────────────────────────────────────────
     def set_locked(self, on: bool) -> None:
-        """Freeze geometry-defining fields once the body is committed.
-
-        When ``on`` is True the position, orientation and shape-param
-        widgets become read-only and adopt a red highlight; mass,
-        inertia, name, and initial velocities stay editable.
-        """
+        """Freeze geometry-defining fields once the body is committed."""
         for w in (self.x, self.y, self.phi_deg):
-            w.setReadOnly(on)
-            w.setEnabled(not on)
+            _set_locked(w, on)
         for w in self._shape_widgets.values():
-            w.setReadOnly(on)
-            w.setEnabled(not on)
-        self.setStyleSheet(_LOCKED_QSS if on else "")
+            _set_locked(w, on)
 
     def set_position_field_enabled(self, on: bool) -> None:
         """Enable/disable just the (x, y, phi) trio — used for drafts."""
         for w in (self.x, self.y, self.phi_deg):
-            w.setEnabled(on)
-            w.setReadOnly(not on)
-        self.setStyleSheet("" if on else _LOCKED_QSS)
+            _set_locked(w, not on)
 
     # ----------------------------------------------------------
-    def _on_name(self):     self.spec.name = self.name.text();           self._emit()
-    def _on_mass(self, v):  self.spec.mass = float(v);                   self._emit()
-    def _on_inertia(self,v):self.spec.inertia = float(v);                self._emit()
-    def _on_pos(self, _=0): self.spec.position = (self.x.value(), self.y.value()); self._emit()
-    def _on_phi(self, v):   self.spec.orientation = math.radians(v);    self._emit()
-    def _on_vel(self, _=0): self.spec.velocity = (self.vx.value(), self.vy.value()); self._emit()
-    def _on_omega(self,v):  self.spec.angular_velocity = float(v);       self._emit()
+    def _on_name(self):
+        new = self.name.text()
+        old = self._old_name
+        if new == old:
+            return
+        self.spec.name = new
+        self._old_name = new
+        self.body_renamed.emit(self.spec.id, old, new)
+        self._emit()
+
+    def _on_mass(self, v):
+        if not self.spec.mass_override:
+            return    # ignored — auto-computed
+        self.spec.mass = float(v)
+        self._emit()
+
+    def _on_inertia(self, v):
+        if not self.spec.mass_override:
+            return
+        self.spec.inertia = float(v)
+        self._emit()
+
+    def _on_pos(self, _=0):
+        self.spec.position = (self.x.value(), self.y.value()); self._emit()
+
+    def _on_phi(self, v):
+        self.spec.orientation = math.radians(v); self._emit()
+
+    def _on_vel(self, _=0):
+        self.spec.velocity = (self.vx.value(), self.vy.value()); self._emit()
+
+    def _on_omega(self, v):
+        self.spec.angular_velocity = float(v); self._emit()
 
     def _on_shape_param(self, key: str, value: float):
         self.spec.shape.params[key] = float(value)
+        self._recompute_mass_props()
         self._emit()
+
+    # ── Material / density handlers ───────────────────────────
+    def _on_material(self, name: str):
+        self.spec.material = name
+        if name in MATERIALS and name != "Custom":
+            rho = MATERIALS[name]
+            self.density.blockSignals(True)
+            self.density.setValue(rho)
+            self.density.blockSignals(False)
+            self.spec.density = rho
+        self._recompute_mass_props()
+        self._emit()
+
+    def _on_density(self, v: float):
+        self.spec.density = float(v)
+        # Free-form density => Custom material
+        if self.material.currentText() != "Custom":
+            self.material.blockSignals(True)
+            self.material.setCurrentText("Custom")
+            self.material.blockSignals(False)
+            self.spec.material = "Custom"
+        self._recompute_mass_props()
+        self._emit()
+
+    def _on_thickness_z(self, v: float):
+        self.spec.thickness_z = float(v)
+        self._recompute_mass_props()
+        self._emit()
+
+    def _on_override_toggled(self, on: bool):
+        self.spec.mass_override = bool(on)
+        if not on:
+            self._recompute_mass_props()
+        self._refresh_mass_visuals()
+        self._emit()
+
+    # ── Mass-props auto helpers ───────────────────────────────
+    def _recompute_mass_props(self) -> None:
+        if self.spec.mass_override:
+            return
+        out = compute_mass_props(self.spec)
+        if out is None:
+            return
+        m, j = out
+        self.spec.mass, self.spec.inertia = m, j
+        self.mass.blockSignals(True);    self.mass.setValue(m);    self.mass.blockSignals(False)
+        self.inertia.blockSignals(True); self.inertia.setValue(j); self.inertia.blockSignals(False)
+
+    def _refresh_mass_visuals(self) -> None:
+        auto = not self.spec.mass_override
+        _set_autoval(self.mass, auto)
+        _set_autoval(self.inertia, auto)
 
 
 # ──────────────────────────────────────────────────────────────────

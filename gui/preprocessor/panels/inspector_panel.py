@@ -26,6 +26,7 @@ class InspectorPanel(QWidget):
     """
 
     spec_changed = Signal(str, str)
+    body_renamed = Signal(str, str, str)   # forwarded from BodyEditor
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -121,6 +122,11 @@ class InspectorPanel(QWidget):
                 self._editor.spec_changed.disconnect(self.spec_changed)
             except (RuntimeError, TypeError):
                 pass
+            try:
+                if isinstance(self._editor, BodyEditor):
+                    self._editor.body_renamed.disconnect(self.body_renamed)
+            except (RuntimeError, TypeError):
+                pass
         self._editor = editor
 
         if editor is None:
@@ -128,5 +134,7 @@ class InspectorPanel(QWidget):
             return
 
         editor.spec_changed.connect(self.spec_changed)
+        if isinstance(editor, BodyEditor):
+            editor.body_renamed.connect(self.body_renamed)
         # Scroll area takes ownership of the widget.
         self._scroll.setWidget(editor)

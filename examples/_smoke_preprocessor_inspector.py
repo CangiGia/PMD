@@ -57,14 +57,23 @@ def main() -> int:
     insp.show_item("body", body.id)
     ed = insp._editor
     assert ed is not None and ed.spec_kind == "body"
+    # Enable manual override so mass / inertia become editable.
+    ed.override.setChecked(True)
     ed.mass.setValue(3.5)
     ed.x.setValue(1.0)
     ed.phi_deg.setValue(90.0)
     ed._shape_widgets["width"].setValue(0.6)
     assert math.isclose(body.mass, 3.5)
+    assert body.mass_override is True
     assert body.position[0] == 1.0
     assert math.isclose(body.orientation, math.pi / 2)
     assert body.shape.params["width"] == 0.6
+
+    # Switch back to auto: mass must come from density × area × depth.
+    ed.override.setChecked(False)
+    ed.material.setCurrentText("Steel")
+    expected_mass = 7850.0 * (0.6 * body.shape.params["height"]) * 0.01
+    assert math.isclose(body.mass, expected_mass, rel_tol=1e-9)
     print("body edits OK", edits[-1])
 
     # ── Marker ────────────────────────────────────────────

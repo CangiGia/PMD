@@ -22,7 +22,7 @@ from PySide6.QtCore import QRectF, Qt
 from PySide6.QtGui import QBrush, QColor, QPen
 from PySide6.QtWidgets import QGraphicsRectItem
 
-from ..models import BodySpec, MarkerSpec, ShapeSpec
+from ..models import BodySpec, MarkerSpec, ShapeSpec, compute_mass_props
 from .tool_base import Tool
 
 
@@ -110,6 +110,12 @@ class BodyLinkTool(Tool):
         body.orientation = phi
         body.inertia = body.mass * L * L / 12.0
         body.locked = True
+        # Re-derive mass / inertia from material density once the
+        # final shape parameters are settled.
+        if not body.mass_override:
+            mp = compute_mass_props(body)
+            if mp is not None:
+                body.mass, body.inertia = mp
         self.spec.bodies.append(body)
 
         m_a = MarkerSpec(name=f"{body.name}.A", body_id=body.id,
@@ -121,6 +127,8 @@ class BodyLinkTool(Tool):
         self.window.add_body_item(body)
         self.window.add_marker_item(m_a)
         self.window.add_marker_item(m_b)
+        # Canonical centre-of-mass marker.
+        self.window.auto_create_cm_marker(body)
         self._clear_preview()
         self._commit()
 

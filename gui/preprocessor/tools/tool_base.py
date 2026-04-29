@@ -71,3 +71,6 @@ class Tool(QObject):
         """Refresh tree/inspector/status after spec mutation."""
         self.window._tree.refresh()
         self.window._update_count_label()
+        # Record an undo snapshot if the host supports it.
+        if hasattr(self.window, "_history_record"):
+            self.window._history_record()

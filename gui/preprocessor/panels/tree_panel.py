@@ -22,11 +22,13 @@ Layout
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
     QComboBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
+    QMenu,
     QTabWidget,
     QTreeWidget,
     QTreeWidgetItem,
@@ -44,9 +46,12 @@ class TreePanel(QWidget):
     -------
     item_selected(kind, id) : str, str
         Kind ∈ {body, marker, joint, force}; id is the spec id.
+    item_delete_requested(kind, id) : str, str
+        Right-click → Delete or Del key on a tree item.
     """
 
-    item_selected = Signal(str, str)
+    item_selected         = Signal(str, str)
+    item_delete_requested = Signal(str, str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -67,6 +72,16 @@ class TreePanel(QWidget):
         self._browse_tree = QTreeWidget()
         self._browse_tree.setHeaderHidden(True)
         self._browse_tree.itemClicked.connect(self._on_item_clicked)
+        self._browse_tree.setContextMenuPolicy(Qt.CustomContextMenu)
+        self._browse_tree.customContextMenuRequested.connect(
+            self._on_context_menu)
+        # Del key on the tree triggers a delete request for the
+        # currently focused spec node.
+        self._del_action = QAction("Delete", self._browse_tree)
+        self._del_action.setShortcut(QKeySequence.Delete)
+        self._del_action.setShortcutContext(Qt.WidgetWithChildrenShortcut)
+        self._del_action.triggered.connect(self._on_delete_shortcut)
+        self._browse_tree.addAction(self._del_action)
         self._tabs.addTab(self._browse_tree, "Browse")
 
         groups_page = QWidget()
@@ -103,19 +118,47 @@ class TreePanel(QWidget):
             return
         self._browse_tree.clear()
 
-        cats = [
-            ("Bodies",     "body",   self._spec.bodies),
-            ("Markers",    "marker", self._spec.markers),
-            ("Connectors", "joint",  self._spec.joints),
-            ("Forces",     "force",  self._spec.forces),
-        ]
-        for label, kind, items in cats:
+        # ── Bodies (with their child markers nested below) ──
+        bodies_root = QTreeWidgetItem(
+            self._browse_tree,
+            [f"Bodies ({len(self._spec.bodies)})"]
+        )
+        bodies_root.setExpanded(True)
+        for b in self._spec.bodies:
+            node = QTreeWidgetItem(bodies_root, [b.name or b.id])
+            node.setData(0, Qt.UserRole, ("body", b.id))
+            # Nested markers belonging to this body.
+            for m in self._spec.markers:
+                if m.body_id == b.id:
+                    leaf = QTreeWidgetItem(node, [m.name or m.id])
+                    leaf.setData(0, Qt.UserRole, ("marker", m.id))
+            node.setExpanded(False)
+
+        # ── Ground markers (no owning body) ──────────────────
+        ground_markers = [m for m in self._spec.markers
+                          if m.body_id == "ground"]
+        if ground_markers:
+            ground_root = QTreeWidgetItem(
+                self._browse_tree,
+                [f"Ground markers ({len(ground_markers)})"]
+            )
+            ground_root.setExpanded(True)
+            for m in ground_markers:
+                leaf = QTreeWidgetItem(ground_root, [m.name or m.id])
+                leaf.setData(0, Qt.UserRole, ("marker", m.id))
+
+        # ── Connectors / forces ──────────────────────────────
+        for label, kind, items in (
+            ("Connectors", "joint", self._spec.joints),
+            ("Forces",     "force", self._spec.forces),
+        ):
             root = QTreeWidgetItem(self._browse_tree,
                                    [f"{label} ({len(items)})"])
             root.setExpanded(True)
             for it in items:
                 node = QTreeWidgetItem(root, [it.name or it.id])
                 node.setData(0, Qt.UserRole, (kind, it.id))
+
         self._apply_search_filter(self._search.text())
 
     # ──────────────────────────────────────────────────────────
@@ -127,12 +170,48 @@ class TreePanel(QWidget):
 
     def _apply_search_filter(self, text: str) -> None:
         text = text.strip().lower()
+
+        def filter_item(node: QTreeWidgetItem) -> bool:
+            """Return True if ``node`` (or any descendant) matches."""
+            self_match = (not text) or (text in node.text(0).lower())
+            any_child = False
+            for k in range(node.childCount()):
+                if filter_item(node.child(k)):
+                    any_child = True
+            visible = bool(self_match or any_child)
+            node.setHidden(not visible)
+            return visible
+
         for i in range(self._browse_tree.topLevelItemCount()):
-            root = self._browse_tree.topLevelItem(i)
-            any_visible = False
-            for j in range(root.childCount()):
-                child = root.child(j)
-                visible = (not text) or (text in child.text(0).lower())
-                child.setHidden(not visible)
-                any_visible = any_visible or visible
-            root.setHidden(bool(text) and not any_visible)
+            filter_item(self._browse_tree.topLevelItem(i))
+
+    # ──────────────────────────────────────────────────────────
+    # Context menu / Delete shortcut
+    # ──────────────────────────────────────────────────────────
+
+    def _on_context_menu(self, pos):
+        item = self._browse_tree.itemAt(pos)
+        if item is None:
+            return
+        data = item.data(0, Qt.UserRole)
+        if data is None:
+            return
+        kind, _id = data
+        menu = QMenu(self._browse_tree)
+        act_select = menu.addAction("Edit in Inspector")
+        act_delete = menu.addAction("Delete")
+        chosen = menu.exec(self._browse_tree.viewport().mapToGlobal(pos))
+        if chosen is act_delete:
+            self.item_delete_requested.emit(kind, _id)
+        elif chosen is act_select:
+            self.item_selected.emit(kind, _id)
+
+    def _on_delete_shortcut(self):
+        item = self._browse_tree.currentItem()
+        if item is None:
+            return
+        data = item.data(0, Qt.UserRole)
+        if data is None:
+            return
+        kind, _id = data
+        self.item_delete_requested.emit(kind, _id)

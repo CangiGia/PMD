@@ -18,6 +18,7 @@ class CanvasView(QGraphicsView):
     """
 
     cursor_moved = Signal(float, float)
+    delete_pressed = Signal()  # Del key pressed while the canvas has focus
 
     _ZOOM_IN_FACTOR  = 1.20
     _ZOOM_OUT_FACTOR = 1.0 / 1.20
@@ -31,8 +32,8 @@ class CanvasView(QGraphicsView):
         self.setDragMode(QGraphicsView.RubberBandDrag)
         self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
         self.setResizeAnchor(QGraphicsView.AnchorUnderMouse)
-        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        self.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         self.setMouseTracking(True)
         # Make sure the view can receive key events (e.g. Esc to cancel
         # the active tool). Without StrongFocus the scene never sees the
@@ -42,6 +43,11 @@ class CanvasView(QGraphicsView):
         # Engineering convention: +y points UP.
         # Default scale: 400 px / m (≈ 50 mm grid step shown ~20 px).
         self.setTransform(QTransform().scale(400, -400))
+
+        # A *very* generous scene rect ensures the scroll bars are
+        # always usable — pan works at every zoom level, not just when
+        # the model overflows the viewport.
+        scene.setSceneRect(-1000.0, -1000.0, 2000.0, 2000.0)
 
         self._panning = False
         self._pan_start = QPointF()
@@ -99,6 +105,25 @@ class CanvasView(QGraphicsView):
             event.accept()
             return
         super().mouseReleaseEvent(event)
+
+    # ──────────────────────────────────────────────────────────
+    # Key forwarding
+    # ──────────────────────────────────────────────────────────
+
+    def keyPressEvent(self, event):
+        # Always send key events to the scene first (so the active
+        # tool's Esc-cancel works regardless of focused item) then
+        # surface Del to the main window for "delete selection".
+        scene = self.scene()
+        if scene is not None:
+            scene.keyPressEvent(event)
+            if event.isAccepted():
+                return
+        if event.key() in (Qt.Key_Delete, Qt.Key_Backspace):
+            self.delete_pressed.emit()
+            event.accept()
+            return
+        super().keyPressEvent(event)
 
     # ──────────────────────────────────────────────────────────
     # Convenience

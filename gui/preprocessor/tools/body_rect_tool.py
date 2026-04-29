@@ -17,7 +17,7 @@ from PySide6.QtCore import QRectF, Qt
 from PySide6.QtGui import QBrush, QColor, QPen
 from PySide6.QtWidgets import QGraphicsRectItem
 
-from ..models import BodySpec, ShapeSpec
+from ..models import BodySpec, ShapeSpec, compute_mass_props
 from .tool_base import Tool
 
 
@@ -105,8 +105,14 @@ class BodyRectTool(Tool):
         h = float(body.shape.params.get("height", self._DEF_H))
         body.inertia = body.mass * (w * w + h * h) / 12.0
         body.locked = True
+        if not body.mass_override:
+            mp = compute_mass_props(body)
+            if mp is not None:
+                body.mass, body.inertia = mp
         self.spec.bodies.append(body)
         self.window.add_body_item(body)
+        # Canonical centre-of-mass marker.
+        self.window.auto_create_cm_marker(body)
         self._clear_preview()
         self._commit()
 

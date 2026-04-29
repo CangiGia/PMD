@@ -74,6 +74,10 @@ def _body_from_dict(d: dict) -> BodySpec:
         angular_velocity=float(d.get("angular_velocity", 0.0)),
         shape=_shape_from_dict(d.get("shape")),
         locked=bool(d.get("locked", False)),
+        material=str(d.get("material", "Steel")),
+        density=float(d.get("density", 7850.0)),
+        thickness_z=float(d.get("thickness_z", 0.01)),
+        mass_override=bool(d.get("mass_override", False)),
     )
 
 
