@@ -72,6 +72,77 @@ class CanvasScene(QGraphicsScene):
             return
         super().keyPressEvent(event)
 
+    # ---------------------------------------------------------
+    # Context menu: right-click on the canvas opens a list of all
+    # markers within a small pixel radius around the cursor. This
+    # is the disambiguation path when several markers stack up at
+    # the same point (which is the *normal* case at a joint).
+    # ---------------------------------------------------------
+    _CTX_PICK_PX = 18.0
+
+    def contextMenuEvent(self, event):
+        from PySide6.QtWidgets import QMenu  # local import: GUI only
+        from .marker_item import MarkerItem
+
+        scene_pt = event.scenePos()
+        ppu = self._px_per_unit() or 1.0
+        tol2 = (self._CTX_PICK_PX / ppu) ** 2
+
+        candidates: list[MarkerItem] = []
+        px, py = float(scene_pt.x()), float(scene_pt.y())
+        for it in self.items():
+            if not isinstance(it, MarkerItem):
+                continue
+            sp = it.scenePos()
+            dx = sp.x() - px
+            dy = sp.y() - py
+            if dx * dx + dy * dy <= tol2:
+                candidates.append(it)
+
+        if not candidates:
+            super().contextMenuEvent(event)
+            return
+
+        # Sort by distance to the cursor for a sensible default order.
+        candidates.sort(
+            key=lambda m: (m.scenePos().x() - px) ** 2
+                          + (m.scenePos().y() - py) ** 2)
+
+        menu = QMenu()
+        # When the active tool wants markers (e.g. JointTool), picking
+        # an entry feeds the tool. Otherwise picking selects the marker.
+        tool = self.active_tool
+        picker = getattr(tool, "pick_marker_by_id", None) if tool else None
+        header = ("Pick marker for " + getattr(tool, "KIND", tool.name)
+                  if callable(picker) else "Select marker")
+        head_act = menu.addAction(header)
+        head_act.setEnabled(False)
+        menu.addSeparator()
+        for m in candidates:
+            label = m.spec.name or m.spec.id
+            act = menu.addAction(label)
+            act.setData(m.spec.id)
+
+        view = self.views()[0] if self.views() else None
+        screen_pos = (view.viewport().mapToGlobal(
+                          view.mapFromScene(scene_pt))
+                      if view is not None else event.screenPos())
+        chosen = menu.exec(screen_pos)
+        if chosen is None or chosen is head_act:
+            event.accept()
+            return
+        marker_id = chosen.data()
+        if callable(picker):
+            picker(marker_id)
+        else:
+            # Plain selection mode: select that marker in the scene.
+            self.clearSelection()
+            for m in candidates:
+                if m.spec.id == marker_id:
+                    m.setSelected(True)
+                    break
+        event.accept()
+
     # ──────────────────────────────────────────────────────────
     # Background grid
     # ──────────────────────────────────────────────────────────

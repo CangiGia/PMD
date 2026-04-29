@@ -48,16 +48,31 @@ class JointTool(Tool):
                 f"marker to pick the {which} one (Esc to cancel)\u2026",
                 0)
             return True  # consume click but do nothing
+        self._pick_marker(marker)
+        return True
 
+    # ---------------------------------------------------------
+    # External pick API - used by the tree panel and by the
+    # canvas right-click disambiguation menu.
+    # ---------------------------------------------------------
+    def pick_marker_by_id(self, marker_id: str) -> bool:
+        """Programmatically feed a marker pick (by id) to this tool."""
+        item = self.window._marker_items.get(marker_id)
+        if item is None:
+            return False
+        self._pick_marker(item)
+        return True
+
+    def _pick_marker(self, marker: MarkerItem) -> None:
         if self._first is None:
             self._first = marker
             marker.set_highlighted(True)
             self.window.statusBar().showMessage(
-                f"{self.KIND}: pick second marker (Esc to cancel)…", 0)
-            return True
+                f"{self.KIND}: pick second marker (Esc to cancel)\u2026", 0)
+            return
 
         if marker is self._first:
-            return True  # ignore double-click on same marker
+            return  # ignore re-selection of the same marker
 
         joint = JointSpec(
             name=f"jnt{len(self.spec.joints) + 1}",
@@ -74,7 +89,6 @@ class JointTool(Tool):
         self._commit()
         # One-shot: revert to Select after the joint is created.
         self.window.set_active_tool("select")
-        return True
 
     # ─────────────────────────────────────────────────────────
     # Pick radius around a marker (pixels). A click anywhere inside

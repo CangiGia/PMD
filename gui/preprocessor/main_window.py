@@ -67,6 +67,7 @@ class PreProcessorWindow(QMainWindow):
         # Wire up
         self._ribbon.tool_changed.connect(self.set_active_tool)
         self._ribbon.action_triggered.connect(self._on_action)
+        self._tree.item_selected.connect(self._on_tree_item_selected)
         self._tree.item_selected.connect(self._inspector.show_item)
         self._tree.item_delete_requested.connect(self._on_delete_requested)
         self._inspector.spec_changed.connect(self._on_spec_edited)
@@ -393,6 +394,19 @@ class PreProcessorWindow(QMainWindow):
         elif isinstance(top, JointItem):
             self._inspector.show_item("joint", top.spec.id)
 
+    def _on_tree_item_selected(self, kind: str, item_id: str) -> None:
+        """Bridge tree clicks into the active tool when relevant.
+
+        Currently used so that, while the JointTool is active, the
+        user can pick the two markers either by clicking on the canvas
+        or by simply clicking them in the Model Browser tree.
+        """
+        if kind != "marker" or self._active_tool is None:
+            return
+        picker = getattr(self._active_tool, "pick_marker_by_id", None)
+        if callable(picker):
+            picker(item_id)
+
     def _on_new_project(self):
         self._reset_scene()
         self.spec = ModelSpec()
@@ -670,7 +684,8 @@ class PreProcessorWindow(QMainWindow):
         seed = self._solver_settings or SolverSettings()
         seed.analysis = analysis
         dlg = SolverDialog(self, initial=seed)
-        if dlg.exec() != dlg.Accepted:
+        from PySide6.QtWidgets import QDialog
+        if dlg.exec() != QDialog.Accepted:
             return
         cfg = dlg.settings()
         self._solver_settings = cfg
