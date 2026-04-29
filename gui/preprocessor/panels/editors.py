@@ -50,6 +50,23 @@ _LOCKED_QSS = (
     "  border: 1px solid rgba(63, 140, 255, 0.55);"
     "  border-radius: 3px;"
     "}"
+    # Make sure the check indicator is always visible regardless
+    # of the active palette / global stylesheet.
+    "QCheckBox::indicator {"
+    "  width: 14px; height: 14px;"
+    "  border: 1px solid #5a6f8f;"
+    "  border-radius: 3px;"
+    "  background: #ffffff;"
+    "}"
+    "QCheckBox::indicator:hover { border-color: #3f8cff; }"
+    "QCheckBox::indicator:checked {"
+    "  background: #3f8cff;"
+    "  border: 1px solid #1a5cbf;"
+    "  image: none;"
+    "}"
+    "QCheckBox::indicator:disabled {"
+    "  background: #e6e6ea; border-color: #b8bccb;"
+    "}"
 )
 
 
