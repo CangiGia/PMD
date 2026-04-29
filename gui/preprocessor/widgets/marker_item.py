@@ -20,13 +20,14 @@ class MarkerItem(QGraphicsObject):
     """
 
     # Screen-space sizes (pixels)
-    _AXIS_LEN_PX  = 22.0
-    _ARROW_W_PX   = 6.0
-    _ARROW_H_PX   = 8.0
-    _ORIGIN_R_PX  = 2.5
-    _PICK_R_PX    = 8.0
-    _LABEL_DX_PX  = 4.0
-    _LABEL_DY_PX  = -4.0
+    _AXIS_LEN_PX  = 34.0
+    _ARROW_W_PX   = 9.0
+    _ARROW_H_PX   = 12.0
+    _ORIGIN_R_PX  = 3.5
+    _PICK_R_PX    = 10.0
+    _LABEL_DX_PX  = 6.0
+    _LABEL_DY_PX  = -6.0
+    _LABEL_PT     = 10.0
 
     # Colors
     _C_X      = QColor("#d65a5a")
@@ -124,7 +125,8 @@ class MarkerItem(QGraphicsObject):
             # so the label is always horizontal and right-side up.
             painter.scale(1.0 / s, -1.0 / s)
             font = QFont()
-            font.setPointSizeF(7.5)
+            font.setPointSizeF(self._LABEL_PT)
+            font.setBold(True)
             painter.setFont(font)
             pen_l = QPen(self._C_LABEL); pen_l.setCosmetic(True)
             painter.setPen(pen_l)
