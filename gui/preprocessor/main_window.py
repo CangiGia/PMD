@@ -49,6 +49,7 @@ class PreProcessorWindow(QMainWindow):
         self._ribbon.tool_changed.connect(self.set_active_tool)
         self._ribbon.action_triggered.connect(self._on_action)
         self._tree.item_selected.connect(self._inspector.show_item)
+        self._inspector.spec_changed.connect(self._on_spec_edited)
         self._tree.set_spec(self.spec)
         self._inspector.set_spec(self.spec)
 
@@ -190,6 +191,64 @@ class PreProcessorWindow(QMainWindow):
     def _on_action(self, name: str):
         # Real handlers will be wired in subsequent steps.
         self.statusBar().showMessage(f"Action: {name}", 2000)
+
+    def _on_spec_edited(self, kind: str, item_id: str) -> None:
+        """Re-sync graphics + tree after the inspector mutates a spec."""
+        if kind == "body":
+            self._refresh_body_visual(item_id)
+        elif kind == "marker":
+            self._refresh_marker_visual(item_id)
+        elif kind == "joint":
+            self._refresh_joint_visual(item_id)
+        # forces have no visual yet
+        self._tree.refresh()
+
+    def _refresh_body_visual(self, body_id: str) -> None:
+        import math
+        body = self.spec.body(body_id)
+        item = self._body_items.get(body_id)
+        if body is None or item is None:
+            return
+        item.setPos(body.position[0], body.position[1])
+        item.setRotation(math.degrees(body.orientation))
+        # Shape size may have changed:
+        params = body.shape.params if body.shape else {}
+        if body.shape and body.shape.kind == "link":
+            item._w = float(params.get("length",    item._w))
+            item._h = float(params.get("thickness", item._h))
+        elif body.shape and body.shape.kind == "rectangle":
+            item._w = float(params.get("width",  item._w))
+            item._h = float(params.get("height", item._h))
+        item.prepareGeometryChange()
+        item.update()
+
+    def _refresh_marker_visual(self, marker_id: str) -> None:
+        import math
+        spec = self.spec.marker(marker_id)
+        item = self._marker_items.get(marker_id)
+        if spec is None or item is None:
+            return
+        # Re-parent if owning body changed
+        new_parent = self._body_items.get(spec.body_id)
+        if item.parentItem() is not new_parent:
+            self._scene.removeItem(item)
+            new_item = self.add_marker_item(spec)
+            # Replace in registry (already done by add_marker_item)
+            return
+        item.setPos(*spec.local_position)
+        item.setRotation(math.degrees(spec.theta))
+        item.update()
+
+    def _refresh_joint_visual(self, joint_id: str) -> None:
+        spec = self.spec.joint(joint_id)
+        item = self._joint_items.get(joint_id)
+        if spec is None or item is None:
+            return
+        i_marker = self._marker_items.get(spec.i_marker_id)
+        if i_marker is not None:
+            wp = i_marker.scenePos()
+            item.setPos(wp.x(), wp.y())
+        item.update()
 
     def _on_selection_changed(self):
         items = self._scene.selectedItems()

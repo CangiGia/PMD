@@ -1,39 +1,62 @@
-"""InspectorPanel — property editor for the currently selected item.
-
-Stub implementation: shows id, kind and a JSON-like dump of the spec.
-A future revision will provide proper typed editors per spec class.
-"""
+"""InspectorPanel — typed property editor for the selected spec."""
 
 from __future__ import annotations
 
-from dataclasses import asdict
-
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QLabel, QPlainTextEdit, QVBoxLayout, QWidget
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtWidgets import (
+    QFrame,
+    QLabel,
+    QScrollArea,
+    QVBoxLayout,
+    QWidget,
+)
 
 from ..models import ModelSpec
+from .editors import BodyEditor, EditorBase, ForceEditor, JointEditor, MarkerEditor
 
 
 class InspectorPanel(QWidget):
-    """Read-only property dump for the selected spec (placeholder)."""
+    """Swap-in typed editor depending on the selected spec kind.
+
+    Signals
+    -------
+    spec_changed(kind, id) : str, str
+        Forwarded from the active editor; the main window listens to
+        this and refreshes scene + tree.
+    """
+
+    spec_changed = Signal(str, str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(8, 8, 8, 8)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(8, 8, 8, 8)
+        outer.setSpacing(6)
 
+        # Header
         self._title = QLabel("<i>No selection</i>")
         self._title.setTextFormat(Qt.RichText)
-        layout.addWidget(self._title)
+        outer.addWidget(self._title)
 
-        self._dump = QPlainTextEdit()
-        self._dump.setReadOnly(True)
-        layout.addWidget(self._dump, 1)
+        # Separator
+        line = QFrame()
+        line.setFrameShape(QFrame.HLine)
+        line.setFrameShadow(QFrame.Sunken)
+        outer.addWidget(line)
+
+        # Scrollable host for the active editor
+        self._scroll = QScrollArea()
+        self._scroll.setWidgetResizable(True)
+        self._scroll.setFrameShape(QFrame.NoFrame)
+        outer.addWidget(self._scroll, 1)
 
         self._spec: ModelSpec | None = None
+        self._editor: EditorBase | None = None
 
+    # ──────────────────────────────────────────────────────────
     def set_spec(self, spec: ModelSpec) -> None:
         self._spec = spec
+        self.clear()
 
     def show_item(self, kind: str, item_id: str) -> None:
         if self._spec is None:
@@ -50,24 +73,45 @@ class InspectorPanel(QWidget):
         if item is None:
             self.clear()
             return
+
         self._title.setText(
             f"<b>{kind.capitalize()}</b> &nbsp; "
             f"<span style='color:#6b7280'>{item.id}</span>"
         )
-        self._dump.setPlainText(_pretty(asdict(item)))
+
+        editor = self._make_editor(kind, item)
+        self._set_editor(editor)
 
     def clear(self) -> None:
         self._title.setText("<i>No selection</i>")
-        self._dump.clear()
+        self._set_editor(None)
 
+    # ──────────────────────────────────────────────────────────
+    def _make_editor(self, kind: str, item) -> EditorBase | None:
+        assert self._spec is not None
+        if kind == "body":
+            return BodyEditor(item)
+        if kind == "marker":
+            return MarkerEditor(item, self._spec)
+        if kind == "joint":
+            return JointEditor(item, self._spec)
+        if kind == "force":
+            return ForceEditor(item, self._spec)
+        return None
 
-def _pretty(d: dict, indent: int = 0) -> str:
-    pad = "  " * indent
-    lines = []
-    for k, v in d.items():
-        if isinstance(v, dict):
-            lines.append(f"{pad}{k}:")
-            lines.append(_pretty(v, indent + 1))
-        else:
-            lines.append(f"{pad}{k}: {v!r}")
-    return "\n".join(lines)
+    def _set_editor(self, editor: EditorBase | None) -> None:
+        # Detach old editor
+        if self._editor is not None:
+            try:
+                self._editor.spec_changed.disconnect(self.spec_changed)
+            except (RuntimeError, TypeError):
+                pass
+        self._editor = editor
+
+        if editor is None:
+            self._scroll.setWidget(QWidget())
+            return
+
+        editor.spec_changed.connect(self.spec_changed)
+        # Scroll area takes ownership of the widget.
+        self._scroll.setWidget(editor)
