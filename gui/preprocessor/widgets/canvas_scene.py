@@ -158,8 +158,44 @@ class CanvasScene(QGraphicsScene):
     # Snap helpers
     # ──────────────────────────────────────────────────────────
 
+    # Pixel radius around the cursor inside which an existing marker
+    # acts as a snap target (priority over the grid).
+    _MARKER_SNAP_PX = 12.0
+
+    def _px_per_unit(self) -> float:
+        v = self.views()[0] if self.views() else None
+        return abs(v.transform().m11()) if v else 1.0
+
+    def _nearest_marker_pos(self, point) -> tuple[float, float] | None:
+        """Return the world (x, y) of the marker closest to ``point``
+        when within the snap radius, else ``None``."""
+        # Local import to avoid a circular dependency at module load.
+        from .marker_item import MarkerItem  # noqa: WPS433
+
+        ppu = self._px_per_unit() or 1.0
+        tol = self._MARKER_SNAP_PX / ppu
+        tol2 = tol * tol
+        best: tuple[float, float] | None = None
+        best_d2 = tol2
+        px, py = float(point.x()), float(point.y())
+        for it in self.items():
+            if not isinstance(it, MarkerItem):
+                continue
+            sp = it.scenePos()
+            dx = sp.x() - px
+            dy = sp.y() - py
+            d2 = dx * dx + dy * dy
+            if d2 <= best_d2:
+                best_d2 = d2
+                best = (sp.x(), sp.y())
+        return best
+
     def snap(self, point) -> tuple[float, float]:
-        """Snap a scene point to the nearest grid intersection."""
+        """Snap a scene point to the nearest marker (within a small
+        pixel tolerance) or, failing that, to the grid intersection."""
+        m = self._nearest_marker_pos(point)
+        if m is not None:
+            return m
         step = self.grid_step
         return (round(point.x() / step) * step,
                 round(point.y() / step) * step)

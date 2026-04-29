@@ -13,6 +13,7 @@ from .spec import (
     ModelSpec,
     ShapeSpec,
     MATERIALS,
+    GROUND_BODY_ID,
     compute_mass_props,
 )
 from .io import load_model, save_model, to_dict, from_dict
@@ -25,6 +26,7 @@ __all__ = [
     "ModelSpec",
     "ShapeSpec",
     "MATERIALS",
+    "GROUND_BODY_ID",
     "compute_mass_props",
     "load_model",
     "save_model",

@@ -82,9 +82,30 @@ def main() -> int:
 
     # ── 6. Delete the body cascades to all its markers ─────────
     w._on_delete_requested("body", body.id)
-    assert not w.spec.bodies
+    assert not [b for b in w.spec.bodies if b.id != "ground"]
     assert not [m for m in w.spec.markers if m.body_id == body.id]
     print("body delete cascades to markers OK")
+
+    # ── 7. Ground body is implicit and not deletable ───────────
+    assert any(b.id == "ground" for b in w.spec.bodies)
+    w._on_delete_requested("body", "ground")
+    assert any(b.id == "ground" for b in w.spec.bodies)
+    print("ground body protected OK")
+
+    # ── 8. Snap to marker beats grid ───────────────────────────
+    w.set_active_tool("body_link")
+    t = w._scene.active_tool
+    t.mouse_press(FakeEv(0.0, 0.0))   # anchor A
+    t.mouse_press(FakeEv(0.4, 0.0))   # commit
+    src = w.spec.bodies[-1]
+    a = next(m for m in w.spec.markers
+             if m.body_id == src.id and m.name.endswith(".A"))
+    ax, ay = src.position[0] - 0.2, src.position[1]  # marker A scene pos
+    # Make a slightly off-grid query close to the marker.
+    snapped = w._scene.snap(QPointF(ax + 0.003, ay - 0.002))
+    assert math.isclose(snapped[0], ax, abs_tol=1e-9), (snapped, ax)
+    assert math.isclose(snapped[1], ay, abs_tol=1e-9), (snapped, ay)
+    print("snap-to-marker OK:", snapped)
 
     print("ALL OK")
     return 0

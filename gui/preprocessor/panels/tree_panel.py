@@ -134,19 +134,6 @@ class TreePanel(QWidget):
                     leaf.setData(0, Qt.UserRole, ("marker", m.id))
             node.setExpanded(False)
 
-        # ── Ground markers (no owning body) ──────────────────
-        ground_markers = [m for m in self._spec.markers
-                          if m.body_id == "ground"]
-        if ground_markers:
-            ground_root = QTreeWidgetItem(
-                self._browse_tree,
-                [f"Ground markers ({len(ground_markers)})"]
-            )
-            ground_root.setExpanded(True)
-            for m in ground_markers:
-                leaf = QTreeWidgetItem(ground_root, [m.name or m.id])
-                leaf.setData(0, Qt.UserRole, ("marker", m.id))
-
         # ── Connectors / forces ──────────────────────────────
         for label, kind, items in (
             ("Connectors", "joint", self._spec.joints),

@@ -259,6 +259,15 @@ class BodyEditor(EditorBase):
         self._refresh_mass_visuals()
         if getattr(s, "locked", False):
             self.set_locked(True)
+        # Ground is fully read-only: lock every field including name,
+        # material and mass / inertia.
+        if s.id == "ground":
+            self.name.setReadOnly(True)
+            self.name.setEnabled(False)
+            for w in (self.material, self.density, self.thickness_z,
+                      self.mass, self.inertia, self.vx, self.vy,
+                      self.omega, self.override):
+                w.setEnabled(False)
 
     # ──────────────────────────────────────────────────────────
     def set_locked(self, on: bool) -> None:

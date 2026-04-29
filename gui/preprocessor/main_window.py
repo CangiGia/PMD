@@ -221,7 +221,11 @@ class PreProcessorWindow(QMainWindow):
     # Item registry helpers (used by tools)
     # ──────────────────────────────────────────────────────────
 
-    def add_body_item(self, spec: BodySpec) -> BodyItem:
+    def add_body_item(self, spec: BodySpec) -> BodyItem | None:
+        # The implicit ground body has no visual representation on the
+        # canvas — it lives only in the tree as an attachment target.
+        if spec.id == "ground":
+            return None
         item = BodyItem(spec)
         self._scene.addItem(item)
         self._body_items[spec.id] = item
@@ -509,6 +513,12 @@ class PreProcessorWindow(QMainWindow):
                      *, _record: bool = True) -> None:
         """Remove a spec (and its dependents) from the model + scene."""
         if kind == "body":
+            # The implicit ground body cannot be deleted.
+            if item_id == "ground":
+                self.statusBar().showMessage(
+                    "The ground body is implicit and cannot be removed.",
+                    4000)
+                return
             body = self.spec.body(item_id)
             if body is None:
                 return

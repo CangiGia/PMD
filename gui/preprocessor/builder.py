@@ -80,6 +80,10 @@ def build_model(spec: ModelSpec) -> PlanarMultibodyModel:
     # 1) Bodies (and remember the runtime instance per spec id)
     body_by_id: Dict[str, Body] = {}
     for b in spec.bodies:
+        # The implicit ground body is represented by the runtime
+        # ``Ground`` singleton — never instantiate it as a moving body.
+        if b.id == "ground":
+            continue
         body_by_id[b.id] = _make_body(b)
 
     # 2) Markers (Ground or owning body)

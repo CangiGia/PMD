@@ -53,10 +53,13 @@ def main() -> int:
         loaded = load_model(p)
 
     assert loaded.name == spec.name
-    assert len(loaded.bodies) == 1 and loaded.bodies[0].id == "body_a"
-    assert isinstance(loaded.bodies[0].position, tuple)
-    assert loaded.bodies[0].shape.kind == "link"
-    assert loaded.bodies[0].shape.params["length"] == 0.4
+    # Ground is implicit and always present in addition to body_a.
+    assert any(b.id == "ground" for b in loaded.bodies)
+    moving = [b for b in loaded.bodies if b.id != "ground"]
+    assert len(moving) == 1 and moving[0].id == "body_a"
+    assert isinstance(moving[0].position, tuple)
+    assert moving[0].shape.kind == "link"
+    assert moving[0].shape.params["length"] == 0.4
     assert len(loaded.markers) == 2
     assert loaded.markers[1].body_id == "body_a"
     assert isinstance(loaded.markers[1].local_position, tuple)

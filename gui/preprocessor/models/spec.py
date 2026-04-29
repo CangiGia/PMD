@@ -281,6 +281,34 @@ class ForceSpec:
 # ────────────────────────────────────────────────────────────────────
 
 
+# Reserved id of the implicit ground body.
+GROUND_BODY_ID = "ground"
+
+
+def _make_ground_body() -> "BodySpec":
+    """Return the canonical implicit ground body.
+
+    The ground body is read-only by convention: ``locked`` is ``True``
+    so the GUI editors cannot edit its position / shape, and it carries
+    a reserved id (``"ground"``) the runtime builder filters out before
+    constructing the planar model.
+    """
+    return BodySpec(
+        id=GROUND_BODY_ID,
+        name="ground",
+        mass=0.0,
+        inertia=0.0,
+        position=(0.0, 0.0),
+        orientation=0.0,
+        shape=None,
+        locked=True,
+        material="Custom",
+        density=0.0,
+        thickness_z=0.0,
+        mass_override=True,
+    )
+
+
 @dataclass
 class ModelSpec:
     """Whole-project specification edited by the pre-processor.
@@ -308,6 +336,14 @@ class ModelSpec:
     joints: list[JointSpec] = field(default_factory=list)
     forces: list[ForceSpec] = field(default_factory=list)
     units: dict = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        # The ground body is *always* present in a model. It is created
+        # implicitly so the user can attach markers to it without having
+        # to define it explicitly. The runtime builder skips it (the
+        # solver-side ``Ground`` singleton represents the same concept).
+        if not any(b.id == GROUND_BODY_ID for b in self.bodies):
+            self.bodies.insert(0, _make_ground_body())
 
     # ── Lookup helpers ─────────────────────────────────────────
     def body(self, body_id: str) -> BodySpec | None:
