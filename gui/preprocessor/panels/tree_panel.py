@@ -52,6 +52,9 @@ class TreePanel(QWidget):
 
     item_selected         = Signal(str, str)
     item_delete_requested = Signal(str, str)
+    # Emitted when the user renames the model via the top-of-panel
+    # name editor. Carries the *clean* name (no leading dot, stripped).
+    model_renamed         = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -59,9 +62,22 @@ class TreePanel(QWidget):
         outer.setContentsMargins(4, 4, 4, 4)
         outer.setSpacing(4)
 
-        # ── Model selector ────────────────────────────────────
+        # ── Model selector / name editor ──────────────────────
+        # Editable combo: shows ".<name>" (Adams convention) and lets
+        # the user rename the model in place. The leading dot is purely
+        # decorative — we strip it before emitting model_renamed so
+        # spec.name stays clean.
         self._model_combo = QComboBox()
-        self._model_combo.addItem(".MODEL_1")
+        self._model_combo.setEditable(True)
+        self._model_combo.setInsertPolicy(QComboBox.NoInsert)
+        self._model_combo.addItem(".Untitled")
+        self._model_combo.setToolTip(
+            "Model name. Edit and press Enter (or click away) to rename;\n"
+            "the new name becomes the default file name on Save As.")
+        # Emit only when editing actually finishes (Enter / focus-out),
+        # not on every keystroke.
+        self._model_combo.lineEdit().editingFinished.connect(
+            self._on_model_name_edited)
         outer.addWidget(self._model_combo, 0)
 
         # ── Tabs ──────────────────────────────────────────────
@@ -111,7 +127,42 @@ class TreePanel(QWidget):
     # ──────────────────────────────────────────────────────────
     def set_spec(self, spec: ModelSpec) -> None:
         self._spec = spec
+        self._sync_model_name()
         self.refresh()
+
+    def _sync_model_name(self) -> None:
+        """Mirror ``spec.name`` into the editable combo without re-emitting."""
+        if self._spec is None:
+            return
+        text = f".{self._spec.name}"
+        edit = self._model_combo.lineEdit()
+        edit.blockSignals(True)
+        self._model_combo.blockSignals(True)
+        if self._model_combo.count() == 0:
+            self._model_combo.addItem(text)
+        else:
+            self._model_combo.setItemText(0, text)
+        edit.setText(text)
+        edit.blockSignals(False)
+        self._model_combo.blockSignals(False)
+
+    def _on_model_name_edited(self) -> None:
+        """Validate the edited name and emit :pyattr:`model_renamed`."""
+        if self._spec is None:
+            return
+        raw = self._model_combo.lineEdit().text().strip()
+        # Strip the decorative leading dot(s) the user may have left in.
+        clean = raw.lstrip(".").strip()
+        if not clean:
+            # Refuse empty names: revert to the current spec name.
+            self._sync_model_name()
+            return
+        if clean == self._spec.name:
+            # No actual change — just normalise the displayed text
+            # (e.g. user typed without the leading dot).
+            self._sync_model_name()
+            return
+        self.model_renamed.emit(clean)
 
     def refresh(self) -> None:
         if self._spec is None:

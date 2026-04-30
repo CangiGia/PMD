@@ -161,6 +161,7 @@ class PreProcessorWindow(QMainWindow):
         self._tree.item_selected.connect(self._on_tree_item_selected)
         self._tree.item_selected.connect(self._inspector.show_item)
         self._tree.item_delete_requested.connect(self._on_delete_requested)
+        self._tree.model_renamed.connect(self._on_model_renamed)
         self._inspector.spec_changed.connect(self._on_spec_edited)
         self._inspector.body_renamed.connect(self._on_body_renamed)
         self._view.delete_pressed.connect(self._on_canvas_delete_shortcut)
@@ -418,6 +419,19 @@ class PreProcessorWindow(QMainWindow):
         self._tree.refresh()
         self._history_record()
 
+    def _on_model_renamed(self, new_name: str) -> None:
+        """User renamed the model from the tree's name editor.
+
+        Updates :attr:`spec.name` (which feeds the window title and the
+        default file name on Save As) and snapshots the change so it
+        can be undone like any other edit.
+        """
+        if not new_name or new_name == self.spec.name:
+            return
+        self.spec.name = new_name
+        self._update_title()
+        self._history_record()
+
     def _on_body_renamed(self, body_id: str, old_name: str, new_name: str):
         """Rename markers prefixed with the body's old name to track it.
 
@@ -544,8 +558,13 @@ class PreProcessorWindow(QMainWindow):
         self.save_project(self._project_path)
 
     def _on_save_as(self):
+        # Seed the dialog with the model's current name so the saved
+        # file matches what the user sees in the tree's name editor.
+        stem = (self.spec.name or "untitled").strip().replace(" ", "_") \
+               or "untitled"
+        default = f"{stem}.pmdmodel.json"
         path, _ = QFileDialog.getSaveFileName(
-            self, "Save Project As", "untitled.pmdmodel.json",
+            self, "Save Project As", default,
             self.PROJECT_FILTER)
         if not path:
             return
