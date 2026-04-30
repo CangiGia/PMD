@@ -13,6 +13,7 @@ joint discs \u2014 and animates it by calling
 from __future__ import annotations
 
 import math
+import time
 from typing import Iterable
 
 from PySide6.QtCore import Qt, QSize, QTimer, Signal
@@ -36,6 +37,44 @@ from PySide6.QtWidgets import (
 from ..models import ModelSpec
 from ..widgets import BodyItem, JointItem, MarkerItem
 from ... import icons as _icons
+
+
+class _AnimationGraphicsView(QGraphicsView):
+    """QGraphicsView with mouse-wheel zoom and middle-button pan.
+
+    Left-button drag pans (``ScrollHandDrag``) and the wheel zooms
+    around the cursor. Pan / zoom remain available *during* playback so
+    the user can inspect the model while the animation runs.
+    """
+
+    _MIN_SCALE = 1.0      # px / m
+    _MAX_SCALE = 1.0e5    # px / m
+    _ZOOM_STEP = 1.15
+
+    def __init__(self, scene, parent=None):
+        super().__init__(scene, parent)
+        self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
+        self.setResizeAnchor(QGraphicsView.AnchorViewCenter)
+        self.setDragMode(QGraphicsView.ScrollHandDrag)
+
+    def wheelEvent(self, event):  # noqa: D401 - Qt override
+        delta = event.angleDelta().y()
+        if delta == 0:
+            return
+        factor = self._ZOOM_STEP if delta > 0 else 1.0 / self._ZOOM_STEP
+        cur = abs(self.transform().m11())
+        new = cur * factor
+        if new < self._MIN_SCALE or new > self._MAX_SCALE:
+            return
+        # Preserve the y-down flip while scaling.
+        sign_y = -1.0 if self.transform().m22() < 0 else 1.0
+        # Compose: scale around the cursor.
+        # Easiest path: use scale() which respects the transformation
+        # anchor we set in __init__.
+        self.scale(factor, factor)
+        # Re-apply the y-flip if it was lost (scale() preserves sign).
+        _ = sign_y
+        event.accept()
 
 
 class PreprocessorAnimationCanvas(QWidget):
@@ -90,17 +129,22 @@ class PreprocessorAnimationCanvas(QWidget):
         # ---- scene / view (mirrors the preprocessor canvas) ----
         self._scene = QGraphicsScene(self)
         self._scene.setBackgroundBrush(QColor("#fafafa"))
-        self._view = QGraphicsView(self._scene, self)
+        self._view = _AnimationGraphicsView(self._scene, self)
         self._view.setRenderHints(
             QPainter.Antialiasing | QPainter.SmoothPixmapTransform)
         # Same y-up convention as the preprocessor canvas.
         self._view.setTransform(QTransform().scale(400, -400))
-        self._view.setDragMode(QGraphicsView.ScrollHandDrag)
 
         self._body_items:   dict[str, BodyItem]   = {}
         self._marker_items: dict[str, MarkerItem] = {}
         self._joint_items:  dict[str, JointItem]  = {}
         self._build_scene()
+
+        # Freeze the scene rect to the full *trajectory* envelope so
+        # that bodies moving across the canvas during playback never
+        # cause the view to re-fit / rescale itself (which produced
+        # the constantly-shifting axes the user complained about).
+        self._freeze_scene_rect()
 
         # Fit once after the scene is populated.
         QTimer.singleShot(0, self._fit_view)
@@ -134,19 +178,24 @@ class PreprocessorAnimationCanvas(QWidget):
         self._slider.setRange(0, max(0, self._n - 1))
         self._slider.valueChanged.connect(self._on_slider)
 
-        # FPS spinbox — integer values up to 480 fps. The previous
-        # QDoubleSpinBox with default decimals=2 made anything > 99
-        # impossible to type because the visible field was clipped.
-        # Switching to ints, widening the field, and bumping the
-        # range fixes both.
+        # Playback speed multiplier (× real-time). Decoupled from the
+        # display refresh rate: we always render at ~60 Hz and *skip*
+        # frames as needed to stay locked to wall-clock time. This
+        # makes "Speed" actually behave like a speed knob, even when
+        # the simulation has thousands of steps over a few seconds
+        # (where any sensible frame-per-tick scheme bottoms out at the
+        # display refresh rate and looks frozen at high values).
         self._fps_spin = QDoubleSpinBox()
-        self._fps_spin.setDecimals(0)
-        self._fps_spin.setRange(1.0, 480.0)
-        self._fps_spin.setSingleStep(1.0)
-        self._fps_spin.setValue(25.0)
-        self._fps_spin.setSuffix(" fps")
+        self._fps_spin.setDecimals(2)
+        self._fps_spin.setRange(0.05, 100.0)
+        self._fps_spin.setSingleStep(0.25)
+        self._fps_spin.setValue(1.0)
+        self._fps_spin.setSuffix("\u00d7")
         self._fps_spin.setMinimumWidth(96)
-        self._fps_spin.valueChanged.connect(self._update_timer_interval)
+        self._fps_spin.setToolTip(
+            "Playback speed multiplier (\u00d7 real-time).\n"
+            "1\u00d7 plays the simulation at its physical wall-clock rate.")
+        self._fps_spin.valueChanged.connect(self._on_speed_changed)
 
         self._time_lbl = QLabel(self._fmt_time(0))
 
@@ -177,7 +226,11 @@ class PreprocessorAnimationCanvas(QWidget):
 
         # ---- playback timer ----
         self._timer = QTimer(self)
+        self._timer.setTimerType(Qt.PreciseTimer)
         self._timer.timeout.connect(self._advance)
+        # Wall-clock anchors (set on each play / speed change).
+        self._wall_t0: float = 0.0
+        self._sim_t0: float = 0.0
         self._update_timer_interval()
 
         # First frame.
@@ -201,18 +254,64 @@ class PreprocessorAnimationCanvas(QWidget):
             self._body_items[b.id] = item
 
     def _fit_view(self) -> None:
-        rect = self._scene.itemsBoundingRect()
+        rect = self._scene.sceneRect()
+        if rect.isEmpty():
+            rect = self._scene.itemsBoundingRect()
         if rect.isEmpty():
             return
-        # Pad a bit so bodies don't sit on the edge.
-        pad = 0.10 * max(rect.width(), rect.height(), 0.1)
-        rect.adjust(-pad, -pad, pad, pad)
         self._view.fitInView(rect, Qt.KeepAspectRatio)
         # fitInView would reset our flipped Y; reapply the y-down flip
         # while preserving the computed scale.
         s = abs(self._view.transform().m11())
         self._view.setTransform(QTransform().scale(s, -s))
         self._view.centerOn(rect.center())
+
+    def _freeze_scene_rect(self) -> None:
+        """Compute the trajectory envelope and lock the scene rect to it.
+
+        With a frozen scene rect the view never auto-rescales as the
+        bodies move, eliminating the "axes constantly resizing" effect
+        observed during playback.
+        """
+        # Start from a rough envelope of all bodies' positions across
+        # the entire trajectory, then pad by the largest body's
+        # bounding rect so geometry never clips the canvas edge.
+        xs: list[float] = []
+        ys: list[float] = []
+        for spec_id, body in self._body_by_specid.items():
+            try:
+                rc = body._result_container
+                xs.extend(float(v) for v in rc["positions"]["x"])
+                ys.extend(float(v) for v in rc["positions"]["y"])
+            except Exception:
+                continue
+
+        # Body extent (largest body half-diagonal, in metres).
+        extent = 0.0
+        for item in self._body_items.values():
+            br = item.boundingRect()
+            extent = max(extent,
+                         math.hypot(br.width(), br.height()) * 0.5)
+
+        if not xs or not ys:
+            # Fall back to whatever the items currently span.
+            r = self._scene.itemsBoundingRect()
+            if r.isEmpty():
+                r.setRect(-0.5, -0.5, 1.0, 1.0)
+            pad = 0.10 * max(r.width(), r.height(), 0.1)
+            r.adjust(-pad, -pad, pad, pad)
+            self._scene.setSceneRect(r)
+            return
+
+        x_min, x_max = min(xs), max(xs)
+        y_min, y_max = min(ys), max(ys)
+        span = max(x_max - x_min, y_max - y_min, 0.1)
+        pad = 0.15 * span + 1.5 * extent
+        from PySide6.QtCore import QRectF
+        rect = QRectF(x_min - pad, y_min - pad,
+                      (x_max - x_min) + 2 * pad,
+                      (y_max - y_min) + 2 * pad)
+        self._scene.setSceneRect(rect)
 
     # ------------------------------------------------------------------
     # Transport
@@ -224,22 +323,59 @@ class PreprocessorAnimationCanvas(QWidget):
         else:
             if self._step >= self._n - 1:
                 self._step = 0
+            # Re-anchor wall clock so playback resumes from the
+            # current step instead of jumping forward.
+            self._anchor_playback()
             self._timer.start()
             self._play_btn.setIcon(_icons.icon("mdi6.pause"))
         self._playing = not self._playing
 
+    def _anchor_playback(self) -> None:
+        """Pin (wall_now, sim_now) so wall-clock advancing resumes here."""
+        self._wall_t0 = time.monotonic()
+        try:
+            self._sim_t0 = float(self._T[self._step])
+        except Exception:
+            self._sim_t0 = 0.0
+
+    def _on_speed_changed(self, _val: float) -> None:
+        # Re-anchor so the speed change takes effect from "now" without
+        # a discontinuous jump in displayed time.
+        if self._playing:
+            self._anchor_playback()
+
     def _update_timer_interval(self) -> None:
-        fps = max(1.0, float(self._fps_spin.value()))
-        self._timer.setInterval(int(round(1000.0 / fps)))
+        # Fixed display refresh; "Speed" is decoupled (see _advance).
+        # ~60 Hz is plenty for smooth perceived motion and keeps CPU
+        # usage in check on slow machines.
+        self._timer.setInterval(16)
 
     def _advance(self) -> None:
-        nxt = self._step + 1
-        if nxt >= self._n:
+        # Wall-clock driven: figure out which step corresponds to the
+        # elapsed wall time at the current playback speed, snap to it,
+        # and stop at the end of the trajectory.
+        speed = max(1e-6, float(self._fps_spin.value()))
+        elapsed = time.monotonic() - self._wall_t0
+        sim_t = self._sim_t0 + elapsed * speed
+        # Map sim_t -> nearest step index (assumes T is monotonic).
+        try:
+            t_end = float(self._T[-1])
+        except Exception:
+            t_end = 0.0
+        if sim_t >= t_end:
+            self._goto(self._n - 1)
             self._timer.stop()
             self._playing = False
             self._play_btn.setIcon(_icons.icon("mdi6.play"))
             return
-        self._goto(nxt)
+        # Linear search from current step (cheap; T is monotonic and we
+        # never go backwards within _advance).
+        s = self._step
+        n = self._n
+        while s + 1 < n and float(self._T[s + 1]) <= sim_t:
+            s += 1
+        if s != self._step:
+            self._goto(s)
 
     def _goto(self, step: int) -> None:
         step = max(0, min(self._n - 1, int(step)))
