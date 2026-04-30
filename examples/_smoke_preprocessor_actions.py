@@ -20,8 +20,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1].parent))
 from PySide6.QtCore import QPointF, Qt
 from PySide6.QtWidgets import QApplication
 
-from PMD.gui.preprocessor.main_window import PreProcessorWindow
-from PMD.gui.preprocessor.models import ModelSpec, MATERIALS
+from pmd.gui.preprocessor.main_window import PreProcessorWindow
+from pmd.gui.preprocessor.models import ModelSpec, MATERIALS
 
 
 class FakeEv:

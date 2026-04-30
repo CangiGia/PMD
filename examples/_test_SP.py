@@ -1,8 +1,8 @@
 import numpy as np
 import scipy as sc
-from PMD.src import *
+from pmd.core import *
 import matplotlib.pyplot as plt
-from PMD.examples._plot_utils import plot_comparison
+from examples._plot_utils import plot_comparison
 
 
 #* Multi-Body model creation - Bodies, Joints, Forces

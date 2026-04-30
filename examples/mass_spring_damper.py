@@ -1,5 +1,5 @@
 """
-MSD (Mass-Spring-Damper) Model - Planar Multibody Dynamics (PMD)
+MSD (Mass-Spring-Damper) Model - Planar Multibody Dynamics (pmd)
 ================================================================
 KINEMATIC SCHEME & INITIAL STATE
 ---------------------------------
@@ -29,8 +29,8 @@ BODY PARAMETERS
 """
 
 import numpy as np
-from PMD.src import *
-from PMD.gui import PostProcessor
+from pmd.core import *
+from pmd.gui import PostProcessor
 
 
 #%% Bodies

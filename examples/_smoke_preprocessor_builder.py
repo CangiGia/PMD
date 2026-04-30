@@ -10,8 +10,8 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import numpy as np
 
-from PMD.gui.preprocessor.builder import build_model
-from PMD.gui.preprocessor.models import (
+from pmd.gui.preprocessor.builder import build_model
+from pmd.gui.preprocessor.models import (
     BodySpec,
     ForceSpec,
     JointSpec,

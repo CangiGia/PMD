@@ -1,8 +1,8 @@
 """
-Shared fixtures for PMD test suite.
+Shared fixtures for pmd test suite.
 
 All tests must be run from: C:\\Users\\Giaco\\anaconda3\\envs\\GiacoEnv\\
-Command: python -m pytest PMD/tests/ -v
+Command: python -m pytest pmd/tests/ -v
 """
 import pytest
 import os
@@ -14,7 +14,7 @@ import numpy as np
 PMD_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 EXAMPLES_DIR = os.path.join(PMD_ROOT, 'examples')
 NPY_REF_DIR = os.path.join(EXAMPLES_DIR, 'results', 'npy_ref')
-WORKING_DIR = os.path.dirname(PMD_ROOT)  # C:\Users\Giaco\anaconda3\envs\GiacoEnv\
+WORKING_DIR = PMD_ROOT  # repo root; lets `examples` be importable
 
 
 @pytest.fixture(autouse=True)
@@ -24,7 +24,7 @@ def _reset_ground_markers():
     Prevents marker accumulation when multiple models are imported
     inside the same process (e.g. direct-import tests).
     """
-    from PMD.src.model import _GroundType
+    from pmd.core.model import _GroundType
     yield
     gt = _GroundType._instance
     if gt is not None:
@@ -48,7 +48,7 @@ ALL_MODELS = [
 
 def run_model_subprocess(model_name: str) -> tuple:
     """
-    Run a PMD model in an isolated subprocess and return (T, uT).
+    Run a pmd model in an isolated subprocess and return (T, uT).
 
     Each model is run in a separate process to avoid global state
     contamination (Base.COUNT and subclass counters).
@@ -82,7 +82,7 @@ matplotlib.use('Agg')
 import numpy as np
 import importlib
 
-mod = importlib.import_module('PMD.examples.{model_name}')
+mod = importlib.import_module('examples.{model_name}')
 np.save(r'{t_path}', mod.T)
 np.save(r'{ut_path}', mod.uT)
 """

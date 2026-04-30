@@ -1,11 +1,11 @@
 """
-Regression tests for PMD models.
+Regression tests for pmd models.
 
 Each model is run in a subprocess and its outputs (T, uT) are compared
 bit-for-bit with golden reference .npy files.
 
 Run from: C:\\Users\\Giaco\\anaconda3\\envs\\GiacoEnv\\
-Command:  python -m pytest PMD/tests/test_regression.py -v
+Command:  python -m pytest pmd/tests/test_regression.py -v
 """
 import pytest
 import numpy as np

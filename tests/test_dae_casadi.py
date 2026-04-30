@@ -15,7 +15,7 @@ These tests verify:
  11. No constraints: pure ODE fallback (no joints) works.
 
 Run from: C:\\Users\\Giaco\\anaconda3\\envs\\GiacoEnv\\
-Command:  python -m pytest PMD/tests/test_dae_casadi.py -v
+Command:  python -m pytest pmd/tests/test_dae_casadi.py -v
 """
 
 import numpy as np
@@ -27,12 +27,12 @@ try:
 except ImportError:
     _has_casadi = False
 
-from PMD.src.model import Body, Ground, _GroundType
-from PMD.src.constraints import (
+from pmd.core.model import Body, Ground, _GroundType
+from pmd.core.constraints import (
     RevJoint, Weight, RelRotJoint, Function,
     PtpForce, RotSdaForce, Torque, UserForce,
 )
-from PMD.src.solver import PlanarMultibodyModel
+from pmd.core.solver import PlanarMultibodyModel
 
 casadi_required = pytest.mark.skipif(
     not _has_casadi, reason="CasADi not installed"

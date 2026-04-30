@@ -5,14 +5,14 @@ Verifies that _assemble() correctly computes body positions and orientations
 from joint connectivity and q0 values.
 
 Run from: C:\\Users\\Giaco\\anaconda3\\envs\\GiacoEnv\\
-Command:  python -m pytest PMD/tests/test_assembly.py -v
+Command:  python -m pytest pmd/tests/test_assembly.py -v
 """
 import pytest
 import numpy as np
 
-from PMD.src.model import Body, Ground, _GroundType
-from PMD.src.constraints import RevJoint, TranJoint, RevRevJoint
-from PMD.src.builder import _assemble
+from pmd.core.model import Body, Ground, _GroundType
+from pmd.core.constraints import RevJoint, TranJoint, RevRevJoint
+from pmd.core.builder import _assemble
 
 
 @pytest.fixture(autouse=True)

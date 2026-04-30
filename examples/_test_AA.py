@@ -1,11 +1,11 @@
 import time
 import numpy as np
 import scipy as sc
-from PMD.src import *
-from PMD.src.model import _GroundType
+from pmd.core import *
+from pmd.core.model import _GroundType
 import matplotlib.pyplot as plt
-from PMD.examples._plot_utils import plot_comparison
-from PMD.gui import PostProcessor
+from examples._plot_utils import plot_comparison
+from pmd.gui import PostProcessor
 
 #%% bodies
 B1 = Body(mass=2, inertia=0.5, position=[0.4398, 0.2512], orientation=-0.0367)   # lower suspension arm

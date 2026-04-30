@@ -1,7 +1,7 @@
 """
 CS (Crank-Slider) Model - Planar Multibody Dynamics
 =====================================================
-Translated from Adams/View model: PMD validation/crank_slider*.cmd
+Translated from Adams/View model: pmd validation/crank_slider*.cmd
 
 Crank-slider mechanism: a crankshaft pinned to the ground drives a
 connecting rod attached to a slider that translates along the x-axis.
@@ -25,9 +25,9 @@ Forces:
 """
 
 import numpy as np
-from PMD.src import *
-from PMD.src.model import _GroundType
-from PMD.gui import PostProcessor
+from pmd.core import *
+from pmd.core.model import _GroundType
+from pmd.gui import PostProcessor
 
 # ---------------------------------------------------------------------------
 # Factory — rebuilds the full CS model from scratch each call.
@@ -146,5 +146,5 @@ post_proc.show()
 # ---------------------------------------------------------------------------
 # Optional: ADAMS comparison (uncomment to run)
 # ---------------------------------------------------------------------------
-# from PMD.examples._plot_utils import plot_comparison
+# from examples._plot_utils import plot_comparison
 # plot_comparison(T_DAE, uT_DAE, matlab_filename='CS.txt', model_title='CS')

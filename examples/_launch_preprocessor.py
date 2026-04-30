@@ -1,6 +1,6 @@
-"""Launch the PMD pre-processor with an empty project."""
+"""Launch the pmd pre-processor with an empty project."""
 
-from PMD.gui.preprocessor import PreProcessor
+from pmd.gui.preprocessor import PreProcessor
 
 
 if __name__ == "__main__":
