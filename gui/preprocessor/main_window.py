@@ -7,11 +7,15 @@ from PySide6.QtGui import QAction, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QDockWidget,
     QFileDialog,
+    QHBoxLayout,
     QLabel,
     QMainWindow,
     QMessageBox,
+    QProgressBar,
+    QPushButton,
     QStatusBar,
     QToolBar,
+    QWidget,
 )
 
 from .models import (
@@ -307,7 +311,33 @@ class PreProcessorWindow(QMainWindow):
         self._lbl_tool   = QLabel("tool: select")
         self._lbl_count  = QLabel("bodies=0  markers=0  joints=0  forces=0")
 
+        # Inline solver-progress group: a description label + a thin
+        # progress bar + a small Cancel button. Lives in the status
+        # bar (left side, just after the coordinate readout) so the
+        # solver no longer steals focus with a modal popup. Hidden
+        # while idle.
+        self._sim_status_widget = QWidget()
+        _sim_lay = QHBoxLayout(self._sim_status_widget)
+        _sim_lay.setContentsMargins(0, 0, 0, 0)
+        _sim_lay.setSpacing(8)
+        self._lbl_sim = QLabel("")
+        self._lbl_sim.setStyleSheet("QLabel { font-size: 11pt; }")
+        self._sim_progress = QProgressBar()
+        self._sim_progress.setRange(0, 100)
+        self._sim_progress.setValue(0)
+        self._sim_progress.setTextVisible(True)
+        self._sim_progress.setFixedHeight(14)
+        self._sim_progress.setFixedWidth(220)
+        self._sim_cancel = QPushButton("Cancel")
+        self._sim_cancel.setFixedHeight(20)
+        self._sim_cancel.setFlat(True)
+        _sim_lay.addWidget(self._lbl_sim)
+        _sim_lay.addWidget(self._sim_progress)
+        _sim_lay.addWidget(self._sim_cancel)
+        self._sim_status_widget.hide()
+
         sb.addWidget(self._lbl_coords, 1)
+        sb.addWidget(self._sim_status_widget)
         sb.addPermanentWidget(self._lbl_tool)
         sb.addPermanentWidget(self._lbl_count)
 
@@ -521,7 +551,38 @@ class PreProcessorWindow(QMainWindow):
         Currently used so that, while the JointTool is active, the
         user can pick the two markers either by clicking on the canvas
         or by simply clicking them in the Model Browser tree.
+
+        In addition, mirror the tree selection on the canvas so the
+        clicked body / marker / joint visually highlights itself
+        (BodyItem fill change, MarkerItem dashed ring + bright dot,
+        JointItem orange halo). The scene's :pysignal:`selectionChanged`
+        is temporarily blocked so we don't bounce back into the
+        inspector / tree.
         """
+        # Resolve the canvas item, if any, for this tree row.
+        item = None
+        if kind == "body":
+            item = self._body_items.get(item_id)
+        elif kind == "marker":
+            item = self._marker_items.get(item_id)
+        elif kind == "joint":
+            item = self._joint_items.get(item_id)
+
+        if item is not None:
+            scene = self._view.scene()
+            scene.blockSignals(True)
+            try:
+                # Single-selection semantics: clear previous, select
+                # the just-clicked item, then ensure it's repainted
+                # (selection halos are computed in paint()).
+                for it in scene.selectedItems():
+                    if it is not item:
+                        it.setSelected(False)
+                item.setSelected(True)
+                item.update()
+            finally:
+                scene.blockSignals(False)
+
         if kind != "marker" or self._active_tool is None:
             return
         picker = getattr(self._active_tool, "pick_marker_by_id", None)
@@ -834,38 +895,40 @@ class PreProcessorWindow(QMainWindow):
             QMessageBox.critical(self, "Build failed", str(exc))
             return
 
-        # Run the solver in a worker thread; show a Qt progress dialog
-        # that mirrors tqdm's percent. The solver's stdout-based bar is
-        # intercepted (by monkey-patching ``solver.tqdm``) so the user
-        # sees the GUI bar instead of a console bar that's invisible
-        # while the GUI is in the foreground.
-        from PySide6.QtWidgets import QProgressDialog
-
-        progress = QProgressDialog(
-            f"Solving ({cfg.analysis}, {cfg.method})\u2026",
-            "Cancel", 0, 100, self)
-        progress.setWindowTitle("Run Simulation")
-        progress.setWindowModality(Qt.WindowModal)
-        progress.setMinimumDuration(0)
-        progress.setAutoClose(False)
-        progress.setAutoReset(False)
-        progress.setValue(0)
-
+        # Run the solver in a worker thread; show an inline progress
+        # bar in the status bar (next to the simulation-type label).
+        # The solver's stdout-based tqdm bar is intercepted (by
+        # monkey-patching ``solver.tqdm``) so the user sees the GUI
+        # bar instead of a console bar that's invisible while the GUI
+        # is in the foreground.
         worker = _SolveWorker(model, cfg)
-        # Cancel button \u2192 ask the worker to stop at the next progress tick.
-        progress.canceled.connect(worker.request_cancel)
-        worker.progress.connect(progress.setValue)
+
+        # Show inline progress group in the status bar.
+        self._lbl_sim.setText(f"Solving ({cfg.analysis}, {cfg.method})\u2026")
+        self._sim_progress.setValue(0)
+        self._sim_status_widget.show()
+        try:
+            self._sim_cancel.clicked.disconnect()
+        except (TypeError, RuntimeError):
+            pass
+        self._sim_cancel.clicked.connect(worker.request_cancel)
+        worker.progress.connect(self._sim_progress.setValue)
+
+        def _hide_sim_status() -> None:
+            self._sim_status_widget.hide()
+            self._lbl_sim.setText("")
+            self._sim_progress.setValue(0)
 
         def _on_done(model_, T, uT):
-            progress.setValue(100)
-            progress.close()
+            self._sim_progress.setValue(100)
+            _hide_sim_status()
             self._last_run = (model_, T, uT)
             self.statusBar().showMessage(
                 f"Solve OK: {len(T)} steps. Click Animate to replay, "
                 "or Results \u2192 Open for plots.", 6000)
 
         def _on_failed(msg: str):
-            progress.close()
+            _hide_sim_status()
             QMessageBox.critical(self, "Solve failed", msg)
             self.statusBar().clearMessage()
 
@@ -873,8 +936,6 @@ class PreProcessorWindow(QMainWindow):
         worker.failed.connect(_on_failed)
         # Keep a reference so the QThread isn't GC'd mid-run.
         self._sim_worker = worker
-        self.statusBar().showMessage(
-            f"Solving ({cfg.analysis}, {cfg.method})\u2026")
         worker.start()
 
     def _open_animation_window(self):

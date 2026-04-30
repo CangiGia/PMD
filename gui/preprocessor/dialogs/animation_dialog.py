@@ -51,6 +51,11 @@ class _AnimationGraphicsView(QGraphicsView):
     _MAX_SCALE = 1.0e5    # px / m
     _ZOOM_STEP = 1.15
 
+    # Emitted on the first user pan or zoom; the parent canvas uses
+    # this to disable the auto-refit that fires on showEvent /
+    # resizeEvent (we don't want to wipe the user's framing).
+    user_interacted = Signal()
+
     def __init__(self, scene, parent=None):
         super().__init__(scene, parent)
         self.setTransformationAnchor(QGraphicsView.AnchorUnderMouse)
@@ -74,7 +79,14 @@ class _AnimationGraphicsView(QGraphicsView):
         self.scale(factor, factor)
         # Re-apply the y-flip if it was lost (scale() preserves sign).
         _ = sign_y
+        self.user_interacted.emit()
         event.accept()
+
+    def mousePressEvent(self, event):  # noqa: D401 - Qt override
+        # Any mouse press on the view is treated as a user interaction
+        # (the ScrollHandDrag mode pans on left-button drag).
+        self.user_interacted.emit()
+        super().mousePressEvent(event)
 
 
 class PreprocessorAnimationCanvas(QWidget):
@@ -148,6 +160,13 @@ class PreprocessorAnimationCanvas(QWidget):
 
         # Fit once after the scene is populated.
         QTimer.singleShot(0, self._fit_view)
+        # Track whether the user has manually pan/zoomed since the last
+        # auto-fit. While untouched, the canvas re-fits whenever it
+        # actually receives a usable size (showEvent / resizeEvent),
+        # which is what fixes the "tiny model in a huge pane" you see
+        # when the postprocessor first toggles the animation pane on.
+        self._user_zoomed = False
+        self._view.user_interacted.connect(self._on_user_interacted)
 
         # ---- transport controls ----
         # Larger, modern icon buttons (24 px) with mdi6 glyphs.
@@ -252,6 +271,29 @@ class PreprocessorAnimationCanvas(QWidget):
             item.setFlag(QGraphicsItem.ItemIsSelectable, False)
             self._scene.addItem(item)
             self._body_items[b.id] = item
+
+    # ------------------------------------------------------------------
+    # Auto-fit lifecycle
+    # ------------------------------------------------------------------
+    def _on_user_interacted(self) -> None:
+        self._user_zoomed = True
+
+    def showEvent(self, event):  # noqa: D401 - Qt override
+        super().showEvent(event)
+        # Re-fit on first show (and on subsequent shows while the user
+        # hasn't manually framed the view). Without this, when the
+        # postprocessor's animation pane is hidden at construction
+        # time the initial QTimer.singleShot fit runs against a 0x0
+        # viewport and the model ends up as a single pixel.
+        if not self._user_zoomed:
+            QTimer.singleShot(0, self._fit_view)
+
+    def resizeEvent(self, event):  # noqa: D401 - Qt override
+        super().resizeEvent(event)
+        if not self._user_zoomed:
+            # Defer to next event loop tick so the QGraphicsView has
+            # already adopted its new viewport size before we fit.
+            QTimer.singleShot(0, self._fit_view)
 
     def _fit_view(self) -> None:
         rect = self._scene.sceneRect()

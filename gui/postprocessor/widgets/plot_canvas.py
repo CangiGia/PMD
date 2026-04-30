@@ -66,7 +66,12 @@ class PlotCanvas(QWidget):
         # *shown* while the animation pane is visible.
         self._time_cursor_t: float | None = None
         self._time_cursor_visible: bool = False
-        self._time_cursor_lines: dict = {}  # ax -> Line2D
+        # ax -> {"vline": Line2D, "dots": list[Line2D], "labels":
+        # list[Annotation], "curves": list[CurveItem]}
+        self._time_cursor_artists: dict = {}
+        # Backwards-compat alias used by older code paths that only
+        # need to invalidate the dict on figure rebuilds.
+        self._time_cursor_lines: dict = self._time_cursor_artists
 
         # Custom visible toolbar (built after instance vars)
         self._toolbar = self._build_toolbar()
@@ -860,36 +865,125 @@ class PlotCanvas(QWidget):
     def set_time_cursor_visible(self, on: bool):
         """Show / hide the synced time cursor without dropping its position."""
         self._time_cursor_visible = bool(on)
-        for line in self._time_cursor_lines.values():
-            line.set_visible(self._time_cursor_visible
-                             and self._time_cursor_t is not None)
+        show = self._time_cursor_visible and (self._time_cursor_t is not None)
+        for entry in self._time_cursor_artists.values():
+            entry["vline"].set_visible(show)
+            for d in entry.get("dots", []):
+                d.set_visible(show)
+            for lab in entry.get("labels", []):
+                lab.set_visible(show)
         self._canvas.draw_idle()
 
     def _refresh_time_cursor(self):
-        """Ensure exactly one cursor Line2D per axes, at the stored time."""
+        """Ensure cursor artists exist, are positioned, and report y-values.
+
+        For each axis we draw:
+        * a thin vertical line at the cursor time (foreground colour
+          so it matches the manually-added Cursor data tip);
+        * one dot per curve, sitting on the curve at the cursor x,
+          coloured to match its trace;
+        * one small text label per curve, placed next to the dot, that
+          reports the numeric y-value at the cursor.
+        """
+        from matplotlib.transforms import blended_transform_factory
+
         # Drop entries whose ax was removed (e.g. by ``update_plot``).
-        for ax in list(self._time_cursor_lines.keys()):
+        for ax in list(self._time_cursor_artists.keys()):
             if ax not in self._axes:
-                self._time_cursor_lines.pop(ax, None)
+                self._time_cursor_artists.pop(ax, None)
 
         t = self._time_cursor_t
         show = self._time_cursor_visible and (t is not None)
         fg = CANVAS_FG_DARK if self._dark else CANVAS_FG_LIGHT
+        bg = CANVAS_BG_DARK if self._dark else CANVAS_BG_LIGHT
 
-        for ax in self._axes:
-            line = self._time_cursor_lines.get(ax)
-            if line is None:
-                # Use a distinctive, theme-friendly orange so it stands
-                # apart from the curve colors and from the hover/pin
-                # cursors (which are foreground-coloured).
-                line = ax.axvline(
-                    x=0.0, color="#ff8c00", linestyle="--",
-                    linewidth=1.2, alpha=0.95, zorder=15, visible=False,
+        # Group curves by axis (mirrors update_plot's grouping).
+        groups: dict[str, list] = {}
+        for c in self._curves:
+            groups.setdefault(c.unit or "Value", []).append(c)
+        groups_list = list(groups.values())
+
+        for ax_idx, ax in enumerate(self._axes):
+            curves = groups_list[ax_idx] if ax_idx < len(groups_list) else []
+
+            entry = self._time_cursor_artists.get(ax)
+            if entry is None or entry.get("curves") is not curves:
+                # First time on this ax, or the curve set changed:
+                # rebuild the artists from scratch.
+                if entry is not None:
+                    for art in [entry.get("vline"), *entry.get("dots", []),
+                                *entry.get("labels", [])]:
+                        try:
+                            art.remove()
+                        except Exception:
+                            pass
+                vline = ax.axvline(
+                    x=0.0, color=fg, linestyle="--",
+                    linewidth=1.0, alpha=0.85, zorder=15, visible=False,
                 )
-                self._time_cursor_lines[ax] = line
+                dots: list = []
+                labels: list = []
+                blended = blended_transform_factory(
+                    ax.transData, ax.transData)
+                for c in curves:
+                    dot, = ax.plot(
+                        [0.0], [0.0], "o", color=c.color,
+                        markersize=6, markeredgecolor=fg,
+                        markeredgewidth=0.7,
+                        zorder=16, visible=False,
+                    )
+                    lab = ax.annotate(
+                        "", xy=(0.0, 0.0), xycoords=blended,
+                        xytext=(8, 0), textcoords="offset points",
+                        ha="left", va="center", fontsize=8,
+                        color=c.color, visible=False, zorder=17,
+                        annotation_clip=True,
+                        bbox=dict(boxstyle="round,pad=0.25",
+                                  facecolor=bg, edgecolor=c.color,
+                                  linewidth=0.6, alpha=0.92),
+                    )
+                    dots.append(dot)
+                    labels.append(lab)
+                entry = {"vline": vline, "dots": dots,
+                         "labels": labels, "curves": curves}
+                self._time_cursor_artists[ax] = entry
+
+            vline = entry["vline"]
             if t is not None:
-                line.set_xdata([t, t])
-            line.set_visible(show)
+                vline.set_xdata([t, t])
+            vline.set_visible(show)
+
+            # Position each dot + label at the curve's value at time t.
+            ax_bbox = ax.get_window_extent()
+            for dot, lab, c in zip(entry["dots"], entry["labels"], curves):
+                if t is None or len(c.T) == 0:
+                    dot.set_visible(False)
+                    lab.set_visible(False)
+                    continue
+                T = c.T
+                i = int(np.searchsorted(T, t))
+                if i >= len(T):
+                    i = len(T) - 1
+                elif i > 0 and abs(T[i - 1] - t) < abs(T[i] - t):
+                    i -= 1
+                cy = float(c.data[i])
+                dot.set_data([t], [cy])
+                # Decide left/right placement so the value label stays
+                # inside the axes when the cursor approaches the right
+                # edge (mirrors the manual Cursor mode behaviour).
+                try:
+                    px = ax.transData.transform((t, cy))[0]
+                    place_left = (px - ax_bbox.x0) > (ax_bbox.width * 0.75)
+                except Exception:
+                    place_left = False
+                if place_left:
+                    lab.set_ha("right"); lab.xyann = (-8, 0)
+                else:
+                    lab.set_ha("left"); lab.xyann = (8, 0)
+                lab.xy = (t, cy)
+                lab.set_text(f"{cy:.4g}")
+                dot.set_visible(show)
+                lab.set_visible(show)
 
     def set_dark(self, enabled: bool):
         """Switch the existing Figure between dark and light appearance."""
