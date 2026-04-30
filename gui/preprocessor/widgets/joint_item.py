@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import QRectF
+from PySide6.QtCore import QRectF, Qt
 from PySide6.QtGui import QBrush, QColor, QPen
 from PySide6.QtWidgets import QGraphicsItem, QGraphicsObject
 
@@ -12,15 +12,15 @@ from ..models import JointSpec
 class JointItem(QGraphicsObject):
     """Generic joint glyph (placed at the i-marker's world position).
 
-    Subclasses can refine the visual (a circle for revolute, two
-    parallel bars for translational, etc.). The base class draws a
-    ring whose colour depends on the joint kind.
+    The base class draws a *filled*, brightly coloured disc whose hue
+    depends on the joint kind, with a thin dark outline so it stays
+    visible on top of the marker glyphs that necessarily overlap it.
     """
 
-    _RADIUS_PX = 7.0
+    _RADIUS_PX = 9.0
 
     KIND_COLORS = {
-        "RevJoint":     "#5b8cf2",
+        "RevJoint":     "#ff2bd6",   # bright fuchsia (hinge)
         "TranJoint":    "#7a5bf2",
         "RevRevJoint":  "#3a8d6a",
         "RevTranJoint": "#3a8d8d",
@@ -32,7 +32,9 @@ class JointItem(QGraphicsObject):
         super().__init__()
         self.spec = spec
         self.setFlag(QGraphicsItem.ItemIsSelectable, True)
-        self.setZValue(450)
+        # Above markers (z=500) and bodies (default 0) so the joint
+        # glyph is never visually buried under a marker.
+        self.setZValue(600)
 
     # ─────────────────────────────────────────────────────────
     def boundingRect(self) -> QRectF:
@@ -45,9 +47,21 @@ class JointItem(QGraphicsObject):
         r = self._RADIUS_PX / s
 
         color = QColor(self.KIND_COLORS.get(self.spec.kind, "#1c2033"))
-        pen = QPen(color)
-        pen.setCosmetic(True)
-        pen.setWidthF(2.0)
-        painter.setPen(pen)
-        painter.setBrush(QBrush(QColor(255, 255, 255, 200)))
+        # Filled bright disc with a thin dark outline for contrast.
+        painter.setBrush(QBrush(color))
+        outline = QPen(QColor("#1c2033"))
+        outline.setCosmetic(True)
+        outline.setWidthF(1.2)
+        painter.setPen(outline)
         painter.drawEllipse(QRectF(-r, -r, 2 * r, 2 * r))
+
+        # Selection halo.
+        if self.isSelected():
+            halo = QPen(QColor("#ff8c00"))
+            halo.setCosmetic(True)
+            halo.setWidthF(1.4)
+            halo.setStyle(Qt.DashLine)
+            painter.setPen(halo)
+            painter.setBrush(Qt.NoBrush)
+            rr = (self._RADIUS_PX + 3.0) / s
+            painter.drawEllipse(QRectF(-rr, -rr, 2 * rr, 2 * rr))

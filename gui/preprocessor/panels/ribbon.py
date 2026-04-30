@@ -291,11 +291,14 @@ class RibbonBar(QTabWidget):
     def _build_simulation_tab(self):
         lay = self._new_tab("Simulation")
         g = RibbonGroup("Run"); lay.addWidget(g)
-        self._add_action(g, "sim_dynamic",   "Dynamic",   "Run dynamic analysis")
-        self._add_action(g, "sim_kinematic", "Kinematic", "Run kinematic analysis")
-        self._add_action(g, "sim_static",    "Static",    "Run static equilibrium")
-        g2 = RibbonGroup("Settings"); lay.addWidget(g2)
-        self._add_action(g2, "sim_settings", "Solver…", "Solver settings")
+        # A single Run button — it opens the Solver dialog (analysis +
+        # method + time span + tolerances) and runs in a worker thread
+        # with a progress popup. Replaces the old Dynamic / Kinematic /
+        # Static / Solver… quartet.
+        self._add_action(g, "sim_run",     "Run Simulation",
+                         "Open solver settings and run the simulation")
+        self._add_action(g, "sim_animate", "Animate",
+                         "Replay the last simulation in the canvas")
         lay.addStretch(1)
 
     # ── Results ───────────────────────────────────────────────

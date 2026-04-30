@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QAction, QKeySequence
+from PySide6.QtCore import Qt, QThread, Signal
+from PySide6.QtGui import QAction, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QDockWidget,
     QFileDialog,
@@ -39,6 +39,95 @@ from .widgets import (
 _HISTORY_CAP = 100
 
 
+# ----------------------------------------------------------------------
+# Solver worker thread
+# ----------------------------------------------------------------------
+class _SolveWorker(QThread):
+    """Run ``model.solve(...)`` off the GUI thread.
+
+    The solver normally renders a tqdm progress bar to stdout. While
+    the worker is running we monkey-patch ``PMD.src.solver.tqdm`` with
+    a thin shim that emits a Qt ``progress(int)`` signal each time the
+    solver updates its bar, so the GUI can show a real
+    :class:`QProgressDialog` instead of the (invisible) console bar.
+    """
+
+    progress     = Signal(int)              # 0..100
+    finished_ok  = Signal(object, object, object)  # (model, T, uT)
+    failed       = Signal(str)
+
+    def __init__(self, model, cfg, parent=None):
+        super().__init__(parent)
+        self._model   = model
+        self._cfg     = cfg
+        self._cancel  = False
+
+    def request_cancel(self) -> None:
+        self._cancel = True
+
+    def run(self) -> None:                 # noqa: D401 (Qt override)
+        import numpy as np
+        try:
+            from PMD.src import solver as _solver_mod
+        except Exception as exc:           # pragma: no cover
+            self.failed.emit(f"Could not import PMD solver: {exc}")
+            return
+
+        worker = self
+        original_tqdm = _solver_mod.tqdm
+
+        class _GuiTqdm:
+            def __init__(self, total=100, **_kw):
+                self.total = max(int(total or 1), 1)
+                self._n = 0
+                worker.progress.emit(0)
+
+            @property
+            def n(self):
+                return self._n
+
+            @n.setter
+            def n(self, v):
+                self._n = v
+                pct = int(100 * v / self.total)
+                worker.progress.emit(min(100, max(0, pct)))
+
+            def refresh(self):
+                pass
+
+            def update(self, k=1):
+                self.n = self._n + k
+
+            def close(self):
+                worker.progress.emit(100)
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_a):
+                self.close()
+
+        _solver_mod.tqdm = _GuiTqdm
+        try:
+            cfg = self._cfg
+            t_eval = np.linspace(cfg.t_start, cfg.t_end, cfg.n_steps)
+            T, uT = self._model.solve(
+                analysis=cfg.analysis,
+                method=cfg.method,
+                t_span=(cfg.t_start, cfg.t_end),
+                t_eval=t_eval,
+                ic_correct=cfg.ic_correct,
+                baumgarte_alpha=cfg.baumgarte_alpha,
+                baumgarte_beta=cfg.baumgarte_beta,
+            )
+            self.finished_ok.emit(self._model, T, uT)
+        except Exception:
+            import traceback
+            self.failed.emit(traceback.format_exc())
+        finally:
+            _solver_mod.tqdm = original_tqdm
+
+
 class PreProcessorWindow(QMainWindow):
     """Top-level QMainWindow for the PMD pre-processor."""
 
@@ -54,6 +143,8 @@ class PreProcessorWindow(QMainWindow):
         self._body_items:   dict[str, BodyItem]   = {}
         self._marker_items: dict[str, MarkerItem] = {}
         self._joint_items:  dict[str, JointItem]  = {}
+        # 'V' shortcut toggles this; new markers respect the current value.
+        self._markers_visible: bool = True
 
         self.setWindowTitle("PMD Pre-Processor — Model Builder")
         self.resize(1500, 900)
@@ -186,6 +277,18 @@ class PreProcessorWindow(QMainWindow):
         act_fit.triggered.connect(self._view.zoom_to_fit)
         view_menu.addAction(act_fit)
 
+        # V \u2192 toggle visibility of all markers (and, transitively,
+        # their labels and the joint-name labels). The marker glyphs
+        # are visually noisy on dense models; pressing V gives a clean
+        # body-only view for screenshots / inspection. Application-
+        # scoped so it fires regardless of focus.
+        self._act_toggle_markers = QAction("Toggle markers", self)
+        self._act_toggle_markers.setShortcut(QKeySequence(Qt.Key_V))
+        self._act_toggle_markers.setShortcutContext(Qt.ApplicationShortcut)
+        self._act_toggle_markers.triggered.connect(self._toggle_markers_visible)
+        self.addAction(self._act_toggle_markers)
+        view_menu.addAction(self._act_toggle_markers)
+
         mbar.addMenu("&Settings")
         mbar.addMenu("&Tools")
 
@@ -248,6 +351,8 @@ class PreProcessorWindow(QMainWindow):
         else:
             item = MarkerItem(spec, parent_body=parent_body)
         self._marker_items[spec.id] = item
+        if not self._markers_visible:
+            item.setVisible(False)
         return item
 
     def add_joint_visual(self, spec: JointSpec) -> JointItem | None:
@@ -270,10 +375,12 @@ class PreProcessorWindow(QMainWindow):
         self._lbl_coords.setText(f"x={x:+.3f}  y={y:+.3f} m")
 
     def _on_action(self, name: str):
-        if name in ("sim_dynamic", "sim_kinematic", "sim_static"):
-            analysis = name.split("_", 1)[1]
-            self._run_simulation(analysis=analysis)
+        if name == "sim_run":
+            self._run_simulation()
+        elif name == "sim_animate":
+            self._open_animation_window()
         elif name == "sim_settings":
+            # Legacy key (kept for backwards compatibility).
             self._open_solver_dialog()
         elif name == "post_open":
             self._open_post_processor()
@@ -665,6 +772,15 @@ class PreProcessorWindow(QMainWindow):
     # Simulation bridge
     # ──────────────────────────────────────────────────────────
 
+    def _toggle_markers_visible(self):
+        # Defensive: callable before items exist.
+        self._markers_visible = not getattr(self, "_markers_visible", True)
+        for item in self._marker_items.values():
+            item.setVisible(self._markers_visible)
+        self.statusBar().showMessage(
+            "Markers shown" if self._markers_visible else "Markers hidden",
+            1500)
+
     def _open_solver_dialog(self):
         from .dialogs import SolverDialog
         dlg = SolverDialog(self, initial=self._solver_settings)
@@ -672,17 +788,20 @@ class PreProcessorWindow(QMainWindow):
             self._solver_settings = dlg.settings()
             self.statusBar().showMessage("Solver settings updated", 2000)
 
-    def _run_simulation(self, *, analysis: str = "dynamic"):
+    def _run_simulation(self, *, analysis: str | None = None):
         from .builder import build_model, BuilderError
         from .dialogs import SolverDialog, SolverSettings
 
-        if not self.spec.bodies:
+        if not self.spec.bodies or all(b.id == "ground"
+                                       for b in self.spec.bodies):
             QMessageBox.warning(self, "Run", "Model has no bodies.")
             return
 
-        # Show dialog seeded with the requested analysis.
+        # Show dialog seeded with the previous settings (or defaults);
+        # the dialog itself lets the user pick the analysis kind.
         seed = self._solver_settings or SolverSettings()
-        seed.analysis = analysis
+        if analysis:
+            seed.analysis = analysis
         dlg = SolverDialog(self, initial=seed)
         from PySide6.QtWidgets import QDialog
         if dlg.exec() != QDialog.Accepted:
@@ -690,35 +809,84 @@ class PreProcessorWindow(QMainWindow):
         cfg = dlg.settings()
         self._solver_settings = cfg
 
-        # Compile + solve.
-        import numpy as np
         try:
             model = build_model(self.spec)
         except BuilderError as exc:
             QMessageBox.critical(self, "Build failed", str(exc))
             return
 
-        self.statusBar().showMessage(
-            f"Solving ({cfg.analysis}, {cfg.method}) …")
-        try:
-            t_eval = np.linspace(cfg.t_start, cfg.t_end, cfg.n_steps)
-            T, uT = model.solve(
-                analysis=cfg.analysis,
-                method=cfg.method,
-                t_span=(cfg.t_start, cfg.t_end),
-                t_eval=t_eval,
-                ic_correct=cfg.ic_correct,
-                baumgarte_alpha=cfg.baumgarte_alpha,
-                baumgarte_beta=cfg.baumgarte_beta,
-            )
-        except Exception as exc:
-            QMessageBox.critical(self, "Solve failed", str(exc))
-            self.statusBar().clearMessage()
-            return
+        # Run the solver in a worker thread; show a Qt progress dialog
+        # that mirrors tqdm's percent. The solver's stdout-based bar is
+        # intercepted (by monkey-patching ``solver.tqdm``) so the user
+        # sees the GUI bar instead of a console bar that's invisible
+        # while the GUI is in the foreground.
+        from PySide6.QtWidgets import QProgressDialog
 
-        self._last_run = (model, T, uT)
+        progress = QProgressDialog(
+            f"Solving ({cfg.analysis}, {cfg.method})\u2026",
+            "Cancel", 0, 100, self)
+        progress.setWindowTitle("Run Simulation")
+        progress.setWindowModality(Qt.WindowModal)
+        progress.setMinimumDuration(0)
+        progress.setAutoClose(False)
+        progress.setAutoReset(False)
+        progress.setValue(0)
+
+        worker = _SolveWorker(model, cfg)
+        # Cancel button \u2192 ask the worker to stop at the next progress tick.
+        progress.canceled.connect(worker.request_cancel)
+        worker.progress.connect(progress.setValue)
+
+        def _on_done(model_, T, uT):
+            progress.setValue(100)
+            progress.close()
+            self._last_run = (model_, T, uT)
+            self.statusBar().showMessage(
+                f"Solve OK: {len(T)} steps. Click Animate to replay, "
+                "or Results \u2192 Open for plots.", 6000)
+
+        def _on_failed(msg: str):
+            progress.close()
+            QMessageBox.critical(self, "Solve failed", msg)
+            self.statusBar().clearMessage()
+
+        worker.finished_ok.connect(_on_done)
+        worker.failed.connect(_on_failed)
+        # Keep a reference so the QThread isn't GC'd mid-run.
+        self._sim_worker = worker
         self.statusBar().showMessage(
-            f"Solve OK: {len(T)} steps. Use Results → Open to view.", 5000)
+            f"Solving ({cfg.analysis}, {cfg.method})\u2026")
+        worker.start()
+
+    def _open_animation_window(self):
+        if self._last_run is None:
+            QMessageBox.information(
+                self, "Animate",
+                "No simulation results yet \u2014 click Run Simulation first.")
+            return
+        from PySide6.QtWidgets import QDialog, QVBoxLayout
+        from ..postprocessor import Session
+        from ..postprocessor.widgets import AnimationCanvas
+
+        model, T, uT = self._last_run
+        # ``solve`` already distributed results, but a re-distribution
+        # is harmless and safeguards against a partial state.
+        try:
+            model._distribute_results(T, uT)
+        except Exception:
+            pass
+        session = Session(model, T, uT, name=self.spec.name)
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle(f"Animation \u2014 {self.spec.name}")
+        dlg.resize(960, 720)
+        lay = QVBoxLayout(dlg)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.addWidget(AnimationCanvas([session], parent=dlg))
+        dlg.show()
+        # Keep a reference so the dialog isn't GC'd when the function
+        # returns; storing on self also lets a second click reuse it.
+        self._anim_dialog = dlg
 
     def _open_post_processor(self):
         if self._last_run is None:
