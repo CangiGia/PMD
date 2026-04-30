@@ -29,6 +29,10 @@ class MarkerItem(QGraphicsObject):
     _LABEL_DY_PX  = 22.0   # below the origin (positive = screen-down)
     _LABEL_PT     = 11.0
     _AXIS_W_PX    = 2.2
+    # Scene-pixel radius within which two markers are considered
+    # co-located for the purpose of label stacking. Roughly the size
+    # of the picking disc so a joint's two markers always group.
+    _LABEL_GROUP_PX = 14.0
 
     # Colors
     _C_X      = QColor("#d65a5a")
@@ -129,11 +133,18 @@ class MarkerItem(QGraphicsObject):
             if parent is not None:
                 total_deg += float(parent.rotation())
 
+            # Anti-overlap: when several markers share (almost) the same
+            # scene origin (typical at a joint endpoint), stack their
+            # labels vertically so they don't all draw on top of each
+            # other. Each marker keeps its label close to its own dot.
+            row = self._label_row_index()
+
             painter.save()
             painter.rotate(-total_deg)
             painter.scale(1.0 / s, -1.0 / s)        # painter local = pixels
+            line_h = self._LABEL_PT * 1.35
             painter.translate(self._LABEL_DX_PX,
-                              self._LABEL_DY_PX)    # +Y = screen-down here
+                              self._LABEL_DY_PX + row * line_h)
             font = QFont()
             font.setPointSizeF(self._LABEL_PT)
             painter.setFont(font)
@@ -141,6 +152,38 @@ class MarkerItem(QGraphicsObject):
             painter.setPen(pen_l)
             painter.drawText(QPointF(0.0, 0.0), name)
             painter.restore()
+
+    # ─────────────────────────────────────────────────────────
+    def _label_row_index(self) -> int:
+        """Return this marker's row when stacking labels at the same spot.
+
+        Two markers are considered co-located if their scene origins
+        are within :data:`_LABEL_GROUP_PX` pixels. Within a group the
+        rows are assigned by a stable sort (id, then python id) so the
+        layout doesn't flicker between repaints.
+        """
+        scene = self.scene()
+        if scene is None:
+            return 0
+        my_pos = self.scenePos()
+        s = self._scale()
+        tol = self._LABEL_GROUP_PX / max(s, 1e-9)
+        peers: list[MarkerItem] = []
+        for it in scene.items():
+            if not isinstance(it, MarkerItem):
+                continue
+            if not (it.spec.name or it.spec.id):
+                continue
+            d = it.scenePos() - my_pos
+            if abs(d.x()) <= tol and abs(d.y()) <= tol:
+                peers.append(it)
+        if len(peers) <= 1:
+            return 0
+        peers.sort(key=lambda m: (str(m.spec.id), id(m)))
+        try:
+            return peers.index(self)
+        except ValueError:
+            return 0
 
     # ─────────────────────────────────────────────────────────
     def set_highlighted(self, on: bool) -> None:
