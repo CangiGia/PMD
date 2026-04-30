@@ -864,25 +864,10 @@ class PreProcessorWindow(QMainWindow):
                 self, "Animate",
                 "No simulation results yet \u2014 click Run Simulation first.")
             return
-        from PySide6.QtWidgets import QDialog, QVBoxLayout
-        from ..postprocessor import Session
-        from ..postprocessor.widgets import AnimationCanvas
+        from .dialogs import AnimationDialog
 
-        model, T, uT = self._last_run
-        # ``solve`` already distributed results, but a re-distribution
-        # is harmless and safeguards against a partial state.
-        try:
-            model._distribute_results(T, uT)
-        except Exception:
-            pass
-        session = Session(model, T, uT, name=self.spec.name)
-
-        dlg = QDialog(self)
-        dlg.setWindowTitle(f"Animation \u2014 {self.spec.name}")
-        dlg.resize(960, 720)
-        lay = QVBoxLayout(dlg)
-        lay.setContentsMargins(0, 0, 0, 0)
-        lay.addWidget(AnimationCanvas([session], parent=dlg))
+        model, T, _uT = self._last_run
+        dlg = AnimationDialog(self.spec, model, T, parent=self)
         dlg.show()
         # Keep a reference so the dialog isn't GC'd when the function
         # returns; storing on self also lets a second click reuse it.
