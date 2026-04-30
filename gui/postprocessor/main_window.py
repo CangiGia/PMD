@@ -123,10 +123,23 @@ class MainWindow(QMainWindow):
         viz_splitter = QSplitter(Qt.Orientation.Vertical)
         self._plot_canvas = PlotCanvas()
         viz_splitter.addWidget(self._plot_canvas)
-        self._anim_canvas = AnimationCanvas(self._sessions)
+        # When all sessions were launched from the preprocessor, use the
+        # preprocessor-style animation canvas (real body shapes, marker
+        # axes, fuchsia revolute discs) instead of the plain coloured
+        # circles fallback. Falls back to the legacy AnimationCanvas
+        # otherwise (e.g. sessions loaded from a .pkl).
+        specs = [getattr(s, "preprocessor_spec", None) for s in self._sessions]
+        if specs and all(sp is not None for sp in specs):
+            from ..preprocessor.dialogs import PreprocessorAnimationCanvas
+            s0 = self._sessions[0]
+            self._anim_canvas = PreprocessorAnimationCanvas(
+                specs[0], s0.model, s0.T)
+        else:
+            self._anim_canvas = AnimationCanvas(self._sessions)
         viz_splitter.addWidget(self._anim_canvas)
         self._anim_canvas.setVisible(False)
-        self._plot_canvas.step_requested.connect(self._anim_canvas.set_step)
+        if hasattr(self._anim_canvas, "set_step"):
+            self._plot_canvas.step_requested.connect(self._anim_canvas.set_step)
         viz_splitter.setStretchFactor(0, 1)
         viz_splitter.setStretchFactor(1, 1)
         right_layout.addWidget(viz_splitter, stretch=1)

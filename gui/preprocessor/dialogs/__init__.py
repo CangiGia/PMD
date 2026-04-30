@@ -1,6 +1,11 @@
 """GUI dialogs (modal) for the PMD pre-processor."""
 
 from .solver_dialog import SolverDialog, SolverSettings
-from .animation_dialog import AnimationDialog
+from .animation_dialog import AnimationDialog, PreprocessorAnimationCanvas
 
-__all__ = ["SolverDialog", "SolverSettings", "AnimationDialog"]
+__all__ = [
+    "SolverDialog",
+    "SolverSettings",
+    "AnimationDialog",
+    "PreprocessorAnimationCanvas",
+]

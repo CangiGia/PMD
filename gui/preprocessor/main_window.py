@@ -867,7 +867,14 @@ class PreProcessorWindow(QMainWindow):
         from .dialogs import AnimationDialog
 
         model, T, _uT = self._last_run
-        dlg = AnimationDialog(self.spec, model, T, parent=self)
+        try:
+            dlg = AnimationDialog(self.spec, model, T, parent=self)
+        except Exception:
+            import traceback
+            QMessageBox.critical(
+                self, "Animate failed",
+                f"Could not build the animation:\n\n{traceback.format_exc()}")
+            return
         dlg.show()
         # Keep a reference so the dialog isn't GC'd when the function
         # returns; storing on self also lets a second click reuse it.
@@ -884,6 +891,7 @@ class PreProcessorWindow(QMainWindow):
         # avoid PostProcessor.show() (which would call app.exec() again).
         from ..postprocessor import MainWindow as _PostMain, Session
         model._distribute_results(T, uT)
-        sessions = [Session(model, T, uT, name=self.spec.name)]
+        sessions = [Session(model, T, uT, name=self.spec.name,
+                            preprocessor_spec=self.spec)]
         self._post_window = _PostMain(sessions)
         self._post_window.show()

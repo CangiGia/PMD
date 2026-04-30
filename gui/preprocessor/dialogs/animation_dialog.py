@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
     QDialog,
     QDoubleSpinBox,
     QFileDialog,
+    QGraphicsItem,
     QGraphicsScene,
     QGraphicsView,
     QHBoxLayout,
@@ -29,14 +30,19 @@ from PySide6.QtWidgets import (
     QSlider,
     QToolButton,
     QVBoxLayout,
+    QWidget,
 )
 
 from ..models import ModelSpec
 from ..widgets import BodyItem, JointItem, MarkerItem
 
 
-class AnimationDialog(QDialog):
-    """Replay ``(T, uT)`` on a clone of the preprocessor scene.
+class PreprocessorAnimationCanvas(QWidget):
+    """Reusable widget that replays ``(T, uT)`` on a preprocessor scene.
+
+    Used both inside :class:`AnimationDialog` (preprocessor "Animate"
+    button) and inside the postprocessor's animation pane when the
+    session was launched from the preprocessor.
 
     Parameters
     ----------
@@ -54,8 +60,6 @@ class AnimationDialog(QDialog):
 
     def __init__(self, spec: ModelSpec, model, T, parent=None):
         super().__init__(parent)
-        self.setWindowTitle(f"Animation \u2014 {spec.name}")
-        self.resize(1000, 760)
 
         self._spec    = spec
         self._model   = model
@@ -155,7 +159,6 @@ class AnimationDialog(QDialog):
 
         # First frame.
         self._apply_step(0)
-
     # ------------------------------------------------------------------
     # Scene build
     # ------------------------------------------------------------------
@@ -166,8 +169,8 @@ class AnimationDialog(QDialog):
                 continue
             item = BodyItem(b)
             # Make non-interactive in the playback scene.
-            item.setFlag(item.ItemIsMovable, False)
-            item.setFlag(item.ItemIsSelectable, False)
+            item.setFlag(QGraphicsItem.ItemIsMovable, False)
+            item.setFlag(QGraphicsItem.ItemIsSelectable, False)
             self._scene.addItem(item)
             self._body_items[b.id] = item
 
@@ -181,7 +184,7 @@ class AnimationDialog(QDialog):
                 self._scene.addItem(item)
             else:
                 item = MarkerItem(m, parent_body=parent)
-            item.setFlag(item.ItemIsSelectable, False)
+            item.setFlag(QGraphicsItem.ItemIsSelectable, False)
             self._marker_items[m.id] = item
 
         # Joints \u2014 parent to the i-marker so the glyph follows the
@@ -193,7 +196,7 @@ class AnimationDialog(QDialog):
                 continue
             item = JointItem(j)
             item.setParentItem(i_marker)
-            item.setFlag(item.ItemIsSelectable, False)
+            item.setFlag(QGraphicsItem.ItemIsSelectable, False)
             self._joint_items[j.id] = item
 
     def _fit_view(self) -> None:
@@ -248,6 +251,10 @@ class AnimationDialog(QDialog):
 
     def _on_slider(self, v: int) -> None:
         self._apply_step(int(v))
+
+    def set_step(self, step: int) -> None:
+        """Public hook (used by the postprocessor's plot canvas)."""
+        self._goto(step)
 
     def _apply_step(self, step: int) -> None:
         self._step = step
@@ -322,4 +329,17 @@ class AnimationDialog(QDialog):
         super().keyPressEvent(event)
 
 
-__all__ = ["AnimationDialog"]
+class AnimationDialog(QDialog):
+    """Modal-less dialog wrapping :class:`PreprocessorAnimationCanvas`."""
+
+    def __init__(self, spec: ModelSpec, model, T, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(f"Animation \u2014 {spec.name}")
+        self.resize(1000, 760)
+        self._canvas = PreprocessorAnimationCanvas(spec, model, T, self)
+        lay = QVBoxLayout(self)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.addWidget(self._canvas)
+
+
+__all__ = ["AnimationDialog", "PreprocessorAnimationCanvas"]
