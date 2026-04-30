@@ -25,8 +25,8 @@ from PySide6.QtWidgets import (
 from PMD.src.shapes import Rectangle, Circle, Polygon
 from PMD.src.constraints import RevJoint, TranJoint, PtpForce
 from PMD.src.mechanics import rotation_matrix
-from .. import icons as _icons
-from ..style import CANVAS_BG_DARK, CANVAS_BG_LIGHT, CANVAS_FG_DARK, CANVAS_FG_LIGHT
+from ... import icons as _icons
+from ...style import CANVAS_BG_DARK, CANVAS_BG_LIGHT, CANVAS_FG_DARK, CANVAS_FG_LIGHT
 
 # Colour palette for bodies (tab10)
 _BODY_COLORS = [
@@ -339,22 +339,53 @@ class AnimationCanvas(QWidget):
     # ------------------------------------------------------------------
 
     def _auto_limits(self):
-        xs, ys = [], []
-        for body, si in self._body_info:
+        """Fit the axes to everything that will ever be drawn.
+
+        The previous implementation only sampled body CM positions at
+        the first/last frame, which produced a near-degenerate window
+        for models whose CMs barely move while the link *endpoints*
+        swing widely (typical pendulum case). We now include every
+        marker's world position at every timestep — markers sit at
+        joint locations and link ends, so their swept envelope is a
+        tight, complete bound for the visible geometry.
+        """
+        xs: list[float] = []
+        ys: list[float] = []
+
+        # Body CMs across all frames (covers shapeless bodies).
+        for body, _si in self._body_info:
             rc = body._result_container
-            xs.append(rc["positions"]["x"][0])
-            xs.append(rc["positions"]["x"][-1])
-            ys.append(rc["positions"]["y"][0])
-            ys.append(rc["positions"]["y"][-1])
-            # also first/last of full arrays for bodies that move a lot
-            xs.extend([rc["positions"]["x"].min(), rc["positions"]["x"].max()])
-            ys.extend([rc["positions"]["y"].min(), rc["positions"]["y"].max()])
+            xs.extend([float(rc["positions"]["x"].min()),
+                       float(rc["positions"]["x"].max())])
+            ys.extend([float(rc["positions"]["y"].min()),
+                       float(rc["positions"]["y"].max())])
+
+        # Markers across all frames — captures link endpoints and any
+        # off-CM features the user attached a frame to.
+        for mk, _si in self._marker_info:
+            body = mk.body
+            lp = mk.local_position.ravel()[:2]
+            if not body:
+                xs.append(float(lp[0])); ys.append(float(lp[1]))
+                continue
+            rc = body._result_container
+            bx = np.asarray(rc["positions"]["x"], dtype=float)
+            by = np.asarray(rc["positions"]["y"], dtype=float)
+            ph = np.asarray(rc["positions"]["phi"], dtype=float)
+            cos_p = np.cos(ph); sin_p = np.sin(ph)
+            mx_t = bx + cos_p * lp[0] - sin_p * lp[1]
+            my_t = by + sin_p * lp[0] + cos_p * lp[1]
+            xs.extend([float(mx_t.min()), float(mx_t.max())])
+            ys.extend([float(my_t.min()), float(my_t.max())])
 
         if not xs:
             return
         x_min, x_max = min(xs), max(xs)
         y_min, y_max = min(ys), max(ys)
-        mx = max((x_max - x_min), (y_max - y_min), 0.1) * 0.20
+        # 10% margin on the larger span; keep a sensible floor so a
+        # static model doesn't collapse to a zero-size window.
+        span = max((x_max - x_min), (y_max - y_min), 0.1)
+        mx = span * 0.10
         self._ax.set_xlim(x_min - mx, x_max + mx)
         self._ax.set_ylim(y_min - mx, y_max + mx)
 

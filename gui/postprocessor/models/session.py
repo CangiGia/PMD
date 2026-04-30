@@ -24,11 +24,16 @@ class Session:
 
     _count = 0
 
-    def __init__(self, model, T, uT, name=None):
+    def __init__(self, model, T, uT, name=None, preprocessor_spec=None):
         Session._count += 1
         self.model = model
         self.T = T
         self.uT = uT
+        # Optional: when the simulation was launched from the
+        # preprocessor we keep the originating ModelSpec so the
+        # animation pane can reuse the preprocessor's body / marker /
+        # joint visuals instead of falling back to coloured circles.
+        self.preprocessor_spec = preprocessor_spec
         if name is None:
             try:
                 for frame_info in inspect.stack()[1:]:

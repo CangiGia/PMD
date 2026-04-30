@@ -22,7 +22,7 @@ from matplotlib.patches import ConnectionPatch, Rectangle
 from matplotlib.ticker import MaxNLocator
 from matplotlib.widgets import RectangleSelector
 
-from ..style import CANVAS_BG_DARK, CANVAS_BG_LIGHT, CANVAS_FG_DARK, CANVAS_FG_LIGHT
+from ...style import CANVAS_BG_DARK, CANVAS_BG_LIGHT, CANVAS_FG_DARK, CANVAS_FG_LIGHT
 
 _CONN_LIGHT = "steelblue"
 _CONN_DARK  = "#7aa3cc"

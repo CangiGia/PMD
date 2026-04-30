@@ -6,7 +6,7 @@ from PySide6.QtWidgets import QApplication
 
 from .main_window import MainWindow
 from .models import Session
-from .style import apply_light_theme
+from ..style import apply_light_theme
 
 
 class PostProcessor:

@@ -1,0 +1,255 @@
+"""TreePanel — Adams-style left-side model browser.
+
+Layout
+------
+
+::
+
+    ┌──────────────────────┐
+    │  [.MODEL_1   ▼]      │  ← model selector
+    ├──────────────────────┤
+    │ ╭ Browse | Groups | Filters ╮
+    │ │  Bodies (n)              │
+    │ │  Connectors (n)          │
+    │ │  Forces (n)              │
+    │ │  Markers (n)             │
+    │ ╰──────────────────────────╯
+    ├──────────────────────┤
+    │ Search: [          ] │
+    └──────────────────────┘
+"""
+
+from __future__ import annotations
+
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QAction, QKeySequence
+from PySide6.QtWidgets import (
+    QComboBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMenu,
+    QTabWidget,
+    QTreeWidget,
+    QTreeWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
+
+from ..models import ModelSpec
+
+
+class TreePanel(QWidget):
+    """Hierarchical browser of the model spec with Browse/Groups/Filters tabs.
+
+    Signals
+    -------
+    item_selected(kind, id) : str, str
+        Kind ∈ {body, marker, joint, force}; id is the spec id.
+    item_delete_requested(kind, id) : str, str
+        Right-click → Delete or Del key on a tree item.
+    """
+
+    item_selected         = Signal(str, str)
+    item_delete_requested = Signal(str, str)
+    # Emitted when the user renames the model via the top-of-panel
+    # name editor. Carries the *clean* name (no leading dot, stripped).
+    model_renamed         = Signal(str)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(4, 4, 4, 4)
+        outer.setSpacing(4)
+
+        # ── Model selector / name editor ──────────────────────
+        # Editable combo: shows ".<name>" (Adams convention) and lets
+        # the user rename the model in place. The leading dot is purely
+        # decorative — we strip it before emitting model_renamed so
+        # spec.name stays clean.
+        self._model_combo = QComboBox()
+        self._model_combo.setEditable(True)
+        self._model_combo.setInsertPolicy(QComboBox.NoInsert)
+        self._model_combo.addItem(".Untitled")
+        self._model_combo.setToolTip(
+            "Model name. Edit and press Enter (or click away) to rename;\n"
+            "the new name becomes the default file name on Save As.")
+        # Emit only when editing actually finishes (Enter / focus-out),
+        # not on every keystroke.
+        self._model_combo.lineEdit().editingFinished.connect(
+            self._on_model_name_edited)
+        outer.addWidget(self._model_combo, 0)
+
+        # ── Tabs ──────────────────────────────────────────────
+        self._tabs = QTabWidget()
+        self._tabs.setDocumentMode(True)
+        outer.addWidget(self._tabs, 1)
+
+        self._browse_tree = QTreeWidget()
+        self._browse_tree.setHeaderHidden(True)
+        self._browse_tree.itemClicked.connect(self._on_item_clicked)
+        self._browse_tree.setContextMenuPolicy(Qt.CustomContextMenu)
+        self._browse_tree.customContextMenuRequested.connect(
+            self._on_context_menu)
+        # Del key on the tree triggers a delete request for the
+        # currently focused spec node.
+        self._del_action = QAction("Delete", self._browse_tree)
+        self._del_action.setShortcut(QKeySequence.Delete)
+        self._del_action.setShortcutContext(Qt.WidgetWithChildrenShortcut)
+        self._del_action.triggered.connect(self._on_delete_shortcut)
+        self._browse_tree.addAction(self._del_action)
+        self._tabs.addTab(self._browse_tree, "Browse")
+
+        groups_page = QWidget()
+        gl = QVBoxLayout(groups_page)
+        gl.addWidget(QLabel("<i>No groups defined.</i>"))
+        gl.addStretch(1)
+        self._tabs.addTab(groups_page, "Groups")
+
+        filt_page = QWidget()
+        fl = QVBoxLayout(filt_page)
+        fl.addWidget(QLabel("<i>Filters: (not implemented)</i>"))
+        fl.addStretch(1)
+        self._tabs.addTab(filt_page, "Filters")
+
+        # ── Search ────────────────────────────────────────────
+        search_row = QHBoxLayout()
+        search_row.setContentsMargins(0, 0, 0, 0)
+        search_row.addWidget(QLabel("Search:"))
+        self._search = QLineEdit()
+        self._search.setPlaceholderText("Filter tree…")
+        self._search.textChanged.connect(self._apply_search_filter)
+        search_row.addWidget(self._search, 1)
+        outer.addLayout(search_row, 0)
+
+        self._spec: ModelSpec | None = None
+
+    # ──────────────────────────────────────────────────────────
+    def set_spec(self, spec: ModelSpec) -> None:
+        self._spec = spec
+        self._sync_model_name()
+        self.refresh()
+
+    def _sync_model_name(self) -> None:
+        """Mirror ``spec.name`` into the editable combo without re-emitting."""
+        if self._spec is None:
+            return
+        text = f".{self._spec.name}"
+        edit = self._model_combo.lineEdit()
+        edit.blockSignals(True)
+        self._model_combo.blockSignals(True)
+        if self._model_combo.count() == 0:
+            self._model_combo.addItem(text)
+        else:
+            self._model_combo.setItemText(0, text)
+        edit.setText(text)
+        edit.blockSignals(False)
+        self._model_combo.blockSignals(False)
+
+    def _on_model_name_edited(self) -> None:
+        """Validate the edited name and emit :pyattr:`model_renamed`."""
+        if self._spec is None:
+            return
+        raw = self._model_combo.lineEdit().text().strip()
+        # Strip the decorative leading dot(s) the user may have left in.
+        clean = raw.lstrip(".").strip()
+        if not clean:
+            # Refuse empty names: revert to the current spec name.
+            self._sync_model_name()
+            return
+        if clean == self._spec.name:
+            # No actual change — just normalise the displayed text
+            # (e.g. user typed without the leading dot).
+            self._sync_model_name()
+            return
+        self.model_renamed.emit(clean)
+
+    def refresh(self) -> None:
+        if self._spec is None:
+            return
+        self._browse_tree.clear()
+
+        # ── Bodies (with their child markers nested below) ──
+        bodies_root = QTreeWidgetItem(
+            self._browse_tree,
+            [f"Bodies ({len(self._spec.bodies)})"]
+        )
+        bodies_root.setExpanded(True)
+        for b in self._spec.bodies:
+            node = QTreeWidgetItem(bodies_root, [b.name or b.id])
+            node.setData(0, Qt.UserRole, ("body", b.id))
+            # Nested markers belonging to this body.
+            for m in self._spec.markers:
+                if m.body_id == b.id:
+                    leaf = QTreeWidgetItem(node, [m.name or m.id])
+                    leaf.setData(0, Qt.UserRole, ("marker", m.id))
+            node.setExpanded(False)
+
+        # ── Connectors / forces ──────────────────────────────
+        for label, kind, items in (
+            ("Connectors", "joint", self._spec.joints),
+            ("Forces",     "force", self._spec.forces),
+        ):
+            root = QTreeWidgetItem(self._browse_tree,
+                                   [f"{label} ({len(items)})"])
+            root.setExpanded(True)
+            for it in items:
+                node = QTreeWidgetItem(root, [it.name or it.id])
+                node.setData(0, Qt.UserRole, (kind, it.id))
+
+        self._apply_search_filter(self._search.text())
+
+    # ──────────────────────────────────────────────────────────
+    def _on_item_clicked(self, item: QTreeWidgetItem, _column: int):
+        data = item.data(0, Qt.UserRole)
+        if data is not None:
+            kind, _id = data
+            self.item_selected.emit(kind, _id)
+
+    def _apply_search_filter(self, text: str) -> None:
+        text = text.strip().lower()
+
+        def filter_item(node: QTreeWidgetItem) -> bool:
+            """Return True if ``node`` (or any descendant) matches."""
+            self_match = (not text) or (text in node.text(0).lower())
+            any_child = False
+            for k in range(node.childCount()):
+                if filter_item(node.child(k)):
+                    any_child = True
+            visible = bool(self_match or any_child)
+            node.setHidden(not visible)
+            return visible
+
+        for i in range(self._browse_tree.topLevelItemCount()):
+            filter_item(self._browse_tree.topLevelItem(i))
+
+    # ──────────────────────────────────────────────────────────
+    # Context menu / Delete shortcut
+    # ──────────────────────────────────────────────────────────
+
+    def _on_context_menu(self, pos):
+        item = self._browse_tree.itemAt(pos)
+        if item is None:
+            return
+        data = item.data(0, Qt.UserRole)
+        if data is None:
+            return
+        kind, _id = data
+        menu = QMenu(self._browse_tree)
+        act_select = menu.addAction("Edit in Inspector")
+        act_delete = menu.addAction("Delete")
+        chosen = menu.exec(self._browse_tree.viewport().mapToGlobal(pos))
+        if chosen is act_delete:
+            self.item_delete_requested.emit(kind, _id)
+        elif chosen is act_select:
+            self.item_selected.emit(kind, _id)
+
+    def _on_delete_shortcut(self):
+        item = self._browse_tree.currentItem()
+        if item is None:
+            return
+        data = item.data(0, Qt.UserRole)
+        if data is None:
+            return
+        kind, _id = data
+        self.item_delete_requested.emit(kind, _id)

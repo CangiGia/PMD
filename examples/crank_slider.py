@@ -42,7 +42,7 @@ BOUNDARY CONDITIONS & SOLVER
 
 import numpy as np
 from PMD.src import *
-from gui.app import PostProcessor
+from PMD.gui import PostProcessor
 
 
 #%% Bodies

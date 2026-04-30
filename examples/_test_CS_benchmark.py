@@ -27,7 +27,7 @@ Forces:
 import numpy as np
 from PMD.src import *
 from PMD.src.model import _GroundType
-from gui.app import PostProcessor
+from PMD.gui import PostProcessor
 
 # ---------------------------------------------------------------------------
 # Factory — rebuilds the full CS model from scratch each call.
