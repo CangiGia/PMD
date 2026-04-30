@@ -61,6 +61,13 @@ class PlotCanvas(QWidget):
         self._selected_pin: dict | None = None
         self._grid_on: bool = True
 
+        # Animation time cursor (vertical line per axis, in sync with
+        # the postprocessor's animation pane). The cursor is only ever
+        # *shown* while the animation pane is visible.
+        self._time_cursor_t: float | None = None
+        self._time_cursor_visible: bool = False
+        self._time_cursor_lines: dict = {}  # ax -> Line2D
+
         # Custom visible toolbar (built after instance vars)
         self._toolbar = self._build_toolbar()
 
@@ -796,6 +803,9 @@ class PlotCanvas(QWidget):
         for _z in list(self._zoom_insets):
             _z.remove()
         self._zoom_insets.clear()
+        # Drop stale time-cursor artists; they will be recreated below
+        # against the freshly cleared axes.
+        self._time_cursor_lines.clear()
         self._figure.clear()
 
         if not curves:
@@ -826,8 +836,60 @@ class PlotCanvas(QWidget):
             if idx == n - 1:
                 ax.set_xlabel("Time [s]")
 
+        # Recreate the animation time-cursor (if any) against the new
+        # set of axes; preserves position and visibility across redraws.
+        self._refresh_time_cursor()
+
         self.set_dark(self._dark)
         self._canvas.draw_idle()
+
+    # ------------------------------------------------------------------
+    # Animation time-cursor
+    # ------------------------------------------------------------------
+    def set_time_cursor(self, t: float | None):
+        """Move the synced time cursor to absolute time ``t`` (seconds).
+
+        Pass ``None`` to clear the cursor entirely. The cursor only
+        renders while it is also marked visible
+        (:meth:`set_time_cursor_visible`).
+        """
+        self._time_cursor_t = None if t is None else float(t)
+        self._refresh_time_cursor()
+        self._canvas.draw_idle()
+
+    def set_time_cursor_visible(self, on: bool):
+        """Show / hide the synced time cursor without dropping its position."""
+        self._time_cursor_visible = bool(on)
+        for line in self._time_cursor_lines.values():
+            line.set_visible(self._time_cursor_visible
+                             and self._time_cursor_t is not None)
+        self._canvas.draw_idle()
+
+    def _refresh_time_cursor(self):
+        """Ensure exactly one cursor Line2D per axes, at the stored time."""
+        # Drop entries whose ax was removed (e.g. by ``update_plot``).
+        for ax in list(self._time_cursor_lines.keys()):
+            if ax not in self._axes:
+                self._time_cursor_lines.pop(ax, None)
+
+        t = self._time_cursor_t
+        show = self._time_cursor_visible and (t is not None)
+        fg = CANVAS_FG_DARK if self._dark else CANVAS_FG_LIGHT
+
+        for ax in self._axes:
+            line = self._time_cursor_lines.get(ax)
+            if line is None:
+                # Use a distinctive, theme-friendly orange so it stands
+                # apart from the curve colors and from the hover/pin
+                # cursors (which are foreground-coloured).
+                line = ax.axvline(
+                    x=0.0, color="#ff8c00", linestyle="--",
+                    linewidth=1.2, alpha=0.95, zorder=15, visible=False,
+                )
+                self._time_cursor_lines[ax] = line
+            if t is not None:
+                line.set_xdata([t, t])
+            line.set_visible(show)
 
     def set_dark(self, enabled: bool):
         """Switch the existing Figure between dark and light appearance."""

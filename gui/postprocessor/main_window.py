@@ -120,7 +120,10 @@ class MainWindow(QMainWindow):
         self._filter_panel.add_curves_requested.connect(self._on_add_curves)
         right_layout.addWidget(self._filter_panel)
 
-        viz_splitter = QSplitter(Qt.Orientation.Vertical)
+        # The animation pane sits *next to* the plots (horizontal split)
+        # rather than below them: vertical stacking pushed the plots
+        # into a tiny strip on common laptop screens.
+        viz_splitter = QSplitter(Qt.Orientation.Horizontal)
         self._plot_canvas = PlotCanvas()
         viz_splitter.addWidget(self._plot_canvas)
         # When all sessions were launched from the preprocessor, use the
@@ -140,6 +143,11 @@ class MainWindow(QMainWindow):
         self._anim_canvas.setVisible(False)
         if hasattr(self._anim_canvas, "set_step"):
             self._plot_canvas.step_requested.connect(self._anim_canvas.set_step)
+        # When the preprocessor-style canvas is in use, mirror its
+        # current frame as a synchronised vertical cursor on every plot.
+        if hasattr(self._anim_canvas, "time_changed"):
+            self._anim_canvas.time_changed.connect(
+                self._plot_canvas.set_time_cursor)
         viz_splitter.setStretchFactor(0, 1)
         viz_splitter.setStretchFactor(1, 1)
         right_layout.addWidget(viz_splitter, stretch=1)
@@ -218,6 +226,18 @@ class MainWindow(QMainWindow):
     def _on_toggle_animation(self, checked: bool):
         """Show/hide the AnimationCanvas."""
         self._anim_canvas.setVisible(checked)
+        # Show the time cursor on the plots only while the animation
+        # pane is visible -- the two are conceptually one feature.
+        if hasattr(self._plot_canvas, "set_time_cursor_visible"):
+            self._plot_canvas.set_time_cursor_visible(checked)
+        if checked and hasattr(self._anim_canvas, "_T") \
+                and hasattr(self._anim_canvas, "_step") \
+                and hasattr(self._plot_canvas, "set_time_cursor"):
+            try:
+                self._plot_canvas.set_time_cursor(
+                    float(self._anim_canvas._T[self._anim_canvas._step]))
+            except Exception:
+                pass
         self._sim_panel.set_animation(checked)
 
     def _on_export_requested(self, kind: str):

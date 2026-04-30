@@ -15,7 +15,7 @@ from __future__ import annotations
 import math
 from typing import Iterable
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt, QSize, QTimer, Signal
 from PySide6.QtGui import QColor, QPainter, QTransform
 from PySide6.QtWidgets import (
     QDialog,
@@ -35,6 +35,7 @@ from PySide6.QtWidgets import (
 
 from ..models import ModelSpec
 from ..widgets import BodyItem, JointItem, MarkerItem
+from ... import icons as _icons
 
 
 class PreprocessorAnimationCanvas(QWidget):
@@ -57,6 +58,11 @@ class PreprocessorAnimationCanvas(QWidget):
     parent : QWidget or None
         Optional parent widget.
     """
+
+    # Emitted whenever the displayed frame changes; carries the
+    # current simulation time (s). Listeners (e.g. the postprocessor's
+    # PlotCanvas) can use it to draw a synchronised time cursor.
+    time_changed = Signal(float)
 
     def __init__(self, spec: ModelSpec, model, T, parent=None):
         super().__init__(parent)
@@ -100,29 +106,46 @@ class PreprocessorAnimationCanvas(QWidget):
         QTimer.singleShot(0, self._fit_view)
 
         # ---- transport controls ----
-        self._play_btn = QToolButton()
-        self._play_btn.setText("\u25b6")     # play
-        self._play_btn.setToolTip("Play / Pause (Space)")
-        self._play_btn.clicked.connect(self._toggle_play)
+        # Larger, modern icon buttons (24 px) with mdi6 glyphs.
+        _BTN_SIZE = QSize(40, 40)
+        _ICN_SIZE = QSize(24, 24)
 
-        self._prev_btn = QToolButton()
-        self._prev_btn.setText("\u23ee")
-        self._prev_btn.setToolTip("Previous frame")
-        self._prev_btn.clicked.connect(lambda: self._goto(self._step - 1))
+        def _make_transport(icon_name: str, tip: str, slot) -> QToolButton:
+            b = QToolButton()
+            b.setIcon(_icons.icon(icon_name))
+            b.setIconSize(_ICN_SIZE)
+            b.setFixedSize(_BTN_SIZE)
+            b.setAutoRaise(True)
+            b.setCursor(Qt.PointingHandCursor)
+            b.setToolTip(tip)
+            b.clicked.connect(slot)
+            return b
 
-        self._next_btn = QToolButton()
-        self._next_btn.setText("\u23ed")
-        self._next_btn.setToolTip("Next frame")
-        self._next_btn.clicked.connect(lambda: self._goto(self._step + 1))
+        self._prev_btn = _make_transport(
+            "mdi6.skip-previous", "Previous frame",
+            lambda: self._goto(self._step - 1))
+        self._play_btn = _make_transport(
+            "mdi6.play", "Play / Pause (Space)", self._toggle_play)
+        self._next_btn = _make_transport(
+            "mdi6.skip-next", "Next frame",
+            lambda: self._goto(self._step + 1))
 
         self._slider = QSlider(Qt.Horizontal)
         self._slider.setRange(0, max(0, self._n - 1))
         self._slider.valueChanged.connect(self._on_slider)
 
+        # FPS spinbox — integer values up to 480 fps. The previous
+        # QDoubleSpinBox with default decimals=2 made anything > 99
+        # impossible to type because the visible field was clipped.
+        # Switching to ints, widening the field, and bumping the
+        # range fixes both.
         self._fps_spin = QDoubleSpinBox()
-        self._fps_spin.setRange(1.0, 120.0)
+        self._fps_spin.setDecimals(0)
+        self._fps_spin.setRange(1.0, 480.0)
+        self._fps_spin.setSingleStep(1.0)
         self._fps_spin.setValue(25.0)
         self._fps_spin.setSuffix(" fps")
+        self._fps_spin.setMinimumWidth(96)
         self._fps_spin.valueChanged.connect(self._update_timer_interval)
 
         self._time_lbl = QLabel(self._fmt_time(0))
@@ -163,7 +186,10 @@ class PreprocessorAnimationCanvas(QWidget):
     # Scene build
     # ------------------------------------------------------------------
     def _build_scene(self) -> None:
-        # Bodies
+        # Bodies only -- markers and joint glyphs are intentionally
+        # omitted from the playback view: on non-trivial models they
+        # add visual noise that obscures motion. The user wanted a
+        # clean "bodies only" animation.
         for b in self._spec.bodies:
             if b.id == "ground":
                 continue
@@ -173,31 +199,6 @@ class PreprocessorAnimationCanvas(QWidget):
             item.setFlag(QGraphicsItem.ItemIsSelectable, False)
             self._scene.addItem(item)
             self._body_items[b.id] = item
-
-        # Markers (parented to body so they follow it; ground markers
-        # go straight into the scene).
-        for m in self._spec.markers:
-            parent = self._body_items.get(m.body_id)
-            if parent is None:
-                item = MarkerItem(m)
-                item.setPos(*m.local_position)
-                self._scene.addItem(item)
-            else:
-                item = MarkerItem(m, parent_body=parent)
-            item.setFlag(QGraphicsItem.ItemIsSelectable, False)
-            self._marker_items[m.id] = item
-
-        # Joints \u2014 parent to the i-marker so the glyph follows the
-        # owning body without per-frame work. The JointItem's local
-        # origin already sits at the marker, so no extra setPos.
-        for j in self._spec.joints:
-            i_marker = self._marker_items.get(j.i_marker_id)
-            if i_marker is None:
-                continue
-            item = JointItem(j)
-            item.setParentItem(i_marker)
-            item.setFlag(QGraphicsItem.ItemIsSelectable, False)
-            self._joint_items[j.id] = item
 
     def _fit_view(self) -> None:
         rect = self._scene.itemsBoundingRect()
@@ -219,12 +220,12 @@ class PreprocessorAnimationCanvas(QWidget):
     def _toggle_play(self) -> None:
         if self._playing:
             self._timer.stop()
-            self._play_btn.setText("\u25b6")
+            self._play_btn.setIcon(_icons.icon("mdi6.play"))
         else:
             if self._step >= self._n - 1:
                 self._step = 0
             self._timer.start()
-            self._play_btn.setText("\u23f8")
+            self._play_btn.setIcon(_icons.icon("mdi6.pause"))
         self._playing = not self._playing
 
     def _update_timer_interval(self) -> None:
@@ -236,7 +237,7 @@ class PreprocessorAnimationCanvas(QWidget):
         if nxt >= self._n:
             self._timer.stop()
             self._playing = False
-            self._play_btn.setText("\u25b6")
+            self._play_btn.setIcon(_icons.icon("mdi6.play"))
             return
         self._goto(nxt)
 
@@ -272,6 +273,10 @@ class PreprocessorAnimationCanvas(QWidget):
             item.setPos(x, y)
             item.setRotation(math.degrees(phi))
         self._time_lbl.setText(self._fmt_time(step))
+        try:
+            self.time_changed.emit(float(self._T[step]))
+        except Exception:
+            pass
 
     def _fmt_time(self, step: int) -> str:
         try:
