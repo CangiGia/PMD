@@ -10,7 +10,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtWidgets import QApplication
 
-from PMD.gui.preprocessor.models import (
+from pmd.gui.preprocessor.models import (
     BodySpec,
     ForceSpec,
     JointSpec,
@@ -18,7 +18,7 @@ from PMD.gui.preprocessor.models import (
     ModelSpec,
     ShapeSpec,
 )
-from PMD.gui.preprocessor.panels.inspector_panel import InspectorPanel
+from pmd.gui.preprocessor.panels.inspector_panel import InspectorPanel
 
 
 def main() -> int:

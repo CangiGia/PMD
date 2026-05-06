@@ -5,9 +5,9 @@ os.environ["QT_QPA_PLATFORM"] = "offscreen"
 from PySide6.QtCore import QPointF, Qt
 from PySide6.QtWidgets import QApplication
 
-from PMD.gui.style import apply_light_theme
-from PMD.gui.preprocessor.main_window import PreProcessorWindow
-from PMD.gui.preprocessor.models import ModelSpec
+from pmd.gui.style import apply_light_theme
+from pmd.gui.preprocessor.main_window import PreProcessorWindow
+from pmd.gui.preprocessor.models import ModelSpec
 
 
 class FakeEv:

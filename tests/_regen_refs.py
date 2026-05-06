@@ -21,7 +21,7 @@ for m in models:
     script = (
         f'import matplotlib; matplotlib.use("Agg"); '
         f'import numpy as np; import importlib; '
-        f'mod = importlib.import_module("PMD.examples.{m}"); '
+        f'mod = importlib.import_module("examples.{m}"); '
         f'np.save(r"{t_path}", mod.T); '
         f'np.save(r"{ut_path}", mod.uT)'
     )

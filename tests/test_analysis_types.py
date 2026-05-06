@@ -10,17 +10,17 @@ These tests verify:
   5. Static sanity: equilibrium residual is below tolerance.
 
 Run from: C:\\Users\\Giaco\\anaconda3\\envs\\GiacoEnv\\
-Command:  python -m pytest PMD/tests/test_analysis_types.py -v
+Command:  python -m pytest pmd/tests/test_analysis_types.py -v
 """
 
 import numpy as np
 import pytest
 
-from PMD.src.model import Body, Ground, _GroundType
-from PMD.src.constraints import (
+from pmd.core.model import Body, Ground, _GroundType
+from pmd.core.constraints import (
     RevJoint, Weight, RelRotJoint, Function
 )
-from PMD.src.solver import PlanarMultibodyModel
+from pmd.core.solver import PlanarMultibodyModel
 
 
 # ---------------------------------------------------------------------------

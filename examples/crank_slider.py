@@ -1,5 +1,5 @@
 """
-CS (Crank-Slider) Model - Planar Multibody Dynamics (PMD)
+CS (Crank-Slider) Model - Planar Multibody Dynamics (pmd)
 =========================================================
 KINEMATIC SCHEME & INITIAL STATE
 --------------------------------
@@ -41,8 +41,8 @@ BOUNDARY CONDITIONS & SOLVER
 """
 
 import numpy as np
-from PMD.src import *
-from PMD.gui import PostProcessor
+from pmd.core import *
+from pmd.gui import PostProcessor
 
 
 #%% Bodies

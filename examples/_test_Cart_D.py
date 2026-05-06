@@ -16,8 +16,8 @@ Forces:
 
 import numpy as np
 import os
-from PMD.src import *
-from PMD.examples._plot_utils import plot_comparison
+from pmd.core import *
+from examples._plot_utils import plot_comparison
 
 # =============================================================================
 # MODEL DEFINITION

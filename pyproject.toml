@@ -1,2 +1,40 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pmd"
+version = "0.0.1"
+description = "Planar Multibody Dynamics — symbolic/numeric multibody simulation in 2D"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "Giacomo Cangi" }]
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "numba>=0.58",
+    "tqdm>=4.65",
+]
+
+[project.optional-dependencies]
+gui = [
+    "PySide6>=6.5",
+    "qtawesome>=1.2",
+    "matplotlib>=3.7",
+]
+docs = ["sphinx>=7", "sphinx-rtd-theme", "myst-parser"]
+dev = ["pytest>=7.4", "pytest-cov", "ruff"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "F401", "TID252"]

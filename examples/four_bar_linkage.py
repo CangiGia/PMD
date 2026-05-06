@@ -1,5 +1,5 @@
 """
-FBL (Four-Bar Linkage) Model - Planar Multibody Dynamics (PMD)
+FBL (Four-Bar Linkage) Model - Planar Multibody Dynamics (pmd)
 ==============================================================
 KINEMATIC SCHEME
 ----------------
@@ -47,8 +47,8 @@ ACTIVE FORCES
 """
 
 import numpy as np
-from PMD.src import *
-from PMD.gui import PostProcessor
+from pmd.core import *
+from pmd.gui import PostProcessor
 
 
 L1 = 40.0e-3    # m  crank length

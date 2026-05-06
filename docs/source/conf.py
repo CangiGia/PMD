@@ -17,7 +17,7 @@ current_file_path = os.path.abspath(__file__)
 target_directory = os.path.abspath(os.path.join(os.path.dirname(current_file_path), '..', '..'))
 sys.path.insert(0, target_directory)
 
-project = 'PMD: Planar Multi-Body Dynamics Open Source Software'
+project = 'pmd: Planar Multi-Body Dynamics Open Source Software'
 copyright = '2025, Giacomo Cangi'
 author = 'Giacomo Cangi'
 

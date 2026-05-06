@@ -1,5 +1,5 @@
 """
-Shared plotting utility for PMD example scripts.
+Shared plotting utility for pmd example scripts.
 Generates comparison plots between Python and MATLAB simulation results.
 """
 import os
@@ -66,7 +66,7 @@ def plot_comparison(T: np.ndarray, uT: np.ndarray, matlab_filename: str, model_t
         figsize=(14, 3.5 * nB),
         squeeze=False
     )
-    fig.suptitle(f'PMD — {model_title}: Python vs MATLAB', fontsize=14, fontweight='bold')
+    fig.suptitle(f'pmd — {model_title}: Python vs MATLAB', fontsize=14, fontweight='bold')
 
     for bi in range(nB):              # body index (0-based)
         body_label = f'Body {bi + 1}'

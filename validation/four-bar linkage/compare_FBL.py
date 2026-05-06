@@ -1,14 +1,14 @@
 """
-Four-Bar Linkage Validation — ADAMS vs PMD
+Four-Bar Linkage Validation — ADAMS vs pmd
 ==========================================
 Compares CM positions, joint reaction forces, and motion driver torque
-produced by ADAMS/View and PMD (CASADI-DAE) for the four-bar linkage.
+produced by ADAMS/View and pmd (CASADI-DAE) for the four-bar linkage.
 
 Units
 -----
-  CM positions    : mm  (both ADAMS and PMD)
-  Forces          : N   (both ADAMS and PMD)
-  Motion torque   : ADAMS N·mm  →  converted to N·m to match PMD (lambda_0)
+  CM positions    : mm  (both ADAMS and pmd)
+  Forces          : N   (both ADAMS and pmd)
+  Motion torque   : ADAMS N·mm  →  converted to N·m to match pmd (lambda_0)
 
 ADAMS file format: 2 extra header lines (model title + blank) before column names.
 """
@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ADAMS_DIR = os.path.join(HERE, 'ADAMS')
-PMD_DIR = os.path.join(HERE, 'PMD')
+PMD_DIR = os.path.join(HERE, 'pmd')
 
 # ── Style ───────────────────────────────────────────────────────────────────
 plt.rcParams.update({
@@ -78,7 +78,7 @@ tA_cm = A_cm.iloc[:, 0].values
 tP_cm = P_cm.iloc[:, 0].values
 
 fig1, axes1 = plt.subplots(3, 2, figsize=(12, 9), constrained_layout=True)
-fig1.suptitle('Four-Bar Linkage  —  CM Positions: ADAMS vs PMD',
+fig1.suptitle('Four-Bar Linkage  —  CM Positions: ADAMS vs pmd',
               fontsize=13, fontweight='bold')
 
 for i, link in enumerate(links):
@@ -86,7 +86,7 @@ for i, link in enumerate(links):
         ax = axes1[i, j]
         col = 2 * i + j + 1  # columns: 1=link1_x, 2=link1_y, 3=link2_x, ...
         ax.plot(tA_cm, A_cm.iloc[:, col].values, color=C_ADAMS, lw=4, label='ADAMS')
-        ax.plot(tP_cm, P_cm.iloc[:, col].values, color=C_PMD, lw=1.5, ls='--', label='PMD')
+        ax.plot(tP_cm, P_cm.iloc[:, col].values, color=C_PMD, lw=1.5, ls='--', label='pmd')
         ax.set_ylabel(f'{coord}  [mm]')
         ax.set_title(f'{link}  —  {coord}')
         if i == 2:
@@ -105,7 +105,7 @@ tA_rf = A_rf.iloc[:, 0].values
 tP_rf = P_rf.iloc[:, 0].values
 
 fig2, axes2 = plt.subplots(4, 2, figsize=(12, 12), constrained_layout=True)
-fig2.suptitle('Four-Bar Linkage  —  Joint Reaction Forces: ADAMS vs PMD',
+fig2.suptitle('Four-Bar Linkage  —  Joint Reaction Forces: ADAMS vs pmd',
               fontsize=13, fontweight='bold')
 
 for i, name in enumerate(joints):
@@ -113,7 +113,7 @@ for i, name in enumerate(joints):
         ax = axes2[i, j]
         col = 2 * i + j + 1
         ax.plot(tA_rf, A_rf.iloc[:, col].values, color=C_ADAMS, lw=4, label='ADAMS')
-        ax.plot(tP_rf, P_rf.iloc[:, col].values, color=C_PMD, lw=1.5, ls='--', label='PMD')
+        ax.plot(tP_rf, P_rf.iloc[:, col].values, color=C_PMD, lw=1.5, ls='--', label='pmd')
         ax.set_ylabel(lbl)
         ax.set_title(f'{name}  —  {coord}')
         if i == 3:
@@ -122,7 +122,7 @@ for i, name in enumerate(joints):
 
 # ── Figure 3 — Motion Driver Torque ─────────────────────────────────────
 #   ADAMS: Element_Torque.Z in N·mm  →  convert to N·m (÷ 1000)
-#   PMD:   lambda_0 (Lagrange multiplier for motion constraint) in N·m
+#   pmd:   lambda_0 (Lagrange multiplier for motion constraint) in N·m
 tA_mot = A_mot.iloc[:, 0].values
 torq_A = A_mot.iloc[:, 1].values * 1e-3  # N·mm → N·m
 
@@ -130,12 +130,12 @@ tP_mot = P_mot.iloc[:, 0].values
 torq_P = P_mot.iloc[:, 1].values  # lambda_0 [N·m]
 
 fig3, ax3 = plt.subplots(figsize=(9, 4), constrained_layout=True)
-fig3.suptitle('Four-Bar Linkage  —  Motion Driver Torque: ADAMS vs PMD',
+fig3.suptitle('Four-Bar Linkage  —  Motion Driver Torque: ADAMS vs pmd',
               fontsize=13, fontweight='bold')
 
 ax3.plot(tA_mot, torq_A, color=C_ADAMS, lw=4, label='ADAMS  (torque Z)')
 ax3.plot(tP_mot, torq_P, color=C_PMD, lw=1.5, ls='--',
-         label=r'PMD  ($\lambda_0$, motion constraint)')
+         label=r'pmd  ($\lambda_0$, motion constraint)')
 ax3.set_ylabel('Torque  [N\u00b7m]')
 ax3.set_xlabel('Time  [s]')
 ax3.legend(loc='best')

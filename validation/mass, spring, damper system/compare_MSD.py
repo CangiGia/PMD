@@ -1,7 +1,7 @@
 """
-Mass-Spring-Damper Validation — ADAMS vs PMD
+Mass-Spring-Damper Validation — ADAMS vs pmd
 =============================================
-Compares CM displacement of the mass produced by ADAMS/View and PMD
+Compares CM displacement of the mass produced by ADAMS/View and pmd
 (CASADI-DAE) for the mass-spring-damper system.
 
 Model parameters
@@ -15,8 +15,8 @@ Model parameters
 
 Units
 -----
-  CM displacement (Y) : m   (both ADAMS and PMD)
-  Time                : s   (both ADAMS and PMD)
+  CM displacement (Y) : m   (both ADAMS and pmd)
+  Time                : s   (both ADAMS and pmd)
 """
 
 import os
@@ -25,7 +25,7 @@ import matplotlib.pyplot as plt
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ADAMS_DIR = os.path.join(HERE, 'ADAMS')
-PMD_DIR = os.path.join(HERE, 'PMD')
+PMD_DIR = os.path.join(HERE, 'pmd')
 
 # ── Style ────────────────────────────────────────────────────────────────
 plt.rcParams.update({
@@ -79,11 +79,11 @@ yP = P_cm.iloc[:, 2].values           # CM displacement Y [m]  (col: 'mass / y')
 
 # ── Figure — CM Displacement Y ────────────────────────────────────────────
 fig, ax = plt.subplots(figsize=(10, 5), constrained_layout=True)
-fig.suptitle('Mass-Spring-Damper  —  CM Displacement Y: ADAMS vs PMD',
+fig.suptitle('Mass-Spring-Damper  —  CM Displacement Y: ADAMS vs pmd',
              fontsize=13, fontweight='bold')
 
 ax.plot(tA, yA, color=C_ADAMS, lw=4,   label='ADAMS')
-ax.plot(tP, yP, color=C_PMD,   lw=1.5, ls='--', label='PMD')
+ax.plot(tP, yP, color=C_PMD,   lw=1.5, ls='--', label='pmd')
 ax.set_xlabel('Time  [s]')
 ax.set_ylabel('CM displacement Y  [m]')
 ax.set_title('mass  —  y')
