@@ -1,13 +1,13 @@
 """
-Crank-Slider Validation — ADAMS vs PMD
+Crank-Slider Validation — ADAMS vs pmd
 =======================================
 Compares CM positions and joint reaction forces produced by ADAMS/View
-and PMD (CASADI-DAE) for the crank-slider mechanism.
+and pmd (CASADI-DAE) for the crank-slider mechanism.
 
 Units
 -----
   ADAMS CM positions : mm  →  converted to m for plotting
-  PMD   CM positions : m
+  pmd   CM positions : m
   Forces (both)      : N
 """
 
@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ADAMS_DIR = os.path.join(HERE, 'ADAMS')
-PMD_DIR = os.path.join(HERE, 'PMD')
+PMD_DIR = os.path.join(HERE, 'pmd')
 
 # ── Style ───────────────────────────────────────────────────────────────────
 plt.rcParams.update({
@@ -88,7 +88,7 @@ P_sldr_gnd = _load(os.path.join(PMD_DIR, 'PMD_slider_ground_forces.txt'))
 bodies = ['Crankshaft', 'Rod', 'Slider']
 
 fig1, axes1 = plt.subplots(3, 2, figsize=(12, 9), constrained_layout=True)
-fig1.suptitle('Crank-Slider  —  CM Positions: ADAMS vs PMD',
+fig1.suptitle('Crank-Slider  —  CM Positions: ADAMS vs pmd',
               fontsize=13, fontweight='bold')
 
 for i, body in enumerate(bodies):
@@ -98,7 +98,7 @@ for i, body in enumerate(bodies):
     ]):
         ax = axes1[i, j]
         ax.plot(tA_cm[i], col_A, color=C_ADAMS, lw=4, label='ADAMS')
-        ax.plot(tP_cm[i], col_P, color=C_PMD, lw=1.5, ls='--', label='PMD')
+        ax.plot(tP_cm[i], col_P, color=C_PMD, lw=1.5, ls='--', label='pmd')
         ax.set_ylabel(coord)
         ax.set_title(f'{body}  —  {"x" if j == 0 else "y"}')
         if i == 2:
@@ -106,7 +106,7 @@ for i, body in enumerate(bodies):
         ax.legend(loc='best')
 
 # ── Figure 2 — Joint Reaction Forces ─────────────────────────────────────
-#   Slider–Ground: ADAMS exports (Fx≈0, Fy); PMD exports only F_perp (= Fy).
+#   Slider–Ground: ADAMS exports (Fx≈0, Fy); pmd exports only F_perp (= Fy).
 #   The left subplot is hidden for that row.
 joints = [
     ('Ground – Crankshaft', A_crank_gnd, P_crank_gnd, True),
@@ -116,7 +116,7 @@ joints = [
 ]
 
 fig2, axes2 = plt.subplots(4, 2, figsize=(12, 12), constrained_layout=True)
-fig2.suptitle('Crank-Slider  —  Joint Reaction Forces: ADAMS vs PMD',
+fig2.suptitle('Crank-Slider  —  Joint Reaction Forces: ADAMS vs pmd',
               fontsize=13, fontweight='bold')
 
 for i, (name, A_df, P_df, has_fx) in enumerate(joints):
@@ -127,21 +127,21 @@ for i, (name, A_df, P_df, has_fx) in enumerate(joints):
 
     if has_fx:
         ax_l.plot(tA, A_df.iloc[:, 1].values, color=C_ADAMS, lw=4, label='ADAMS')
-        ax_l.plot(tP, P_df.iloc[:, 1].values, color=C_PMD, lw=1.5, ls='--', label='PMD')
+        ax_l.plot(tP, P_df.iloc[:, 1].values, color=C_PMD, lw=1.5, ls='--', label='pmd')
         ax_l.set_ylabel('Fx  [N]')
         ax_l.set_title(f'{name}  —  Fx')
         ax_l.legend(loc='best')
 
         ax_r.plot(tA, A_df.iloc[:, 2].values, color=C_ADAMS, lw=4, label='ADAMS')
-        ax_r.plot(tP, P_df.iloc[:, 2].values, color=C_PMD, lw=1.5, ls='--', label='PMD')
+        ax_r.plot(tP, P_df.iloc[:, 2].values, color=C_PMD, lw=1.5, ls='--', label='pmd')
         ax_r.set_ylabel('Fy  [N]')
         ax_r.set_title(f'{name}  —  Fy')
         ax_r.legend(loc='best')
     else:
-        # PMD exports only F_perp (normal to sliding direction = Fy)
+        # pmd exports only F_perp (normal to sliding direction = Fy)
         ax_l.set_visible(False)
         ax_r.plot(tA, A_df.iloc[:, 2].values, color=C_ADAMS, lw=4, label='ADAMS  Fy')
-        ax_r.plot(tP, P_df.iloc[:, 1].values, color=C_PMD, lw=1.5, ls='--', label='PMD  F\u22a5')
+        ax_r.plot(tP, P_df.iloc[:, 1].values, color=C_PMD, lw=1.5, ls='--', label='pmd  F\u22a5')
         ax_r.set_ylabel('F  [N]')
         ax_r.set_title(f'{name}  —  F\u22a5 / Fy')
         ax_r.legend(loc='best')

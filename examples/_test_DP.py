@@ -1,10 +1,10 @@
 import numpy as np
 import scipy as sc
 import matplotlib as mpl
-from PMD.src import *
+from pmd.core import *
 import matplotlib.pyplot as plt
 plt.style.use('dark_background')
-from PMD.examples._plot_utils import plot_comparison
+from examples._plot_utils import plot_comparison
 
 
 #%% bodies
@@ -81,7 +81,7 @@ ax.set_xlabel('Time (s)', fontsize=14)
 ax.set_ylabel('Constraint Violation (m)', fontsize=14)
 
 ax.set_title(
-    'Constraint Violation: PMD library model',
+    'Constraint Violation: pmd library model',
     fontsize=14,
 )
 

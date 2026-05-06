@@ -10,8 +10,8 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PySide6.QtWidgets import QApplication
 
-from PMD.gui.preprocessor.app import PreProcessor
-from PMD.gui.preprocessor.models import (
+from pmd.gui.preprocessor.app import PreProcessor
+from pmd.gui.preprocessor.models import (
     BodySpec,
     JointSpec,
     MarkerSpec,
@@ -67,7 +67,7 @@ def main() -> int:
     print("round-trip OK")
 
     # ---------------- in-window reload ----------------
-    from PMD.gui.preprocessor.main_window import PreProcessorWindow
+    from pmd.gui.preprocessor.main_window import PreProcessorWindow
     win = PreProcessorWindow(ModelSpec())
 
     with tempfile.TemporaryDirectory() as td:
