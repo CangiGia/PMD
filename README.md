@@ -33,9 +33,9 @@ A PMD model is built from three building blocks:
 
 | Analysis | What is computed |
 |---|---|
-| **Dynamic** | Full equations of motion — positions, velocities, accelerations, constraint reactions |
-| **Kinematic** | Position and velocity solution for fully driven systems |
 | **Static** | Static equilibrium configuration (Newton–Raphson on the force-balance residual, $\ddot{q}=0$, $\dot{q}=0$) |
+| **Kinematic** | Position and velocity solution for fully driven systems |
+| **Dynamic** | Full equations of motion — positions, velocities, accelerations, constraint reactions |
 
 Available integration methods:
 
