@@ -32,3 +32,39 @@ from .constraints import (
 from .builder import *
 from .solver import PlanarMultibodyModel
 from .units import UnitSystem
+
+__all__ = [
+    # Model primitives
+    "Body",
+    "Ground",
+    "Marker",
+    # Geometric shapes (for Body.shape)
+    "Rectangle",
+    "Circle",
+    "Polygon",
+    # Joints
+    "Joint",
+    "RevJoint",
+    "TranJoint",
+    "RevRevJoint",
+    "RevTranJoint",
+    "RigidJoint",
+    "DiscJoint",
+    "RelRotJoint",
+    "RelTranJoint",
+    # Forces
+    "Force",
+    "Weight",
+    "PtpForce",
+    "RotSdaForce",
+    "LocalForce",
+    "GlobalForce",
+    "Torque",
+    "UserForce",
+    # Driver function
+    "Function",
+    # Solver
+    "PlanarMultibodyModel",
+    # Units
+    "UnitSystem",
+]

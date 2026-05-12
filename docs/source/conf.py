@@ -24,10 +24,31 @@ author = 'Giacomo Cangi'
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ['sphinx.ext.autodoc', 'sphinx.ext.napoleon', 'myst_parser', 'sphinx_design']
+extensions = [
+    'sphinx.ext.autodoc',
+    'sphinx.ext.autosummary',
+    'sphinx.ext.napoleon',
+    'sphinx.ext.intersphinx',
+    'myst_parser',
+    'sphinx_design',
+]
 myst_enable_extensions = ["colon_fence"]
 templates_path = ['_templates']
-exclude_patterns = []
+exclude_patterns = ['_build', '_templates']
+
+autosummary_generate = True
+autodoc_default_options = {
+    'members': True,
+    'undoc-members': False,
+    'show-inheritance': True,
+}
+autodoc_member_order = 'bysource'
+
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3', None),
+    'numpy': ('https://numpy.org/doc/stable', None),
+    'scipy': ('https://docs.scipy.org/doc/scipy', None),
+}
 source_suffix = {
     '.rst': 'restructuredtext',
     '.md': 'markdown',
