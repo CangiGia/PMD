@@ -1,0 +1,784 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Index &#8212; pmd: Planar Multi-Body Dynamics Open Source Software  documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/sphinx-book-theme.css?v=3c74b3bc" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="_static/documentation_options.js?v=9eb32ce0"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
+    <script src="_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'genindex';</script>
+    <link rel="index" title="Index" href="#" />
+    <link rel="search" title="Search" href="search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">pmd: Planar Multi-Body Dynamics Open Source Software  documentation</p>
+  
+</a></div>
+        <div class="sidebar-primary-item">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="getting_started/overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting_started/install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting_started/first_model.html">Your First Model — Mass-Spring-Damper</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="user_guide/user_guide.html">User Guide</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/bodies_markers.html">Bodies and Markers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/joints.html">Joints</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/forces.html">Forces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/drivers_functions.html">Driver Functions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/units.html">Unit System</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/solvers.html">Solver</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/analyses.html">Analyses</a></li>
+<li class="toctree-l2"><a class="reference internal" href="user_guide/gui.html">GUI</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="api/pmd.core.html">pmd.core — Core simulation API</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/generated/pmd.core.Body.html">pmd.core.Body</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/generated/pmd.core.Ground.html">pmd.core.Ground</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/generated/pmd.core.Marker.html">pmd.core.Marker</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/generated/pmd.core.RevJoint.html">pmd.core.RevJoint</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/generated/pmd.core.TranJoint.html">pmd.core.TranJoint</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/generated/pmd.core.RevRevJoint.html">pmd.core.RevRevJoint</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/generated/pmd.core.RevTranJoint.html">pmd.core.RevTranJoint</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/generated/pmd.core.RigidJoint.html">pmd.core.RigidJoint</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/generated/pmd.core.DiscJoint.html">pmd.core.DiscJoint</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/generated/pmd.core.RelRotJoint.html">pmd.core.RelRotJoint</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/generated/pmd.core.RelTranJoint.html">pmd.core.RelTranJoint</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/generated/pmd.core.Weight.html">pmd.core.Weight</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/generated/pmd.core.PtpForce.html">pmd.core.PtpForce</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/generated/pmd.core.RotSdaForce.html">pmd.core.RotSdaForce</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/generated/pmd.core.LocalForce.html">pmd.core.LocalForce</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/generated/pmd.core.GlobalForce.html">pmd.core.GlobalForce</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/generated/pmd.core.Torque.html">pmd.core.Torque</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/generated/pmd.core.UserForce.html">pmd.core.UserForce</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/generated/pmd.core.Function.html">pmd.core.Function</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/generated/pmd.core.PlanarMultibodyModel.html">pmd.core.PlanarMultibodyModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/generated/pmd.core.UnitSystem.html">pmd.core.UnitSystem</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="api/pmd.gui.html">pmd.gui — GUI tools</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="api/generated/pmd.gui.PreProcessor.html">pmd.gui.PreProcessor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/generated/pmd.gui.PostProcessor.html">pmd.gui.PostProcessor</a></li>
+</ul>
+</details></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button pst-navbar-icon"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button>
+
+
+<button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+</button>
+
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1></h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+
+<h1 id="index">Index</h1>
+
+<div class="genindex-jumpbox">
+ <a href="#_"><strong>_</strong></a>
+ | <a href="#A"><strong>A</strong></a>
+ | <a href="#B"><strong>B</strong></a>
+ | <a href="#C"><strong>C</strong></a>
+ | <a href="#D"><strong>D</strong></a>
+ | <a href="#F"><strong>F</strong></a>
+ | <a href="#G"><strong>G</strong></a>
+ | <a href="#H"><strong>H</strong></a>
+ | <a href="#I"><strong>I</strong></a>
+ | <a href="#L"><strong>L</strong></a>
+ | <a href="#M"><strong>M</strong></a>
+ | <a href="#N"><strong>N</strong></a>
+ | <a href="#O"><strong>O</strong></a>
+ | <a href="#P"><strong>P</strong></a>
+ | <a href="#R"><strong>R</strong></a>
+ | <a href="#S"><strong>S</strong></a>
+ | <a href="#T"><strong>T</strong></a>
+ | <a href="#U"><strong>U</strong></a>
+ | <a href="#V"><strong>V</strong></a>
+ | <a href="#W"><strong>W</strong></a>
+ 
+</div>
+<h2 id="_">_</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/generated/pmd.core.Body.html#pmd.core.Body.__init__">__init__() (pmd.core.Body method)</a>
+
+      <ul>
+        <li><a href="api/generated/pmd.core.Marker.html#pmd.core.Marker.__init__">(pmd.core.Marker method)</a>
+</li>
+      </ul></li>
+  </ul></td>
+</tr></table>
+
+<h2 id="A">A</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/generated/pmd.core.Body.html#pmd.core.Body.acceleration">acceleration (pmd.core.Body property)</a>
+</li>
+      <li><a href="api/generated/pmd.gui.PostProcessor.html#pmd.gui.PostProcessor.add">add() (pmd.gui.PostProcessor method)</a>
+</li>
+      <li><a href="api/generated/pmd.core.Body.html#pmd.core.Body.add_marker">add_marker() (pmd.core.Body method)</a>
+</li>
+      <li><a href="api/generated/pmd.core.Body.html#pmd.core.Body.add_marker_at">add_marker_at() (pmd.core.Body method)</a>
+</li>
+      <li><a href="api/generated/pmd.core.UnitSystem.html#pmd.core.UnitSystem.angle">angle (pmd.core.UnitSystem attribute)</a>
+</li>
+      <li><a href="api/generated/pmd.core.GlobalForce.html#pmd.core.GlobalForce.apply">apply() (pmd.core.GlobalForce method)</a>
+
+      <ul>
+        <li><a href="api/generated/pmd.core.LocalForce.html#pmd.core.LocalForce.apply">(pmd.core.LocalForce method)</a>
+</li>
+        <li><a href="api/generated/pmd.core.PtpForce.html#pmd.core.PtpForce.apply">(pmd.core.PtpForce method)</a>
+</li>
+        <li><a href="api/generated/pmd.core.RotSdaForce.html#pmd.core.RotSdaForce.apply">(pmd.core.RotSdaForce method)</a>
+</li>
+        <li><a href="api/generated/pmd.core.Torque.html#pmd.core.Torque.apply">(pmd.core.Torque method)</a>
+</li>
+        <li><a href="api/generated/pmd.core.UserForce.html#pmd.core.UserForce.apply">(pmd.core.UserForce method)</a>
+</li>
+        <li><a href="api/generated/pmd.core.Weight.html#pmd.core.Weight.apply">(pmd.core.Weight method)</a>
+</li>
+      </ul></li>
+  </ul></td>
+</tr></table>
+
+<h2 id="B">B</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/generated/pmd.core.Body.html#pmd.core.Body">Body (class in pmd.core)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="C">C</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/generated/pmd.core.DiscJoint.html#pmd.core.DiscJoint.compute_jacobian_i">compute_jacobian_i() (pmd.core.DiscJoint method)</a>
+
+      <ul>
+        <li><a href="api/generated/pmd.core.RelRotJoint.html#pmd.core.RelRotJoint.compute_jacobian_i">(pmd.core.RelRotJoint method)</a>
+</li>
+        <li><a href="api/generated/pmd.core.RelTranJoint.html#pmd.core.RelTranJoint.compute_jacobian_i">(pmd.core.RelTranJoint method)</a>
+</li>
+        <li><a href="api/generated/pmd.core.RevJoint.html#pmd.core.RevJoint.compute_jacobian_i">(pmd.core.RevJoint method)</a>
+</li>
+        <li><a href="api/generated/pmd.core.RevRevJoint.html#pmd.core.RevRevJoint.compute_jacobian_i">(pmd.core.RevRevJoint method)</a>
+</li>
+        <li><a href="api/generated/pmd.core.RevTranJoint.html#pmd.core.RevTranJoint.compute_jacobian_i">(pmd.core.RevTranJoint method)</a>
+</li>
+        <li><a href="api/generated/pmd.core.RigidJoint.html#pmd.core.RigidJoint.compute_jacobian_i">(pmd.core.RigidJoint method)</a>
+</li>
+        <li><a href="api/generated/pmd.core.TranJoint.html#pmd.core.TranJoint.compute_jacobian_i">(pmd.core.TranJoint method)</a>
+</li>
+      </ul></li>
+      <li><a href="api/generated/pmd.core.DiscJoint.html#pmd.core.DiscJoint.compute_jacobian_j">compute_jacobian_j() (pmd.core.DiscJoint method)</a>
+
+      <ul>
+        <li><a href="api/generated/pmd.core.RelRotJoint.html#pmd.core.RelRotJoint.compute_jacobian_j">(pmd.core.RelRotJoint method)</a>
+</li>
+        <li><a href="api/generated/pmd.core.RelTranJoint.html#pmd.core.RelTranJoint.compute_jacobian_j">(pmd.core.RelTranJoint method)</a>
+</li>
+        <li><a href="api/generated/pmd.core.RevJoint.html#pmd.core.RevJoint.compute_jacobian_j">(pmd.core.RevJoint method)</a>
+</li>
+        <li><a href="api/generated/pmd.core.RevRevJoint.html#pmd.core.RevRevJoint.compute_jacobian_j">(pmd.core.RevRevJoint method)</a>
+</li>
+        <li><a href="api/generated/pmd.core.RevTranJoint.html#pmd.core.RevTranJoint.compute_jacobian_j">(pmd.core.RevTranJoint method)</a>
+</li>
+        <li><a href="api/generated/pmd.core.RigidJoint.html#pmd.core.RigidJoint.compute_jacobian_j">(pmd.core.RigidJoint method)</a>
+</li>
+        <li><a href="api/generated/pmd.core.TranJoint.html#pmd.core.TranJoint.compute_jacobian_j">(pmd.core.TranJoint method)</a>
+</li>
+      </ul></li>
+      <li><a href="api/generated/pmd.core.DiscJoint.html#pmd.core.DiscJoint.compute_phi">compute_phi() (pmd.core.DiscJoint method)</a>
+
+      <ul>
+        <li><a href="api/generated/pmd.core.RelRotJoint.html#pmd.core.RelRotJoint.compute_phi">(pmd.core.RelRotJoint method)</a>
+</li>
+        <li><a href="api/generated/pmd.core.RelTranJoint.html#pmd.core.RelTranJoint.compute_phi">(pmd.core.RelTranJoint method)</a>
+</li>
+        <li><a href="api/generated/pmd.core.RevJoint.html#pmd.core.RevJoint.compute_phi">(pmd.core.RevJoint method)</a>
+</li>
+        <li><a href="api/generated/pmd.core.RevRevJoint.html#pmd.core.RevRevJoint.compute_phi">(pmd.core.RevRevJoint method)</a>
+</li>
+        <li><a href="api/generated/pmd.core.RevTranJoint.html#pmd.core.RevTranJoint.compute_phi">(pmd.core.RevTranJoint method)</a>
+</li>
+        <li><a href="api/generated/pmd.core.RigidJoint.html#pmd.core.RigidJoint.compute_phi">(pmd.core.RigidJoint method)</a>
+</li>
+        <li><a href="api/generated/pmd.core.TranJoint.html#pmd.core.TranJoint.compute_phi">(pmd.core.TranJoint method)</a>
+</li>
+      </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/generated/pmd.core.DiscJoint.html#pmd.core.DiscJoint.compute_rhs_acceleration">compute_rhs_acceleration() (pmd.core.DiscJoint method)</a>
+
+      <ul>
+        <li><a href="api/generated/pmd.core.RelRotJoint.html#pmd.core.RelRotJoint.compute_rhs_acceleration">(pmd.core.RelRotJoint method)</a>
+</li>
+        <li><a href="api/generated/pmd.core.RelTranJoint.html#pmd.core.RelTranJoint.compute_rhs_acceleration">(pmd.core.RelTranJoint method)</a>
+</li>
+        <li><a href="api/generated/pmd.core.RevJoint.html#pmd.core.RevJoint.compute_rhs_acceleration">(pmd.core.RevJoint method)</a>
+</li>
+        <li><a href="api/generated/pmd.core.RevRevJoint.html#pmd.core.RevRevJoint.compute_rhs_acceleration">(pmd.core.RevRevJoint method)</a>
+</li>
+        <li><a href="api/generated/pmd.core.RevTranJoint.html#pmd.core.RevTranJoint.compute_rhs_acceleration">(pmd.core.RevTranJoint method)</a>
+</li>
+        <li><a href="api/generated/pmd.core.RigidJoint.html#pmd.core.RigidJoint.compute_rhs_acceleration">(pmd.core.RigidJoint method)</a>
+</li>
+        <li><a href="api/generated/pmd.core.TranJoint.html#pmd.core.TranJoint.compute_rhs_acceleration">(pmd.core.TranJoint method)</a>
+</li>
+      </ul></li>
+      <li><a href="api/generated/pmd.core.DiscJoint.html#pmd.core.DiscJoint.compute_rhs_velocity">compute_rhs_velocity() (pmd.core.DiscJoint method)</a>
+
+      <ul>
+        <li><a href="api/generated/pmd.core.RelRotJoint.html#pmd.core.RelRotJoint.compute_rhs_velocity">(pmd.core.RelRotJoint method)</a>
+</li>
+        <li><a href="api/generated/pmd.core.RelTranJoint.html#pmd.core.RelTranJoint.compute_rhs_velocity">(pmd.core.RelTranJoint method)</a>
+</li>
+        <li><a href="api/generated/pmd.core.RevJoint.html#pmd.core.RevJoint.compute_rhs_velocity">(pmd.core.RevJoint method)</a>
+</li>
+        <li><a href="api/generated/pmd.core.RevRevJoint.html#pmd.core.RevRevJoint.compute_rhs_velocity">(pmd.core.RevRevJoint method)</a>
+</li>
+        <li><a href="api/generated/pmd.core.RevTranJoint.html#pmd.core.RevTranJoint.compute_rhs_velocity">(pmd.core.RevTranJoint method)</a>
+</li>
+        <li><a href="api/generated/pmd.core.RigidJoint.html#pmd.core.RigidJoint.compute_rhs_velocity">(pmd.core.RigidJoint method)</a>
+</li>
+        <li><a href="api/generated/pmd.core.TranJoint.html#pmd.core.TranJoint.compute_rhs_velocity">(pmd.core.TranJoint method)</a>
+</li>
+      </ul></li>
+  </ul></td>
+</tr></table>
+
+<h2 id="D">D</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/generated/pmd.core.Weight.html#pmd.core.Weight.DEFAULT_GRAVITY">DEFAULT_GRAVITY (pmd.core.Weight attribute)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/generated/pmd.core.Weight.html#pmd.core.Weight.DEFAULT_GRAVITY_VECTOR">DEFAULT_GRAVITY_VECTOR (pmd.core.Weight attribute)</a>
+</li>
+      <li><a href="api/generated/pmd.core.DiscJoint.html#pmd.core.DiscJoint">DiscJoint (class in pmd.core)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="F">F</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/generated/pmd.core.RevJoint.html#pmd.core.RevJoint.fk_step">fk_step() (pmd.core.RevJoint method)</a>
+
+      <ul>
+        <li><a href="api/generated/pmd.core.RevRevJoint.html#pmd.core.RevRevJoint.fk_step">(pmd.core.RevRevJoint method)</a>
+</li>
+        <li><a href="api/generated/pmd.core.TranJoint.html#pmd.core.TranJoint.fk_step">(pmd.core.TranJoint method)</a>
+</li>
+      </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/generated/pmd.core.UnitSystem.html#pmd.core.UnitSystem.force">force (pmd.core.UnitSystem attribute)</a>
+</li>
+      <li><a href="api/generated/pmd.core.GlobalForce.html#pmd.core.GlobalForce.force_global">force_global (pmd.core.GlobalForce property)</a>
+</li>
+      <li><a href="api/generated/pmd.core.LocalForce.html#pmd.core.LocalForce.force_local">force_local (pmd.core.LocalForce property)</a>
+</li>
+      <li><a href="api/generated/pmd.core.Function.html#pmd.core.Function">Function (class in pmd.core)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="G">G</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/generated/pmd.core.Body.html#pmd.core.Body.get_acceleration">get_acceleration() (pmd.core.Body method)</a>
+</li>
+      <li><a href="api/generated/pmd.core.Body.html#pmd.core.Body.get_accelerations">get_accelerations() (pmd.core.Body method)</a>
+</li>
+      <li><a href="api/generated/pmd.core.Body.html#pmd.core.Body.get_position">get_position() (pmd.core.Body method)</a>
+</li>
+      <li><a href="api/generated/pmd.core.Body.html#pmd.core.Body.get_positions">get_positions() (pmd.core.Body method)</a>
+</li>
+      <li><a href="api/generated/pmd.core.Body.html#pmd.core.Body.get_velocities">get_velocities() (pmd.core.Body method)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/generated/pmd.core.Body.html#pmd.core.Body.get_velocity">get_velocity() (pmd.core.Body method)</a>
+</li>
+      <li><a href="api/generated/pmd.core.Marker.html#pmd.core.Marker.global_position">global_position (pmd.core.Marker property)</a>
+</li>
+      <li><a href="api/generated/pmd.core.Marker.html#pmd.core.Marker.global_velocity">global_velocity (pmd.core.Marker property)</a>
+</li>
+      <li><a href="api/generated/pmd.core.GlobalForce.html#pmd.core.GlobalForce">GlobalForce (class in pmd.core)</a>
+</li>
+      <li><a href="api/generated/pmd.core.Ground.html#pmd.core.Ground">Ground (in module pmd.core)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="H">H</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/generated/pmd.core.Marker.html#pmd.core.Marker.has_orientation">has_orientation (pmd.core.Marker property)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="I">I</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/generated/pmd.core.DiscJoint.html#pmd.core.DiscJoint.initialize">initialize() (pmd.core.DiscJoint method)</a>
+
+      <ul>
+        <li><a href="api/generated/pmd.core.RelRotJoint.html#pmd.core.RelRotJoint.initialize">(pmd.core.RelRotJoint method)</a>
+</li>
+        <li><a href="api/generated/pmd.core.RelTranJoint.html#pmd.core.RelTranJoint.initialize">(pmd.core.RelTranJoint method)</a>
+</li>
+        <li><a href="api/generated/pmd.core.RevJoint.html#pmd.core.RevJoint.initialize">(pmd.core.RevJoint method)</a>
+</li>
+        <li><a href="api/generated/pmd.core.RevRevJoint.html#pmd.core.RevRevJoint.initialize">(pmd.core.RevRevJoint method)</a>
+</li>
+        <li><a href="api/generated/pmd.core.RevTranJoint.html#pmd.core.RevTranJoint.initialize">(pmd.core.RevTranJoint method)</a>
+</li>
+        <li><a href="api/generated/pmd.core.RigidJoint.html#pmd.core.RigidJoint.initialize">(pmd.core.RigidJoint method)</a>
+</li>
+        <li><a href="api/generated/pmd.core.TranJoint.html#pmd.core.TranJoint.initialize">(pmd.core.TranJoint method)</a>
+</li>
+      </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/generated/pmd.core.Weight.html#pmd.core.Weight.initialize_weights">initialize_weights() (pmd.core.Weight method)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="L">L</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/generated/pmd.core.UnitSystem.html#pmd.core.UnitSystem.latex_unit">latex_unit() (pmd.core.UnitSystem method)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/generated/pmd.core.UnitSystem.html#pmd.core.UnitSystem.length">length (pmd.core.UnitSystem attribute)</a>
+</li>
+      <li><a href="api/generated/pmd.core.LocalForce.html#pmd.core.LocalForce">LocalForce (class in pmd.core)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="M">M</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/generated/pmd.core.Marker.html#pmd.core.Marker">Marker (class in pmd.core)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/generated/pmd.core.UnitSystem.html#pmd.core.UnitSystem.moment_unit">moment_unit (pmd.core.UnitSystem property)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="N">N</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/generated/pmd.core.PlanarMultibodyModel.html#pmd.core.PlanarMultibodyModel.nB">nB (pmd.core.PlanarMultibodyModel property)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/generated/pmd.core.PlanarMultibodyModel.html#pmd.core.PlanarMultibodyModel.nC">nC (pmd.core.PlanarMultibodyModel property)</a>
+</li>
+      <li><a href="api/generated/pmd.core.PlanarMultibodyModel.html#pmd.core.PlanarMultibodyModel.nDOF">nDOF (pmd.core.PlanarMultibodyModel property)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="O">O</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/generated/pmd.core.Body.html#pmd.core.Body.orientation">orientation (pmd.core.Body property)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="P">P</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/generated/pmd.core.PlanarMultibodyModel.html#pmd.core.PlanarMultibodyModel">PlanarMultibodyModel (class in pmd.core)</a>
+</li>
+      <li><a href="api/generated/pmd.core.Body.html#pmd.core.Body.position">position (pmd.core.Body property)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/generated/pmd.gui.PostProcessor.html#pmd.gui.PostProcessor">PostProcessor (class in pmd.gui)</a>
+</li>
+      <li><a href="api/generated/pmd.gui.PreProcessor.html#pmd.gui.PreProcessor">PreProcessor (class in pmd.gui)</a>
+</li>
+      <li><a href="api/generated/pmd.core.PtpForce.html#pmd.core.PtpForce">PtpForce (class in pmd.core)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="R">R</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/generated/pmd.core.RelRotJoint.html#pmd.core.RelRotJoint">RelRotJoint (class in pmd.core)</a>
+</li>
+      <li><a href="api/generated/pmd.core.RelTranJoint.html#pmd.core.RelTranJoint">RelTranJoint (class in pmd.core)</a>
+</li>
+      <li><a href="api/generated/pmd.core.RevJoint.html#pmd.core.RevJoint">RevJoint (class in pmd.core)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/generated/pmd.core.RevRevJoint.html#pmd.core.RevRevJoint">RevRevJoint (class in pmd.core)</a>
+</li>
+      <li><a href="api/generated/pmd.core.RevTranJoint.html#pmd.core.RevTranJoint">RevTranJoint (class in pmd.core)</a>
+</li>
+      <li><a href="api/generated/pmd.core.RigidJoint.html#pmd.core.RigidJoint">RigidJoint (class in pmd.core)</a>
+</li>
+      <li><a href="api/generated/pmd.core.RotSdaForce.html#pmd.core.RotSdaForce">RotSdaForce (class in pmd.core)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="S">S</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/generated/pmd.gui.PostProcessor.html#pmd.gui.PostProcessor.show">show() (pmd.gui.PostProcessor method)</a>
+
+      <ul>
+        <li><a href="api/generated/pmd.gui.PreProcessor.html#pmd.gui.PreProcessor.show">(pmd.gui.PreProcessor method)</a>
+</li>
+      </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/generated/pmd.core.PlanarMultibodyModel.html#pmd.core.PlanarMultibodyModel.solve">solve() (pmd.core.PlanarMultibodyModel method)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="T">T</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/generated/pmd.core.UnitSystem.html#pmd.core.UnitSystem.to_si">to_si() (pmd.core.UnitSystem method)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/generated/pmd.core.Torque.html#pmd.core.Torque">Torque (class in pmd.core)</a>
+</li>
+      <li><a href="api/generated/pmd.core.TranJoint.html#pmd.core.TranJoint">TranJoint (class in pmd.core)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="U">U</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/generated/pmd.core.UnitSystem.html#pmd.core.UnitSystem">UnitSystem (class in pmd.core)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/generated/pmd.core.UserForce.html#pmd.core.UserForce">UserForce (class in pmd.core)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="V">V</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/generated/pmd.core.Body.html#pmd.core.Body.velocity">velocity (pmd.core.Body property)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="W">W</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api/generated/pmd.core.Weight.html#pmd.core.Weight">Weight (class in pmd.core)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By Giacomo Cangi
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2025, Giacomo Cangi.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>

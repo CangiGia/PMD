@@ -1,0 +1,544 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Solver &#8212; pmd: Planar Multi-Body Dynamics Open Source Software  documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/sphinx-book-theme.css?v=3c74b3bc" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=9eb32ce0"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'user_guide/solvers';</script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Analyses" href="analyses.html" />
+    <link rel="prev" title="Unit System" href="units.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">pmd: Planar Multi-Body Dynamics Open Source Software  documentation</p>
+  
+</a></div>
+        <div class="sidebar-primary-item">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../getting_started/overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting_started/install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../getting_started/first_model.html">Your First Model — Mass-Spring-Damper</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="user_guide.html">User Guide</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="bodies_markers.html">Bodies and Markers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="joints.html">Joints</a></li>
+<li class="toctree-l2"><a class="reference internal" href="forces.html">Forces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="drivers_functions.html">Driver Functions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="units.html">Unit System</a></li>
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">Solver</a></li>
+<li class="toctree-l2"><a class="reference internal" href="analyses.html">Analyses</a></li>
+<li class="toctree-l2"><a class="reference internal" href="gui.html">GUI</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../api/pmd.core.html">pmd.core — Core simulation API</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../api/generated/pmd.core.Body.html">pmd.core.Body</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/generated/pmd.core.Ground.html">pmd.core.Ground</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/generated/pmd.core.Marker.html">pmd.core.Marker</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/generated/pmd.core.RevJoint.html">pmd.core.RevJoint</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/generated/pmd.core.TranJoint.html">pmd.core.TranJoint</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/generated/pmd.core.RevRevJoint.html">pmd.core.RevRevJoint</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/generated/pmd.core.RevTranJoint.html">pmd.core.RevTranJoint</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/generated/pmd.core.RigidJoint.html">pmd.core.RigidJoint</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/generated/pmd.core.DiscJoint.html">pmd.core.DiscJoint</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/generated/pmd.core.RelRotJoint.html">pmd.core.RelRotJoint</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/generated/pmd.core.RelTranJoint.html">pmd.core.RelTranJoint</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/generated/pmd.core.Weight.html">pmd.core.Weight</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/generated/pmd.core.PtpForce.html">pmd.core.PtpForce</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/generated/pmd.core.RotSdaForce.html">pmd.core.RotSdaForce</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/generated/pmd.core.LocalForce.html">pmd.core.LocalForce</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/generated/pmd.core.GlobalForce.html">pmd.core.GlobalForce</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/generated/pmd.core.Torque.html">pmd.core.Torque</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/generated/pmd.core.UserForce.html">pmd.core.UserForce</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/generated/pmd.core.Function.html">pmd.core.Function</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/generated/pmd.core.PlanarMultibodyModel.html">pmd.core.PlanarMultibodyModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/generated/pmd.core.UnitSystem.html">pmd.core.UnitSystem</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../api/pmd.gui.html">pmd.gui — GUI tools</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../api/generated/pmd.gui.PreProcessor.html">pmd.gui.PreProcessor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../api/generated/pmd.gui.PostProcessor.html">pmd.gui.PostProcessor</a></li>
+</ul>
+</details></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+
+
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Download this page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="../_sources/user_guide/solvers.md" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Download source file"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="btn__text-container">.md</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Print to PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button pst-navbar-icon"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button>
+
+
+<button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+</button>
+<button class="sidebar-toggle secondary-toggle btn btn-sm pst-navbar-icon" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</button>
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>Solver</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+            <div>
+                <h2> Contents </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#constructor">Constructor</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#solving">Solving</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#solver-methods">Solver methods</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#baumgarte-stabilisation">Baumgarte stabilisation</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#index-convention-internal">Index convention (internal)</a></li>
+</ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="solver">
+<h1>Solver<a class="headerlink" href="#solver" title="Link to this heading">#</a></h1>
+<p><code class="docutils literal notranslate"><span class="pre">PlanarMultibodyModel</span></code> is the main simulation object.  Once constructed it
+calls <code class="docutils literal notranslate"><span class="pre">_initialize()</span></code> automatically.</p>
+<section id="constructor">
+<h2>Constructor<a class="headerlink" href="#constructor" title="Link to this heading">#</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pmd.core</span><span class="w"> </span><span class="kn">import</span> <span class="n">PlanarMultibodyModel</span>
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">PlanarMultibodyModel</span><span class="p">(</span>
+    <span class="n">bodies</span><span class="o">=</span><span class="p">[</span><span class="n">body1</span><span class="p">,</span> <span class="n">body2</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
+    <span class="n">joints</span><span class="o">=</span><span class="p">[</span><span class="n">j1</span><span class="p">,</span> <span class="n">j2</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
+    <span class="n">forces</span><span class="o">=</span><span class="p">[</span><span class="n">f1</span><span class="p">,</span> <span class="n">f2</span><span class="p">,</span> <span class="o">...</span><span class="p">],</span>
+    <span class="n">functions</span><span class="o">=</span><span class="p">[</span><span class="n">drv</span><span class="p">],</span>          <span class="c1"># optional</span>
+    <span class="n">units</span><span class="o">=</span><span class="n">UnitSystem</span><span class="p">(),</span>       <span class="c1"># optional</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="solving">
+<h2>Solving<a class="headerlink" href="#solving" title="Link to this heading">#</a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">result</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span>
+    <span class="n">analysis</span><span class="o">=</span><span class="s2">&quot;dynamic&quot;</span><span class="p">,</span>     <span class="c1"># &quot;dynamic&quot; | &quot;kinematic&quot; | &quot;static&quot;</span>
+    <span class="n">method</span><span class="o">=</span><span class="s2">&quot;LSODA&quot;</span><span class="p">,</span>         <span class="c1"># &quot;LSODA&quot; | &quot;CASADI-DAE&quot;</span>
+    <span class="n">t_final</span><span class="o">=</span><span class="mf">10.0</span><span class="p">,</span>
+    <span class="n">dt</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span>
+    <span class="n">ic_correct</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">baumgarte_alpha</span><span class="o">=</span><span class="mf">5.0</span><span class="p">,</span>
+    <span class="n">baumgarte_beta</span><span class="o">=</span><span class="mf">5.0</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>The returned <code class="docutils literal notranslate"><span class="pre">result</span></code> dict contains at minimum <code class="docutils literal notranslate"><span class="pre">T</span></code> (time array) and <code class="docutils literal notranslate"><span class="pre">U</span></code>
+(state array, shape <code class="docutils literal notranslate"><span class="pre">(nSteps,</span> <span class="pre">2·3·nB)</span></code>).</p>
+</section>
+<section id="solver-methods">
+<h2>Solver methods<a class="headerlink" href="#solver-methods" title="Link to this heading">#</a></h2>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p><code class="docutils literal notranslate"><span class="pre">method</span></code></p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">&quot;LSODA&quot;</span></code></p></td>
+<td><p>SciPy <code class="docutils literal notranslate"><span class="pre">solve_ivp</span></code> with LSODA integrator; variable-order Adams/BDF.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">&quot;CASADI-DAE&quot;</span></code></p></td>
+<td><p>CasADi DAE solver (Radau collocation); symbolically-built system. Recommended for stiff problems.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<section id="baumgarte-stabilisation">
+<h2>Baumgarte stabilisation<a class="headerlink" href="#baumgarte-stabilisation" title="Link to this heading">#</a></h2>
+<p>For <code class="docutils literal notranslate"><span class="pre">&quot;LSODA&quot;</span></code>, constraint drift is suppressed by Baumgarte stabilisation:</p>
+<p>$$\ddot{\Phi} + 2\alpha\dot{\Phi} + \beta^2\Phi = 0$$</p>
+<p>Increase <code class="docutils literal notranslate"><span class="pre">baumgarte_alpha</span></code> and <code class="docutils literal notranslate"><span class="pre">baumgarte_beta</span></code> (default 5.0) for tighter
+constraint enforcement at the cost of stiffness.</p>
+</section>
+<section id="index-convention-internal">
+<h2>Index convention (internal)<a class="headerlink" href="#index-convention-internal" title="Link to this heading">#</a></h2>
+<p>The following naming convention is used throughout the solver internals:</p>
+<ul class="simple">
+<li><p><strong>Body indices</strong>: 0 = ground (fixed), 1..nB = moving bodies.</p></li>
+<li><p><strong>State vector</strong> <code class="docutils literal notranslate"><span class="pre">u</span></code>:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">u[0</span> <span class="pre">:</span> <span class="pre">3·nB]</span></code> — positions <code class="docutils literal notranslate"><span class="pre">[r1x,</span> <span class="pre">r1y,</span> <span class="pre">φ1,</span> <span class="pre">r2x,</span> <span class="pre">r2y,</span> <span class="pre">φ2,</span> <span class="pre">…]</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">u[3·nB</span> <span class="pre">:</span> <span class="pre">6·nB]</span></code> — velocities <code class="docutils literal notranslate"><span class="pre">[ṙ1x,</span> <span class="pre">ṙ1y,</span> <span class="pre">φ̇1,</span> <span class="pre">…]</span></code></p></li>
+</ul>
+</li>
+<li><p><strong>Internal attributes</strong> (0-based):</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">body._index_position</span> <span class="pre">=</span> <span class="pre">3·Bi</span></code> — start index in position slice.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">body._index_velocity</span> <span class="pre">=</span> <span class="pre">3·nB</span> <span class="pre">+</span> <span class="pre">3·Bi</span></code> — start index in velocity slice.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">joint._rows</span> <span class="pre">/</span> <span class="pre">_rowe</span></code> — constraint row range <code class="docutils literal notranslate"><span class="pre">[rows,</span> <span class="pre">rowe)</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">joint._colis</span> <span class="pre">/</span> <span class="pre">_colie</span></code>, <code class="docutils literal notranslate"><span class="pre">_coljs</span> <span class="pre">/</span> <span class="pre">_colje</span></code> — Jacobian column ranges.</p></li>
+</ul>
+</li>
+</ul>
+</section>
+</section>
+
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="units.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Unit System</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="analyses.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Analyses</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item"><div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contents
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#constructor">Constructor</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#solving">Solving</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#solver-methods">Solver methods</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#baumgarte-stabilisation">Baumgarte stabilisation</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#index-convention-internal">Index convention (internal)</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By Giacomo Cangi
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2025, Giacomo Cangi.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>

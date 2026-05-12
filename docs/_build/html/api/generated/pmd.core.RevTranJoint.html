@@ -1,0 +1,603 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>pmd.core.RevTranJoint &#8212; pmd: Planar Multi-Body Dynamics Open Source Software  documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/sphinx-book-theme.css?v=3c74b3bc" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../../_static/documentation_options.js?v=9eb32ce0"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
+    <script src="../../_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'api/generated/pmd.core.RevTranJoint';</script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="pmd.core.RigidJoint" href="pmd.core.RigidJoint.html" />
+    <link rel="prev" title="pmd.core.RevRevJoint" href="pmd.core.RevRevJoint.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">pmd: Planar Multi-Body Dynamics Open Source Software  documentation</p>
+  
+</a></div>
+        <div class="sidebar-primary-item">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">Getting Started</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../getting_started/overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../getting_started/install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../getting_started/first_model.html">Your First Model — Mass-Spring-Damper</a></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">User Guide</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../user_guide/user_guide.html">User Guide</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/bodies_markers.html">Bodies and Markers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/joints.html">Joints</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/forces.html">Forces</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/drivers_functions.html">Driver Functions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/units.html">Unit System</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/solvers.html">Solver</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/analyses.html">Analyses</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../user_guide/gui.html">GUI</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="../pmd.core.html">pmd.core — Core simulation API</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="pmd.core.Body.html">pmd.core.Body</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pmd.core.Ground.html">pmd.core.Ground</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pmd.core.Marker.html">pmd.core.Marker</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pmd.core.RevJoint.html">pmd.core.RevJoint</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pmd.core.TranJoint.html">pmd.core.TranJoint</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pmd.core.RevRevJoint.html">pmd.core.RevRevJoint</a></li>
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">pmd.core.RevTranJoint</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pmd.core.RigidJoint.html">pmd.core.RigidJoint</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pmd.core.DiscJoint.html">pmd.core.DiscJoint</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pmd.core.RelRotJoint.html">pmd.core.RelRotJoint</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pmd.core.RelTranJoint.html">pmd.core.RelTranJoint</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pmd.core.Weight.html">pmd.core.Weight</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pmd.core.PtpForce.html">pmd.core.PtpForce</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pmd.core.RotSdaForce.html">pmd.core.RotSdaForce</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pmd.core.LocalForce.html">pmd.core.LocalForce</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pmd.core.GlobalForce.html">pmd.core.GlobalForce</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pmd.core.Torque.html">pmd.core.Torque</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pmd.core.UserForce.html">pmd.core.UserForce</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pmd.core.Function.html">pmd.core.Function</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pmd.core.PlanarMultibodyModel.html">pmd.core.PlanarMultibodyModel</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pmd.core.UnitSystem.html">pmd.core.UnitSystem</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../pmd.gui.html">pmd.gui — GUI tools</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="pmd.gui.PreProcessor.html">pmd.gui.PreProcessor</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pmd.gui.PostProcessor.html">pmd.gui.PostProcessor</a></li>
+</ul>
+</details></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+
+
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Download this page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="../../_sources/api/generated/pmd.core.RevTranJoint.rst" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Download source file"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="btn__text-container">.rst</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Print to PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button pst-navbar-icon"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button>
+
+
+<button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+</button>
+<button class="sidebar-toggle secondary-toggle btn btn-sm pst-navbar-icon" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</button>
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>pmd.core.RevTranJoint</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+            <div>
+                <h2> Contents </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#pmd.core.RevTranJoint"><code class="docutils literal notranslate"><span class="pre">RevTranJoint</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pmd.core.RevTranJoint.initialize"><code class="docutils literal notranslate"><span class="pre">RevTranJoint.initialize()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pmd.core.RevTranJoint.compute_phi"><code class="docutils literal notranslate"><span class="pre">RevTranJoint.compute_phi()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pmd.core.RevTranJoint.compute_jacobian_i"><code class="docutils literal notranslate"><span class="pre">RevTranJoint.compute_jacobian_i()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pmd.core.RevTranJoint.compute_jacobian_j"><code class="docutils literal notranslate"><span class="pre">RevTranJoint.compute_jacobian_j()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pmd.core.RevTranJoint.compute_rhs_velocity"><code class="docutils literal notranslate"><span class="pre">RevTranJoint.compute_rhs_velocity()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pmd.core.RevTranJoint.compute_rhs_acceleration"><code class="docutils literal notranslate"><span class="pre">RevTranJoint.compute_rhs_acceleration()</span></code></a></li>
+</ul>
+</li>
+</ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="pmd-core-revtranjoint">
+<h1>pmd.core.RevTranJoint<a class="headerlink" href="#pmd-core-revtranjoint" title="Link to this heading">#</a></h1>
+<dl class="py class">
+<dt class="sig sig-object py" id="pmd.core.RevTranJoint">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">pmd.core.</span></span><span class="sig-name descname"><span class="pre">RevTranJoint</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pmd.core.RevTranJoint" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Joint</span></code></p>
+<p>Revolute-translational composite joint.</p>
+<section id="attributes">
+<h2>Attributes<a class="headerlink" href="#attributes" title="Link to this heading">#</a></h2>
+<dl class="simple">
+<dt>L<span class="classifier">float</span></dt><dd><p>Initial length parameter.</p>
+</dd>
+<dt>q0<span class="classifier">float</span></dt><dd><p>Initial DOF value used by the assembler.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="pmd.core.RevTranJoint.initialize">
+<span class="sig-name descname"><span class="pre">initialize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pmd.core.RevTranJoint.initialize" title="Link to this definition">#</a></dt>
+<dd><p>Compute derived quantities after model construction.</p>
+<p>Called once by PlanarMultibodyModel._initialize().</p>
+<section id="parameters">
+<h3>Parameters<a class="headerlink" href="#parameters" title="Link to this heading">#</a></h3>
+<dl class="simple">
+<dt>model<span class="classifier">PlanarMultibodyModel</span></dt><dd><p>The model instance.</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pmd.core.RevTranJoint.compute_phi">
+<span class="sig-name descname"><span class="pre">compute_phi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pmd.core.RevTranJoint.compute_phi" title="Link to this definition">#</a></dt>
+<dd><p>Evaluate constraint equations.</p>
+<section id="id1">
+<h3>Parameters<a class="headerlink" href="#id1" title="Link to this heading">#</a></h3>
+<dl class="simple">
+<dt>model<span class="classifier">PlanarMultibodyModel</span></dt><dd><p>The model instance.</p>
+</dd>
+</dl>
+</section>
+<section id="returns">
+<h3>Returns<a class="headerlink" href="#returns" title="Link to this heading">#</a></h3>
+<dl class="simple">
+<dt>ndarray</dt><dd><p>Constraint residual, shape (mrows, 1).</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pmd.core.RevTranJoint.compute_jacobian_i">
+<span class="sig-name descname"><span class="pre">compute_jacobian_i</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pmd.core.RevTranJoint.compute_jacobian_i" title="Link to this definition">#</a></dt>
+<dd><p>Compute the Jacobian block for body i.</p>
+<section id="id2">
+<h3>Parameters<a class="headerlink" href="#id2" title="Link to this heading">#</a></h3>
+<dl class="simple">
+<dt>model<span class="classifier">PlanarMultibodyModel</span></dt><dd><p>The model instance.</p>
+</dd>
+</dl>
+</section>
+<section id="id3">
+<h3>Returns<a class="headerlink" href="#id3" title="Link to this heading">#</a></h3>
+<dl class="simple">
+<dt>ndarray</dt><dd><p>Jacobian block for body i, shape (mrows, 3).</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pmd.core.RevTranJoint.compute_jacobian_j">
+<span class="sig-name descname"><span class="pre">compute_jacobian_j</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pmd.core.RevTranJoint.compute_jacobian_j" title="Link to this definition">#</a></dt>
+<dd><p>Compute the Jacobian block for body j.</p>
+<section id="id4">
+<h3>Parameters<a class="headerlink" href="#id4" title="Link to this heading">#</a></h3>
+<dl class="simple">
+<dt>model<span class="classifier">PlanarMultibodyModel</span></dt><dd><p>The model instance.</p>
+</dd>
+</dl>
+</section>
+<section id="id5">
+<h3>Returns<a class="headerlink" href="#id5" title="Link to this heading">#</a></h3>
+<dl class="simple">
+<dt>ndarray</dt><dd><p>Jacobian block for body j, shape (mrows, 3).</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pmd.core.RevTranJoint.compute_rhs_velocity">
+<span class="sig-name descname"><span class="pre">compute_rhs_velocity</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pmd.core.RevTranJoint.compute_rhs_velocity" title="Link to this definition">#</a></dt>
+<dd><p>Compute right-hand side of velocity constraint.</p>
+<section id="id6">
+<h3>Parameters<a class="headerlink" href="#id6" title="Link to this heading">#</a></h3>
+<dl class="simple">
+<dt>model<span class="classifier">PlanarMultibodyModel</span></dt><dd><p>The model instance.</p>
+</dd>
+</dl>
+</section>
+<section id="id7">
+<h3>Returns<a class="headerlink" href="#id7" title="Link to this heading">#</a></h3>
+<dl class="simple">
+<dt>ndarray or None</dt><dd><p>RHS velocity, shape (mrows, 1), or None if zero.</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="pmd.core.RevTranJoint.compute_rhs_acceleration">
+<span class="sig-name descname"><span class="pre">compute_rhs_acceleration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#pmd.core.RevTranJoint.compute_rhs_acceleration" title="Link to this definition">#</a></dt>
+<dd><p>Compute right-hand side of acceleration constraint (gamma).</p>
+<section id="id8">
+<h3>Parameters<a class="headerlink" href="#id8" title="Link to this heading">#</a></h3>
+<dl class="simple">
+<dt>model<span class="classifier">PlanarMultibodyModel</span></dt><dd><p>The model instance.</p>
+</dd>
+</dl>
+</section>
+<section id="id9">
+<h3>Returns<a class="headerlink" href="#id9" title="Link to this heading">#</a></h3>
+<dl class="simple">
+<dt>ndarray</dt><dd><p>RHS acceleration, shape (mrows, 1).</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+</section>
+</dd></dl>
+
+</section>
+
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="pmd.core.RevRevJoint.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">pmd.core.RevRevJoint</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="pmd.core.RigidJoint.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">pmd.core.RigidJoint</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item"><div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contents
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#pmd.core.RevTranJoint"><code class="docutils literal notranslate"><span class="pre">RevTranJoint</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pmd.core.RevTranJoint.initialize"><code class="docutils literal notranslate"><span class="pre">RevTranJoint.initialize()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pmd.core.RevTranJoint.compute_phi"><code class="docutils literal notranslate"><span class="pre">RevTranJoint.compute_phi()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pmd.core.RevTranJoint.compute_jacobian_i"><code class="docutils literal notranslate"><span class="pre">RevTranJoint.compute_jacobian_i()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pmd.core.RevTranJoint.compute_jacobian_j"><code class="docutils literal notranslate"><span class="pre">RevTranJoint.compute_jacobian_j()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pmd.core.RevTranJoint.compute_rhs_velocity"><code class="docutils literal notranslate"><span class="pre">RevTranJoint.compute_rhs_velocity()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#pmd.core.RevTranJoint.compute_rhs_acceleration"><code class="docutils literal notranslate"><span class="pre">RevTranJoint.compute_rhs_acceleration()</span></code></a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By Giacomo Cangi
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2025, Giacomo Cangi.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+  </footer>
+  </body>
+</html>
