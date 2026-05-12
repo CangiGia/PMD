@@ -1,4 +1,4 @@
-# PMD — Planar Multi-Body Dynamics
+# PMD - Planar Multi-Body Dynamics Simulation Software
 
 **PMD** is an open-source Python library for modelling, simulating, and post-processing planar rigid-body mechanical systems.
 
