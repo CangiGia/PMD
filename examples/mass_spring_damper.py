@@ -12,8 +12,8 @@ KINEMATIC SCHEME & INITIAL STATE
             |     |
             /     |  
             \    _|_
-    spring  /   |   | 
-            \   |___| damper
+    spring  /   |___| 
+            \   | | |damper
             /     |
             |     |
          ===+=====+=== ground
