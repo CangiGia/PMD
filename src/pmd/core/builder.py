@@ -1,7 +1,4 @@
-"""Planar Multi-Body Dynamics Topological Assembler.
-
-This module implements the ``_assemble()`` function which computes body
-positions and orientations from joint topology and q0 values.
+"""Topological assembler: derives body poses from joint topology and q0.
 
 Author: Giacomo Cangi
 """

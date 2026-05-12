@@ -1,8 +1,5 @@
 """Shape descriptors for body visualization.
 
-These are pure data objects — they carry no rendering logic.
-The GUI layer decides how to draw them.
-
 Author: Giacomo Cangi
 """
 

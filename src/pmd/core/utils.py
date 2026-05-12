@@ -1,13 +1,7 @@
-"""
-Utilities for Planar Multi-Body Dynamics
-
-This module provides various utility functions to support 
-the development of planar multi-body dynamic models. It includes tools 
-for managing vector transformations.
+"""Utility helpers for planar multi-body dynamics.
 
 Author: Giacomo Cangi
 """
-
 
 import numpy as np
 from numpy.typing import *

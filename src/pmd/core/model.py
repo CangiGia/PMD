@@ -1,7 +1,4 @@
-"""Planar Multi-Body Dynamics Model Components.
-
-This module provides the core model components: Ground (singleton),
-Base (counter), Body (rigid body), and Marker (body-fixed reference frame).
+"""Core model components: Ground, Base, Body, Marker.
 
 Author: Giacomo Cangi
 """

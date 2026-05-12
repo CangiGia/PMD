@@ -1,16 +1,6 @@
-"""UnitSystem — declaration of physical units used in a pmd model.
+"""Physical-units metadata for a pmd model.
 
-The solver always works with the raw numbers supplied by the user.
-``UnitSystem`` is a pure metadata object that records which physical
-units those numbers represent so the GUI can apply the correct
-conversion factors when displaying results.
-
-Usage
------
->>> from pmd.core.units import UnitSystem
->>> us = UnitSystem(length="mm", force="N")   # model built in mm / N
->>> us.factor("length")                        # 1e-3  (mm → m)
->>> us.factor("moment")                        # 1e-3  (N·mm → N·m)
+Author: Giacomo Cangi
 """
 
 from __future__ import annotations
