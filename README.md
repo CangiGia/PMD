@@ -49,7 +49,29 @@ A configurable `UnitSystem` (m / mm / cm / in / ft · N / kN / lbf · rad / deg)
 
 ---
 
-## 🖥️ Interactive GUI
+## � Documentation
+
+Complete documentation is available in [`docs/source/`](docs/source):
+
+- **[Getting Started](docs/source/getting_started/)** — Installation, first model, core concepts
+- **[User Guide](docs/source/user_guide/)** — Detailed walkthroughs on bodies, joints, forces, solvers, GUI
+- **[API Reference](docs/source/api/)** — Full class and method reference for `pmd.core` and `pmd.gui`
+
+### View the docs locally
+
+Build and serve the Sphinx documentation:
+
+```bash
+cd docs
+python -m sphinx -b html source _build/html
+python -m http.server -d _build/html 8000
+```
+
+Then open **http://localhost:8000/** in your browser.
+
+---
+
+## �🖥️ Interactive GUI
 
 PMD ships two optional graphical interfaces (requires PySide6):
 
