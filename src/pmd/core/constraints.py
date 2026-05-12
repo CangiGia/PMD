@@ -1,7 +1,4 @@
-"""Planar Multi-Body Dynamics Constraints and Forces.
-
-This module provides polymorphic Joint and Force hierarchies using ABCs,
-plus the Function class for analytical constraint drivers.
+"""Joint and Force hierarchies, plus Function for analytical drivers.
 
 Author: Giacomo Cangi
 """

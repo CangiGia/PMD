@@ -1,8 +1,4 @@
-"""Mechanics Functions for Planar Multi-Body Dynamics.
-
-This module provides mathematical functions for planar multi-body dynamics.
-It includes rotation operators, analytical function drivers for constraint
-equations, and friction models.
+"""Mechanics utilities: rotations, analytical drivers, friction models.
 
 Author: Giacomo Cangi
 """

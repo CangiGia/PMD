@@ -1,31 +1,29 @@
-"""Planar Multi-Body Dynamics Simulation Solver.
-
-This module provides algorithms and numerical methods for solving
-planar multi-body dynamic models, including rigid bodies, constraints,
-and external forces.
-
-INDEX CONVENTION:
-================
-Body indices:  0 = ground (fixed), 1..nB = moving bodies
-Point indices: 0-based (Python standard)
-Joint indices: 0-based (Python standard)
-
-Internal state vector u:
-  u[0:nB3]      = positions  [r1x, r1y, p1, r2x, r2y, p2, ...]
-  u[nB3:2*nB3]  = velocities [dr1x, dr1y, dp1, ...]
-
-Internal index attributes (0-based):
-  body._index_position    = 3*Bi       (start index for position in u)
-  body._index_velocity    = nB3 + 3*Bi (start index for velocity in u)
-  joint._rows             = constraint row start (0-based, inclusive)
-  joint._rowe             = constraint row end (0-based, exclusive)
-  joint._colis/_coljs     = Jacobian column start (0-based)
-  joint._colie/_colje     = Jacobian column end (0-based, exclusive)
-
-All slicing uses standard Python [start:end) convention directly.
+"""Planar multi-body dynamics simulation solver.
 
 Author: Giacomo Cangi
 """
+
+# ---------------------------------------------------------------------------
+# INDEX CONVENTION (internal)
+# ---------------------------------------------------------------------------
+# Body indices:  0 = ground (fixed), 1..nB = moving bodies
+# Point indices: 0-based (Python standard)
+# Joint indices: 0-based (Python standard)
+#
+# Internal state vector u:
+#   u[0:nB3]      = positions  [r1x, r1y, p1, r2x, r2y, p2, ...]
+#   u[nB3:2*nB3]  = velocities [dr1x, dr1y, dp1, ...]
+#
+# Internal index attributes (0-based):
+#   body._index_position    = 3*Bi       (start index for position in u)
+#   body._index_velocity    = nB3 + 3*Bi (start index for velocity in u)
+#   joint._rows             = constraint row start (0-based, inclusive)
+#   joint._rowe             = constraint row end (0-based, exclusive)
+#   joint._colis/_coljs     = Jacobian column start (0-based)
+#   joint._colie/_colje     = Jacobian column end (0-based, exclusive)
+#
+# All slicing uses standard Python [start:end) convention directly.
+# ---------------------------------------------------------------------------
 
 import logging
 import os
