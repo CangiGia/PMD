@@ -58,3 +58,4 @@ htmlcov/
 
 # Pytest temporary model outputs
 tests/_tmp/
+_build/
