@@ -47,133 +47,107 @@ ACTIVE FORCES
 """
 
 import numpy as np
-from pmd.core import *
-from pmd.gui import PostProcessor
-
-
-L1 = 40.0e-3    # m  crank length
-L2 = 120.0e-3   # m  coupler length
-L3 = 80.0e-3    # m  follower length
-
-THETA1_DEG = 40.000    # link_1 IC angle [deg]
-THETA2_DEG = 20.298    # link_2 IC angle [deg]
-THETA3_DEG = -122.605  # link_3 IC angle [deg]
-
-O4 = [0.100, 0.000]  # m
-OMEGA_DEG = -25.0    # deg/s
-
-
-#%% Bodies
-link_1 = Body(
-    mass=1.1528090607e-02,     # kg
-    inertia=7.4696175803e-05,  # kg*m^2
-    name='link_1',
+from pmd.core import (
+    Body,
+    Function,
+    Ground,
+    PlanarMultibodyModel,
+    RelRotJoint,
+    RevJoint,
+    Weight,
 )
-
-link_2 = Body(
-    mass=3.1498650607e-02,     # kg
-    inertia=0.2078332421e-05,  # kg*m^2
-    name='link_2',
-)
-
-link_3 = Body(
-    mass=2.1513370607e-02,     # kg
-    inertia=0.141264709e-03,   # kg*m^2
-    name='link_3',
-)
+from pmd.core.model import _GroundType
 
 
-#%% Markers
-# Ground markers
-ground_link_1_ref_frame = Ground.add_marker([0.000, 0.0])  # crank pivot   O1 = (0, 0)
-ground_link_3_ref_frame = Ground.add_marker(O4)            # follower pivot O4 ≈ (100 mm, 0)
+T_FINAL = 25.0
+N_EVAL = 25001
+IC_CORRECT = True
 
-# link_1 markers (half-length from CM along local x-axis)
-link_1_ground_ref_frame = link_1.add_marker([-L1 / 2, 0.0])  # ground-side end
-link_1_link_2_ref_frame = link_1.add_marker([L1 / 2, 0.0])   # coupler-side end
+# Geometry
+_L1 = 40.0e-3    # m  crank length
+_L2 = 120.0e-3   # m  coupler length
+_L3 = 80.0e-3    # m  follower length
 
-# link_2 markers (half-length from CM along local x-axis)
-link_2_link_1_ref_frame = link_2.add_marker([-L2 / 2, 0.0])  # link_1-side end
-link_2_link_3_ref_frame = link_2.add_marker([L2 / 2, 0.0])   # link_3-side end
+_THETA1_DEG = 40.000
+_THETA2_DEG = 20.298
+_THETA3_DEG = -122.605
 
-# link_3 markers (half-length from CM along local x-axis)
-link_3_link_2_ref_frame = link_3.add_marker([-L3 / 2, 0.0])  # link_2-side end
-link_3_ground_ref_frame = link_3.add_marker([L3 / 2, 0.0])   # ground-side end
-
-
-#%% Function (motion driver)
-# phi_link1 = c0 + c1*t
-fn_mot = Function(
-    type='a',
-    coeff=[
-        np.deg2rad(THETA1_DEG),  # c0: initial absolute angle [rad]
-        np.deg2rad(OMEGA_DEG),   # c1: angular velocity [rad/s]
-        0.0,                     # c2
-    ],
-)
+_O4 = [0.100, 0.000]
+_OMEGA_DEG = -25.0
 
 
-#%% Joints
-link_1_ground_joint = RevJoint(
-    iMarker=ground_link_1_ref_frame,
-    jMarker=link_1_ground_ref_frame,
-    q0=np.deg2rad(THETA1_DEG),
-    name='link_1_ground_joint',
-)
+def build_model() -> PlanarMultibodyModel:
+    """Build the four-bar-linkage :class:`PlanarMultibodyModel` (no solve)."""
+    gt = _GroundType._instance
+    if gt is not None:
+        _GroundType._markers = [gt.origin]
 
-link_1_link_2_joint = RevJoint(
-    iMarker=link_1_link_2_ref_frame,
-    jMarker=link_2_link_1_ref_frame,
-    q0=np.deg2rad(THETA2_DEG - THETA1_DEG),
-    name='link_1_link_2_joint',
-)
+    # Bodies
+    link_1 = Body(mass=1.1528090607e-02, inertia=7.4696175803e-05, name='link_1')
+    link_2 = Body(mass=3.1498650607e-02, inertia=0.2078332421e-05, name='link_2')
+    link_3 = Body(mass=2.1513370607e-02, inertia=0.141264709e-03,  name='link_3')
 
-link_2_link_3_joint = RevJoint(
-    iMarker=link_2_link_3_ref_frame,
-    jMarker=link_3_link_2_ref_frame,
-    q0=np.deg2rad(THETA3_DEG - THETA2_DEG),
-    name='link_2_link_3_joint',
-)
+    # Ground markers
+    g_l1 = Ground.add_marker([0.000, 0.0])  # crank pivot O1
+    g_l3 = Ground.add_marker(_O4)           # follower pivot O4
 
-link_3_ground_joint = RevJoint(  # loop-closing
-    iMarker=link_3_ground_ref_frame,
-    jMarker=ground_link_3_ref_frame,
-    q0=np.deg2rad(THETA3_DEG),
-    name='link_3_ground_joint',
-)
+    # link_1 markers
+    l1_g = link_1.add_marker([-_L1 / 2, 0.0])
+    l1_l2 = link_1.add_marker([_L1 / 2, 0.0])
 
-motion = RelRotJoint(
-    iBody=link_1,
-    jBody=Ground,
-    iFunct=fn_mot,
-    name='crank_motion',
-)
+    # link_2 markers
+    l2_l1 = link_2.add_marker([-_L2 / 2, 0.0])
+    l2_l3 = link_2.add_marker([_L2 / 2, 0.0])
+
+    # link_3 markers
+    l3_l2 = link_3.add_marker([-_L3 / 2, 0.0])
+    l3_g = link_3.add_marker([_L3 / 2, 0.0])
+
+    # Function: phi_link1 = c0 + c1*t
+    fn_mot = Function(
+        type='a',
+        coeff=[
+            np.deg2rad(_THETA1_DEG),
+            np.deg2rad(_OMEGA_DEG),
+            0.0,
+        ],
+    )
+
+    # Joints
+    j_l1_g = RevJoint(iMarker=g_l1,  jMarker=l1_g,
+                      q0=np.deg2rad(_THETA1_DEG),
+                      name='link_1_ground_joint')
+    j_l1_l2 = RevJoint(iMarker=l1_l2, jMarker=l2_l1,
+                       q0=np.deg2rad(_THETA2_DEG - _THETA1_DEG),
+                       name='link_1_link_2_joint')
+    j_l2_l3 = RevJoint(iMarker=l2_l3, jMarker=l3_l2,
+                       q0=np.deg2rad(_THETA3_DEG - _THETA2_DEG),
+                       name='link_2_link_3_joint')
+    j_l3_g = RevJoint(iMarker=l3_g,  jMarker=g_l3,
+                      q0=np.deg2rad(_THETA3_DEG),
+                      name='link_3_ground_joint')
+    motion = RelRotJoint(iBody=link_1, jBody=Ground, iFunct=fn_mot,
+                         name='crank_motion')
+
+    # Forces
+    fw = Weight(gravity=9.80665)
+
+    return PlanarMultibodyModel(
+        bodies=[link_1, link_2, link_3],
+        joints=[j_l1_g, j_l1_l2, j_l2_l3, j_l3_g, motion],
+        forces=[fw],
+        functions=[fn_mot],
+    )
 
 
-#%% Forces
-fw = Weight(gravity=9.80665)  # m/s^2, along -y
+if __name__ == "__main__":
+    from pmd.gui import PostProcessor
 
-
-#%% Simulation
-model = PlanarMultibodyModel(
-    bodies=[link_1, link_2, link_3],
-    joints=[
-        link_1_ground_joint,
-        link_1_link_2_joint,
-        link_2_link_3_joint,
-        link_3_ground_joint,
-        motion,
-    ],
-    forces=[fw],
-    functions=[fn_mot],
-)
-
-T, uT = model.solve(
-    method='CASADI-DAE',
-    t_final=25,
-    t_eval=np.linspace(0, 25, 25001),
-    ic_correct=True,
-)
-
-post_proc = PostProcessor(model=model, T=T, uT=uT)
-post_proc.show()
+    model = build_model()
+    T, uT = model.solve(
+        method='CASADI-DAE',
+        t_final=T_FINAL,
+        t_eval=np.linspace(0, T_FINAL, N_EVAL),
+        ic_correct=IC_CORRECT,
+    )
+    PostProcessor(model=model, T=T, uT=uT).show()
