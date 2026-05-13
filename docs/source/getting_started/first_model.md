@@ -13,24 +13,24 @@ from pmd.core import (
     PlanarMultibodyModel,
 )
 
-# ── 1. Create the body ────────────────────────────────────────────
+# 1. Create the body
 mass = Body(
     mass=1000, inertia=0.5,
     position=[0, 0],
     velocity=[0, 10],       # initial upward velocity 10 m/s
 )
 
-# ── 2. Add markers ────────────────────────────────────────────────
+# 2. Add markers
 g_bottom = Ground.add_marker([0, -1.5], name="ground_bottom")
 g_top    = Ground.add_marker([0,  0.0], name="ground_top")
 m_bottom = mass.add_marker([0, -0.25], name="mass_bottom")
 m_top    = mass.add_marker([0,  0.25], name="mass_top")
 
-# ── 3. Add joints and forces ──────────────────────────────────────
+# 3. Add joints and forces
 joint  = TranJoint(iMarker=m_top,    jMarker=g_top)
 spring = PtpForce(iMarker=m_bottom,  jMarker=g_bottom, k=1e6, L0=1.5, dc=6500)
 
-# ── 4. Build and solve ────────────────────────────────────────────
+# 4. Build and solve
 model = PlanarMultibodyModel(
     bodies=[mass],
     joints=[joint],

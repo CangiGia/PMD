@@ -1,0 +1,4 @@
+/* Reduce logo size in the sidebar */
+.bd-sidebar-primary img.sidebar-logo {
+    max-width: 120px;
+}

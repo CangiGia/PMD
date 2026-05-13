@@ -33,7 +33,7 @@
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/sphinx-book-theme.css?v=3c74b3bc" />
     <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="../_static/custom.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/custom.css?v=22f7f8ff" />
   
   <!-- So that users can add custom icons -->
   <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
@@ -373,24 +373,24 @@ body constrained to translate vertically, connected to ground by a spring
     <span class="n">PlanarMultibodyModel</span><span class="p">,</span>
 <span class="p">)</span>
 
-<span class="c1"># ── 1. Create the body ────────────────────────────────────────────</span>
+<span class="c1"># 1. Create the body</span>
 <span class="n">mass</span> <span class="o">=</span> <span class="n">Body</span><span class="p">(</span>
     <span class="n">mass</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">inertia</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
     <span class="n">position</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
     <span class="n">velocity</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">10</span><span class="p">],</span>       <span class="c1"># initial upward velocity 10 m/s</span>
 <span class="p">)</span>
 
-<span class="c1"># ── 2. Add markers ────────────────────────────────────────────────</span>
+<span class="c1"># 2. Add markers</span>
 <span class="n">g_bottom</span> <span class="o">=</span> <span class="n">Ground</span><span class="o">.</span><span class="n">add_marker</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mf">1.5</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;ground_bottom&quot;</span><span class="p">)</span>
 <span class="n">g_top</span>    <span class="o">=</span> <span class="n">Ground</span><span class="o">.</span><span class="n">add_marker</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span>  <span class="mf">0.0</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;ground_top&quot;</span><span class="p">)</span>
 <span class="n">m_bottom</span> <span class="o">=</span> <span class="n">mass</span><span class="o">.</span><span class="n">add_marker</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.25</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;mass_bottom&quot;</span><span class="p">)</span>
 <span class="n">m_top</span>    <span class="o">=</span> <span class="n">mass</span><span class="o">.</span><span class="n">add_marker</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span>  <span class="mf">0.25</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;mass_top&quot;</span><span class="p">)</span>
 
-<span class="c1"># ── 3. Add joints and forces ──────────────────────────────────────</span>
+<span class="c1"># 3. Add joints and forces</span>
 <span class="n">joint</span>  <span class="o">=</span> <span class="n">TranJoint</span><span class="p">(</span><span class="n">iMarker</span><span class="o">=</span><span class="n">m_top</span><span class="p">,</span>    <span class="n">jMarker</span><span class="o">=</span><span class="n">g_top</span><span class="p">)</span>
 <span class="n">spring</span> <span class="o">=</span> <span class="n">PtpForce</span><span class="p">(</span><span class="n">iMarker</span><span class="o">=</span><span class="n">m_bottom</span><span class="p">,</span>  <span class="n">jMarker</span><span class="o">=</span><span class="n">g_bottom</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="mf">1e6</span><span class="p">,</span> <span class="n">L0</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">dc</span><span class="o">=</span><span class="mi">6500</span><span class="p">)</span>
 
-<span class="c1"># ── 4. Build and solve ────────────────────────────────────────────</span>
+<span class="c1"># 4. Build and solve</span>
 <span class="n">model</span> <span class="o">=</span> <span class="n">PlanarMultibodyModel</span><span class="p">(</span>
     <span class="n">bodies</span><span class="o">=</span><span class="p">[</span><span class="n">mass</span><span class="p">],</span>
     <span class="n">joints</span><span class="o">=</span><span class="p">[</span><span class="n">joint</span><span class="p">],</span>
