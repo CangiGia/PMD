@@ -49,7 +49,7 @@ A configurable `UnitSystem` (m / mm / cm / in / ft · N / kN / lbf · rad / deg)
 
 ---
 
-## � Documentation
+## 📚 Documentation
 
 Complete documentation is available in [`docs/source/`](docs/source):
 
