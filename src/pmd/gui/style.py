@@ -10,9 +10,7 @@ from __future__ import annotations
 
 from PySide6.QtWidgets import QApplication
 
-# ---------------------------------------------------------------------------
 # Light theme colour tokens
-# ---------------------------------------------------------------------------
 _ACCENT       = "#3f8cff"
 _ACCENT_HOVER = "#2270e0"
 _ACCENT_PRESS = "#1a5cbf"
@@ -27,7 +25,7 @@ _TEXT_DISABLED= "#b0b7c3"
 _RADIUS       = "6px"
 
 _LIGHT_QSS = f"""
-/* ── Window & base ─────────────────────────────────── */
+/* Window & base */
 QMainWindow, QWidget {{
     background-color: {_BG};
     color: {_TEXT};
@@ -35,7 +33,7 @@ QMainWindow, QWidget {{
     font-size: 10pt;
 }}
 
-/* ── Menu bar ───────────────────────────────────────── */
+/* Menu bar */
 QMenuBar {{
     background: {_SURFACE};
     border-bottom: 1px solid {_BORDER};
@@ -69,7 +67,7 @@ QMenu::separator {{
     margin: 4px 8px;
 }}
 
-/* ── Buttons — ghost default, primary opt-in ─────── */
+/* Buttons — ghost default, primary opt-in */
 QPushButton {{
     background: transparent;
     color: {_TEXT};
@@ -105,7 +103,7 @@ QPushButton[primary="true"]:disabled {{
     color: rgba(255, 255, 255, 0.5);
 }}
 
-/* ── ComboBox — flat ─────────────────────────────── */
+/* ComboBox — flat */
 QComboBox {{
     background: {_SURFACE};
     border: 1px solid transparent;
@@ -143,13 +141,13 @@ QComboBox QAbstractItemView {{
     outline: none;
 }}
 
-/* ── Labels ─────────────────────────────────────────── */
+/* Labels */
 QLabel {{
     color: {_TEXT};
     background: transparent;
 }}
 
-/* ── Tree widget ────────────────────────────────────── */
+/* Tree widget */
 QTreeWidget {{
     background: {_SURFACE};
     border: none;
@@ -182,7 +180,7 @@ QHeaderView::section {{
     color: {_TEXT_DIM};
 }}
 
-/* ── List widget ────────────────────────────────────── */
+/* List widget */
 QListWidget {{
     background: {_SURFACE};
     border: none;
@@ -204,7 +202,7 @@ QListWidget::item:hover:!selected {{
     background: rgba(0, 0, 0, 0.04);
 }}
 
-/* ── Splitter — invisible, 4 px hit area, accent on hover ── */
+/* Splitter — invisible, 4 px hit area, accent on hover */
 QSplitter::handle {{
     background: transparent;
 }}
@@ -218,7 +216,7 @@ QSplitter::handle:hover {{
     background: rgba(0, 96, 192, 0.4);
 }}
 
-/* ── Toolbar ─────────────────────────────────────────── */
+/* Toolbar */
 QToolBar {{
     background: {_BG};
     border: none;
@@ -251,7 +249,7 @@ QToolBar::separator {{
     margin: 4px 3px;
 }}
 
-/* ── Status bar ─────────────────────────────────────── */
+/* Status bar */
 QStatusBar {{
     background: {_SURFACE};
     border-top: 1px solid {_BORDER};
@@ -260,7 +258,7 @@ QStatusBar {{
     padding: 2px 8px;
 }}
 
-/* ── Scroll bars — overlay style ─────────────────── */
+/* Scroll bars — overlay style */
 QScrollBar:vertical {{
     background: transparent;
     width: 8px;
@@ -294,7 +292,7 @@ QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
     width: 0;
 }}
 
-/* ── Checkboxes ──────────────────────────────────────── */
+/* Checkboxes */
 QTreeWidget::indicator,
 QListWidget::indicator {{
     width: 14px;
@@ -313,7 +311,7 @@ QListWidget::indicator:checked {{
     border-color: {_ACCENT};
 }}
 
-/* ── Panel section headers ───────────────────────────── */
+/* Panel section headers */
 QLabel#panel_header {{
     color: {_TEXT_DIM};
     font-size: 8pt;
@@ -323,26 +321,26 @@ QLabel#panel_header {{
     border-bottom: 1px solid {_BORDER};
 }}
 
-/* ── Sidebar ─────────────────────────────────────────── */
+/* Sidebar */
 #sim_sidebar {{
     background: {_BG};
     border-right: 1px solid {_BORDER};
 }}
 
-/* ── Filter card ─────────────────────────────────────── */
+/* Filter card */
 #filter_card {{
     background: {_SURFACE};
     border-radius: {_RADIUS};
     margin: 2px 4px;
 }}
 
-/* ── Units toolbar ───────────────────────────────────── */
+/* Units toolbar */
 #units_toolbar {{
     background: {_BG};
     border-bottom: 1px solid {_BORDER};
 }}
 
-/* ── Nav splitter (tree / footer) ───────────────────── */
+/* Nav splitter (tree / footer) */
 QSplitter#nav_splitter::handle:vertical {{
     background: {_BORDER};
     margin: 0;
@@ -351,7 +349,7 @@ QSplitter#nav_splitter::handle:vertical:hover {{
     background: {_ACCENT};
 }}
 
-/* ── Nav footer buttons (sidebar) ───────────────────── */
+/* Nav footer buttons (sidebar) */
 QPushButton[nav="true"] {{
     background: transparent;
     border: 1px solid transparent;
@@ -375,9 +373,7 @@ QPushButton[nav="true"]:pressed {{
 }}
 """
 
-# ---------------------------------------------------------------------------
 # Dark theme colour tokens — 3-level surface hierarchy
-# ---------------------------------------------------------------------------
 _D_ACCENT       = "#3f8cff"
 _D_ACCENT_HOVER = "#5fa3ff"
 _D_ACCENT_PRESS = "#2270e0"
@@ -393,7 +389,7 @@ _D_TEXT_DIM     = "#8b92a0"
 _D_TEXT_DISABLED= "rgba(232, 234, 240, 0.35)"
 
 _DARK_QSS = f"""
-/* ── Window & base ──────────────────────────────────── */
+/* Window & base */
 QMainWindow, QWidget {{
     background-color: {_D_BG};
     color: {_D_TEXT};
@@ -401,7 +397,7 @@ QMainWindow, QWidget {{
     font-size: 10pt;
 }}
 
-/* ── Menu bar ─────────────────────────────────────── */
+/* Menu bar */
 QMenuBar {{
     background: {_D_SURFACE};
     border-bottom: 1px solid {_D_DIVIDER};
@@ -435,7 +431,7 @@ QMenu::separator {{
     margin: 4px 8px;
 }}
 
-/* ── Buttons — ghost default, primary opt-in ─────── */
+/* Buttons — ghost default, primary opt-in */
 QPushButton {{
     background: transparent;
     color: {_D_TEXT};
@@ -471,7 +467,7 @@ QPushButton[primary="true"]:disabled {{
     color: rgba(255, 255, 255, 0.35);
 }}
 
-/* ── ComboBox — flat ─────────────────────────────── */
+/* ComboBox — flat */
 QComboBox {{
     background: {_D_SURFACE};
     border: 1px solid transparent;
@@ -510,13 +506,13 @@ QComboBox QAbstractItemView {{
     outline: none;
 }}
 
-/* ── Labels ────────────────────────────────────────── */
+/* Labels */
 QLabel {{
     color: {_D_TEXT};
     background: transparent;
 }}
 
-/* ── Tree widget ────────────────────────────────────── */
+/* Tree widget */
 QTreeWidget {{
     background: {_D_BG};
     border: none;
@@ -549,7 +545,7 @@ QHeaderView::section {{
     color: {_D_TEXT_DIM};
 }}
 
-/* ── List widget ─────────────────────────────────────── */
+/* List widget */
 QListWidget {{
     background: {_D_SURFACE};
     border: none;
@@ -571,7 +567,7 @@ QListWidget::item:hover:!selected {{
     background: rgba(255, 255, 255, 0.04);
 }}
 
-/* ── Splitter — invisible, 4 px hit area, accent on hover ── */
+/* Splitter — invisible, 4 px hit area, accent on hover */
 QSplitter::handle {{
     background: transparent;
 }}
@@ -585,7 +581,7 @@ QSplitter::handle:hover {{
     background: rgba(74, 158, 255, 0.4);
 }}
 
-/* ── Toolbar ─────────────────────────────────────────── */
+/* Toolbar */
 QToolBar {{
     background: {_D_BG};
     border: none;
@@ -618,7 +614,7 @@ QToolBar::separator {{
     margin: 4px 3px;
 }}
 
-/* ── Status bar ───────────────────────────────────────── */
+/* Status bar */
 QStatusBar {{
     background: {_D_BG_DEEP};
     border-top: 1px solid {_D_DIVIDER};
@@ -627,7 +623,7 @@ QStatusBar {{
     padding: 2px 8px;
 }}
 
-/* ── Scroll bars — overlay style ──────────────────── */
+/* Scroll bars — overlay style */
 QScrollBar:vertical {{
     background: transparent;
     width: 8px;
@@ -661,7 +657,7 @@ QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
     width: 0;
 }}
 
-/* ── Checkboxes ──────────────────────────────────────── */
+/* Checkboxes */
 QTreeWidget::indicator,
 QListWidget::indicator {{
     width: 14px;
@@ -680,7 +676,7 @@ QListWidget::indicator:checked {{
     border-color: {_D_ACCENT};
 }}
 
-/* ── Panel section headers ───────────────────────────── */
+/* Panel section headers */
 QLabel#panel_header {{
     color: {_D_TEXT_DIM};
     font-size: 8pt;
@@ -690,25 +686,25 @@ QLabel#panel_header {{
     border-bottom: 1px solid {_D_DIVIDER};
 }}
 
-/* ── Sidebar — deep background, contrast-only separation ── */
+/* Sidebar — deep background, contrast-only separation */
 #sim_sidebar {{
     background: {_D_BG_DEEP};
 }}
 
-/* ── Filter card — raised surface, no border ─────────── */
+/* Filter card — raised surface, no border */
 #filter_card {{
     background: {_D_SURFACE};
     border-radius: 6px;
     margin: 2px 4px;
 }}
 
-/* ── Units toolbar ───────────────────────────────────── */
+/* Units toolbar */
 #units_toolbar {{
     background: {_D_BG};
     border-bottom: 1px solid {_D_DIVIDER};
 }}
 
-/* ── Nav splitter (tree / footer) ───────────────────── */
+/* Nav splitter (tree / footer) */
 QSplitter#nav_splitter::handle:vertical {{
     background: {_D_DIVIDER};
     margin: 0;
@@ -717,7 +713,7 @@ QSplitter#nav_splitter::handle:vertical:hover {{
     background: {_D_ACCENT};
 }}
 
-/* ── Nav footer buttons (sidebar) ───────────────────── */
+/* Nav footer buttons (sidebar) */
 QPushButton[nav="true"] {{
     background: transparent;
     border: 1px solid transparent;
@@ -741,9 +737,7 @@ QPushButton[nav="true"]:pressed {{
 }}
 """
 
-# ---------------------------------------------------------------------------
 # Public icon-colour constants  (consumed by gui/icons.py)
-# ---------------------------------------------------------------------------
 ICON_COLOR_LIGHT          = _TEXT          # "#1c2033"  — default on light
 ICON_COLOR_DARK           = _D_TEXT        # "#e8eaf0"  — default on dark
 ICON_COLOR_LIGHT_DIM      = _TEXT_DIM      # "#6b7280"  — secondary on light
@@ -758,9 +752,7 @@ CANVAS_BG_LIGHT = _SURFACE     # "#ffffff" — matches card surface
 CANVAS_FG_DARK  = _D_TEXT      # "#e8eaf0"
 CANVAS_FG_LIGHT = _TEXT        # "#1c2033"
 
-# ---------------------------------------------------------------------------
 # Public API
-# ---------------------------------------------------------------------------
 
 def apply_light_theme(app: QApplication) -> None:
     """Apply the flat light theme QSS to *app*."""

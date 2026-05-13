@@ -27,7 +27,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ADAMS_DIR = os.path.join(HERE, 'ADAMS')
 PMD_DIR = os.path.join(HERE, 'pmd')
 
-# ── Style ────────────────────────────────────────────────────────────────
+# Style
 plt.rcParams.update({
     'figure.facecolor': '#ffffff',
     'axes.facecolor': '#f5f5f5',
@@ -66,7 +66,7 @@ def _load_adams(path):
     return pd.read_csv(path, sep=r'\s+', header=0, quotechar='"', engine='python')
 
 
-# ── Load data ─────────────────────────────────────────────────────────────
+# Load data
 A_cm = _load_adams(os.path.join(ADAMS_DIR, 'ADAMS_mass_spring_damper_cm_coordinates.txt'))
 P_cm = _load_pmd(os.path.join(PMD_DIR, 'PMD_mass_spring_damper_cm_coordinates.txt'))
 
@@ -77,7 +77,7 @@ yA = A_cm.iloc[:, 2].values          # CM_Position.Y [m]
 tP = P_cm.iloc[:, 0].values           # time [s]
 yP = P_cm.iloc[:, 2].values           # CM displacement Y [m]  (col: 'mass / y')  (col index 2)
 
-# ── Figure — CM Displacement Y ────────────────────────────────────────────
+# Figure — CM Displacement Y
 fig, ax = plt.subplots(figsize=(10, 5), constrained_layout=True)
 fig.suptitle('Mass-Spring-Damper  —  CM Displacement Y: ADAMS vs pmd',
              fontsize=13, fontweight='bold')

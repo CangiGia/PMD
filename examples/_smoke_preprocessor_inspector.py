@@ -50,7 +50,7 @@ def main() -> int:
     insp = InspectorPanel()
     insp.set_spec(spec)
 
-    # ── Body ──────────────────────────────────────────────
+    # Body
     edits: list[tuple[str, str]] = []
     insp.spec_changed.connect(lambda k, i: edits.append((k, i)))
 
@@ -76,7 +76,7 @@ def main() -> int:
     assert math.isclose(body.mass, expected_mass, rel_tol=1e-9)
     print("body edits OK", edits[-1])
 
-    # ── Marker ────────────────────────────────────────────
+    # Marker
     insp.show_item("marker", marker.id)
     ed = insp._editor
     ed.xi.setValue(0.05)
@@ -85,21 +85,21 @@ def main() -> int:
     assert math.isclose(marker.theta, math.pi / 4)
     print("marker edits OK")
 
-    # ── Joint ─────────────────────────────────────────────
+    # Joint
     insp.show_item("joint", joint.id)
     ed = insp._editor
     ed.kind.setCurrentText("TranJoint")
     assert joint.kind == "TranJoint"
     print("joint edits OK")
 
-    # ── Force ─────────────────────────────────────────────
+    # Force
     insp.show_item("force", force.id)
     ed = insp._editor
     print("force editor =", ed, "kind =", getattr(ed, 'spec_kind', None))
     assert ed is not None and ed.spec_kind == "force"
     print("force editor mounted OK")
 
-    # ── Clear ─────────────────────────────────────────────
+    # Clear
     insp.clear()
     assert insp._editor is None
     print("clear OK")

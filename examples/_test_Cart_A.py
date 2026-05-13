@@ -39,9 +39,7 @@ import os
 from pmd.core import *
 from examples._plot_utils import plot_comparison
 
-# =============================================================================
 # MODEL DEFINITION
-# =============================================================================
 
 #%% Bodies
 B1 = Body(mass=20.0, inertia=5.0,  position=[0.5, 0.2], orientation=0.0)
@@ -67,9 +65,7 @@ j4 = RelRotJoint(iBody=B2, jBody=B1, iFunct=fn0)
 #%% Forces
 fw = Weight()
 
-# =============================================================================
 # SIMULATION
-# =============================================================================
 
 #%% Create model and solve
 model = PlanarMultibodyModel(

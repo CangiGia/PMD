@@ -47,9 +47,7 @@ class MainWindow(QMainWindow):
         self._build_central_area()
         self._build_status_bar()
 
-    # ------------------------------------------------------------------
     # Menu bar
-    # ------------------------------------------------------------------
 
     def _build_menu_bar(self):
         menu_bar = self.menuBar()
@@ -87,9 +85,7 @@ class MainWindow(QMainWindow):
         self._anim_action.toggled.connect(self._on_toggle_animation)
         view_menu.addAction(self._anim_action)
 
-    # ------------------------------------------------------------------
     # Central area (splitter: NavigationPanel | FilterPanel + plot)
-    # ------------------------------------------------------------------
 
     def _build_central_area(self):
         splitter = QSplitter(Qt.Orientation.Horizontal, self)
@@ -164,9 +160,7 @@ class MainWindow(QMainWindow):
 
         self.setCentralWidget(splitter)
 
-    # ------------------------------------------------------------------
     # Status bar
-    # ------------------------------------------------------------------
 
     def _build_status_bar(self):
         n_bodies = sum(len(s.model.Bodies) for s in self._sessions)
@@ -186,9 +180,7 @@ class MainWindow(QMainWindow):
         self._status_base = "  |  ".join(parts)
         self.statusBar().showMessage(self._status_base)
 
-    # ------------------------------------------------------------------
     # Slots
-    # ------------------------------------------------------------------
 
     def _on_selection_changed(self, selection):
         """Receives list of checked descriptor dicts from SimulationPanel."""

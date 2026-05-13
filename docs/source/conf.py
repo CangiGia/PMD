@@ -17,7 +17,7 @@ current_file_path = os.path.abspath(__file__)
 target_directory = os.path.abspath(os.path.join(os.path.dirname(current_file_path), '..', '..'))
 sys.path.insert(0, target_directory)
 
-project = 'pmd: Planar Multi-Body Dynamics Open Source Software'
+project = 'PMD'
 copyright = '2025, Giacomo Cangi'
 author = 'Giacomo Cangi'
 
@@ -70,3 +70,4 @@ html_theme = 'sphinx_book_theme'
 # html_theme = 'pydata_sphinx_theme'
 html_static_path = ['_static']
 html_css_files = ['custom.css']
+html_logo = '_static/pmd_logo.png'

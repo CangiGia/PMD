@@ -39,7 +39,7 @@ def main() -> int:
     w = PreProcessorWindow(ModelSpec())
     w.show()
 
-    # ── 1. Create a link → CM marker auto-created ──────────────
+    # 1. Create a link → CM marker auto-created
     w.set_active_tool("body_link")
     t = w._scene.active_tool
     t.mouse_press(FakeEv(0.0, 0.0))   # anchor A
@@ -50,14 +50,14 @@ def main() -> int:
     assert cm.local_position == (0.0, 0.0)
     print("CM marker auto-created:", cm.name)
 
-    # ── 2. Auto mass / inertia from steel density ──────────────
+    # 2. Auto mass / inertia from steel density
     L = body.shape.params["length"]; thk = body.shape.params["thickness"]
     expected = MATERIALS["Steel"] * L * thk * 0.01
     assert math.isclose(body.mass, expected, rel_tol=1e-9), (
         body.mass, expected)
     print(f"auto mass = {body.mass:.4f} kg  (steel)")
 
-    # ── 3. Rename cascades to child markers ────────────────────
+    # 3. Rename cascades to child markers
     w._inspector.show_item("body", body.id)
     ed = w._inspector._editor
     ed.name.setText("crank")
@@ -66,13 +66,13 @@ def main() -> int:
     assert names == ["crank.A", "crank.B", "crank.cm"], names
     print("rename cascade OK:", names)
 
-    # ── 4. Delete one marker via the tree pathway ──────────────
+    # 4. Delete one marker via the tree pathway
     mark_a = next(m for m in w.spec.markers if m.name == "crank.A")
     w._on_delete_requested("marker", mark_a.id)
     assert all(m.name != "crank.A" for m in w.spec.markers)
     print("marker delete OK")
 
-    # ── 5. Undo restores the deleted marker ────────────────────
+    # 5. Undo restores the deleted marker
     w._undo()
     assert any(m.name == "crank.A" for m in w.spec.markers)
     print("undo OK")
@@ -80,19 +80,19 @@ def main() -> int:
     assert all(m.name != "crank.A" for m in w.spec.markers)
     print("redo OK")
 
-    # ── 6. Delete the body cascades to all its markers ─────────
+    # 6. Delete the body cascades to all its markers
     w._on_delete_requested("body", body.id)
     assert not [b for b in w.spec.bodies if b.id != "ground"]
     assert not [m for m in w.spec.markers if m.body_id == body.id]
     print("body delete cascades to markers OK")
 
-    # ── 7. Ground body is implicit and not deletable ───────────
+    # 7. Ground body is implicit and not deletable
     assert any(b.id == "ground" for b in w.spec.bodies)
     w._on_delete_requested("body", "ground")
     assert any(b.id == "ground" for b in w.spec.bodies)
     print("ground body protected OK")
 
-    # ── 8. Snap to marker beats grid ───────────────────────────
+    # 8. Snap to marker beats grid
     w.set_active_tool("body_link")
     t = w._scene.active_tool
     t.mouse_press(FakeEv(0.0, 0.0))   # anchor A

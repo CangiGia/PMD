@@ -16,9 +16,7 @@ def _new_id(prefix: str) -> str:
     return f"{prefix}_{uuid4().hex[:8]}"
 
 
-# ────────────────────────────────────────────────────────────────────
 #  Materials database (used by the GUI to auto-derive mass props)
-# ────────────────────────────────────────────────────────────────────
 
 #: Common engineering materials → density in kg/m³.
 MATERIALS: dict[str, float] = {
@@ -72,9 +70,7 @@ def compute_mass_props(spec: "BodySpec") -> tuple[float, float] | None:
     return None
 
 
-# ────────────────────────────────────────────────────────────────────
 #  Geometry
-# ────────────────────────────────────────────────────────────────────
 
 ShapeKind = Literal["rectangle", "circle", "polygon", "link"]
 
@@ -101,9 +97,7 @@ class ShapeSpec:
     params: dict = field(default_factory=dict)
 
 
-# ────────────────────────────────────────────────────────────────────
 #  Markers
-# ────────────────────────────────────────────────────────────────────
 
 
 @dataclass
@@ -131,9 +125,7 @@ class MarkerSpec:
     theta: float = 0.0
 
 
-# ────────────────────────────────────────────────────────────────────
 #  Bodies
-# ────────────────────────────────────────────────────────────────────
 
 
 @dataclass
@@ -187,9 +179,7 @@ class BodySpec:
     mass_override: bool = False
 
 
-# ────────────────────────────────────────────────────────────────────
 #  Joints
-# ────────────────────────────────────────────────────────────────────
 
 JointKind = Literal[
     "RevJoint",
@@ -232,9 +222,7 @@ class JointSpec:
     params: dict = field(default_factory=dict)
 
 
-# ────────────────────────────────────────────────────────────────────
 #  Forces
-# ────────────────────────────────────────────────────────────────────
 
 ForceKind = Literal[
     "Weight",
@@ -276,9 +264,7 @@ class ForceSpec:
     params: dict = field(default_factory=dict)
 
 
-# ────────────────────────────────────────────────────────────────────
 #  Top-level container
-# ────────────────────────────────────────────────────────────────────
 
 
 # Reserved id of the implicit ground body.
@@ -345,7 +331,7 @@ class ModelSpec:
         if not any(b.id == GROUND_BODY_ID for b in self.bodies):
             self.bodies.insert(0, _make_ground_body())
 
-    # ── Lookup helpers ─────────────────────────────────────────
+    # Lookup helpers
     def body(self, body_id: str) -> BodySpec | None:
         return next((b for b in self.bodies if b.id == body_id), None)
 

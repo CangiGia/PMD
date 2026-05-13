@@ -46,7 +46,7 @@ def main() -> int:
 
     spec = _make_spec()
 
-    # ---------------- round-trip ----------------
+    # round-trip
     with tempfile.TemporaryDirectory() as td:
         p = os.path.join(td, "test.pmdmodel.json")
         save_model(spec, p)
@@ -66,7 +66,7 @@ def main() -> int:
     assert len(loaded.joints) == 1 and loaded.joints[0].i_marker_id == "mk_a"
     print("round-trip OK")
 
-    # ---------------- in-window reload ----------------
+    # in-window reload
     from pmd.gui.preprocessor.main_window import PreProcessorWindow
     win = PreProcessorWindow(ModelSpec())
 

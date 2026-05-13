@@ -19,7 +19,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ADAMS_DIR = os.path.join(HERE, 'ADAMS')
 PMD_DIR = os.path.join(HERE, 'pmd')
 
-# ── Style ───────────────────────────────────────────────────────────────────
+# Style
 plt.rcParams.update({
     'figure.facecolor': '#ffffff',
     'axes.facecolor': '#f5f5f5',
@@ -55,7 +55,7 @@ def _load(path):
     return pd.read_csv(path, sep=r'\s+', header=0, quotechar='"', engine='python')
 
 
-# ── CM positions ─────────────────────────────────────────────────────────────
+# CM positions
 A_crank_cm = _load(os.path.join(ADAMS_DIR, 'ADAMS_crankshaft_cm_coordinates.txt'))
 A_rod_cm = _load(os.path.join(ADAMS_DIR, 'ADAMS_rod_cm_coordinates.txt'))
 A_slider_cm = _load(os.path.join(ADAMS_DIR, 'ADAMS_slider_cm_coordinates.txt'))
@@ -73,7 +73,7 @@ tP_cm = [d.iloc[:, 0].values for d in (P_crank_cm, P_rod_cm, P_slider_cm)]
 xP = [d.iloc[:, 1].values for d in (P_crank_cm, P_rod_cm, P_slider_cm)]
 yP = [d.iloc[:, 2].values for d in (P_crank_cm, P_rod_cm, P_slider_cm)]
 
-# ── Joint reaction forces ─────────────────────────────────────────────────
+# Joint reaction forces
 A_crank_gnd = _load(os.path.join(ADAMS_DIR, 'ADAMS_crankshaft_ground_forces.txt'))
 A_crank_rod = _load(os.path.join(ADAMS_DIR, 'ADAMS_crankshaft_rod_forces.txt'))
 A_rod_sldr = _load(os.path.join(ADAMS_DIR, 'ADAMS_rod_slider_forces.txt'))
@@ -84,7 +84,7 @@ P_crank_rod = _load(os.path.join(PMD_DIR, 'PMD_crankshaft_rod_forces.txt'))
 P_rod_sldr = _load(os.path.join(PMD_DIR, 'PMD_rod_slider_forces.txt'))
 P_sldr_gnd = _load(os.path.join(PMD_DIR, 'PMD_slider_ground_forces.txt'))
 
-# ── Figure 1 — CM Positions ──────────────────────────────────────────────
+# Figure 1 — CM Positions
 bodies = ['Crankshaft', 'Rod', 'Slider']
 
 fig1, axes1 = plt.subplots(3, 2, figsize=(12, 9), constrained_layout=True)
@@ -105,7 +105,7 @@ for i, body in enumerate(bodies):
             ax.set_xlabel('Time  [s]')
         ax.legend(loc='best')
 
-# ── Figure 2 — Joint Reaction Forces ─────────────────────────────────────
+# Figure 2 — Joint Reaction Forces
 #   Slider–Ground: ADAMS exports (Fx≈0, Fy); pmd exports only F_perp (= Fy).
 #   The left subplot is hidden for that row.
 joints = [

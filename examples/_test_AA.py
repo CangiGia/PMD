@@ -50,7 +50,7 @@ s2 = UserForce(callback=wheel_contact)
 
 s3 = Weight()  # gravity force
 
-# ── Benchmark helpers ──────────────────────────────────────────────────────
+# Benchmark helpers
 
 def _make_model():
     """Rebuild the quarter-car from scratch (resets Ground singleton + Body counter)."""
@@ -113,11 +113,10 @@ post_proc = PostProcessor(model=quarter_car, T=T, uT=uT)
 post_proc.show()
 
 
-#%% ─────────────────────────────────────────────────────────────────────────
+#%%
 #   BENCHMARK: CasADi-DAE vs ODE solvers
 #   run directly:  python _test_AA.py
 #   (starts after the main PostProcessor window is closed)
-# ─────────────────────────────────────────────────────────────────────────────
 if __name__ == '__main__':
 
     BENCH_METHODS = [
@@ -146,7 +145,7 @@ if __name__ == '__main__':
 
     print('=' * 62)
 
-    # ── Figure ──────────────────────────────────────────────────────────
+    # Figure
     colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red']
     fig_b, (ax_t, ax_phi) = plt.subplots(1, 2, figsize=(13, 5))
     fig_b.suptitle(

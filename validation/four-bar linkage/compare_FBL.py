@@ -21,7 +21,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ADAMS_DIR = os.path.join(HERE, 'ADAMS')
 PMD_DIR = os.path.join(HERE, 'pmd')
 
-# ── Style ───────────────────────────────────────────────────────────────────
+# Style
 plt.rcParams.update({
     'figure.facecolor': '#ffffff',
     'axes.facecolor': '#f5f5f5',
@@ -62,7 +62,7 @@ def _load_adams(path):
     )
 
 
-# ── Load data ─────────────────────────────────────────────────────────────
+# Load data
 A_cm = _load_adams(os.path.join(ADAMS_DIR, 'ADAMS_four_bar_linkage_cm_coordinates.txt'))
 A_rf = _load_adams(os.path.join(ADAMS_DIR, 'ADAMS_four_bar_linkage_reaction_forces.txt'))
 A_mot = _load_adams(os.path.join(ADAMS_DIR, 'ADAMS_four_bar_linkage_motion.txt'))
@@ -71,7 +71,7 @@ P_cm = _load_pmd(os.path.join(PMD_DIR, 'PMD_four_bar_linkage_cm_coordinates.txt'
 P_rf = _load_pmd(os.path.join(PMD_DIR, 'PMD_four_bar_linkage_reaction_forces.txt'))
 P_mot = _load_pmd(os.path.join(PMD_DIR, 'PMD_four_bar_linkage_motion.txt'))
 
-# ── Figure 1 — CM Positions ──────────────────────────────────────────────
+# Figure 1 — CM Positions
 links = ['Link 1 (Crank)', 'Link 2 (Coupler)', 'Link 3 (Follower)']
 
 tA_cm = A_cm.iloc[:, 0].values
@@ -93,7 +93,7 @@ for i, link in enumerate(links):
             ax.set_xlabel('Time  [s]')
         ax.legend(loc='best')
 
-# ── Figure 2 — Joint Reaction Forces ─────────────────────────────────────
+# Figure 2 — Joint Reaction Forces
 joints = [
     'Ground \u2013 Link 1',
     'Link 1 \u2013 Link 2',
@@ -120,7 +120,7 @@ for i, name in enumerate(joints):
             ax.set_xlabel('Time  [s]')
         ax.legend(loc='best')
 
-# ── Figure 3 — Motion Driver Torque ─────────────────────────────────────
+# Figure 3 — Motion Driver Torque
 #   ADAMS: Element_Torque.Z in N·mm  →  convert to N·m (÷ 1000)
 #   pmd:   lambda_0 (Lagrange multiplier for motion constraint) in N·m
 tA_mot = A_mot.iloc[:, 0].values
