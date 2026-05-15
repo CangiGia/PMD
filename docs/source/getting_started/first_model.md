@@ -36,7 +36,7 @@ model = PlanarMultibodyModel(
     joints=[joint],
     forces=[spring],
 )
-result = model.solve(method="LSODA", t_final=3.0, dt=0.001)
+result = model.solve(t_final=3.0, dt=0.001)
 ```
 
 ## What happens step by step

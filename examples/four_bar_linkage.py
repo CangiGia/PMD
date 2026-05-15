@@ -56,6 +56,7 @@ from pmd.core import (
     RevJoint,
     Weight,
 )
+from pmd.core.shapes import Link
 from pmd.core.model import _GroundType
 
 
@@ -75,77 +76,66 @@ _THETA3_DEG = -122.605
 _O4 = [0.100, 0.000]
 _OMEGA_DEG = -25.0
 
+if _GroundType._instance is not None:
+    _GroundType._markers = [_GroundType._instance.origin]
 
-def build_model() -> PlanarMultibodyModel:
-    """Build the four-bar-linkage :class:`PlanarMultibodyModel` (no solve)."""
-    gt = _GroundType._instance
-    if gt is not None:
-        _GroundType._markers = [gt.origin]
+link_1 = Body(mass=1.1528090607e-02, inertia=7.4696175803e-05, name='link_1',
+              shape=Link(length=_L1, thickness=8.0e-3))
+link_2 = Body(mass=3.1498650607e-02, inertia=0.2078332421e-05, name='link_2',
+              shape=Link(length=_L2, thickness=8.0e-3))
+link_3 = Body(mass=2.1513370607e-02, inertia=0.141264709e-03,  name='link_3',
+              shape=Link(length=_L3, thickness=8.0e-3))
 
-    # Bodies
-    link_1 = Body(mass=1.1528090607e-02, inertia=7.4696175803e-05, name='link_1')
-    link_2 = Body(mass=3.1498650607e-02, inertia=0.2078332421e-05, name='link_2')
-    link_3 = Body(mass=2.1513370607e-02, inertia=0.141264709e-03,  name='link_3')
+g_l1 = Ground.add_marker([0.000, 0.0])  # crank pivot O1
+g_l3 = Ground.add_marker(_O4)           # follower pivot O4
 
-    # Ground markers
-    g_l1 = Ground.add_marker([0.000, 0.0])  # crank pivot O1
-    g_l3 = Ground.add_marker(_O4)           # follower pivot O4
+l1_g  = link_1.add_marker([-_L1 / 2, 0.0])
+l1_l2 = link_1.add_marker([ _L1 / 2, 0.0])
 
-    # link_1 markers
-    l1_g = link_1.add_marker([-_L1 / 2, 0.0])
-    l1_l2 = link_1.add_marker([_L1 / 2, 0.0])
+l2_l1 = link_2.add_marker([-_L2 / 2, 0.0])
+l2_l3 = link_2.add_marker([ _L2 / 2, 0.0])
 
-    # link_2 markers
-    l2_l1 = link_2.add_marker([-_L2 / 2, 0.0])
-    l2_l3 = link_2.add_marker([_L2 / 2, 0.0])
+l3_l2 = link_3.add_marker([-_L3 / 2, 0.0])
+l3_g  = link_3.add_marker([ _L3 / 2, 0.0])
 
-    # link_3 markers
-    l3_l2 = link_3.add_marker([-_L3 / 2, 0.0])
-    l3_g = link_3.add_marker([_L3 / 2, 0.0])
+fn_mot = Function(
+    type='a',
+    coeff=[
+        np.deg2rad(_THETA1_DEG),
+        np.deg2rad(_OMEGA_DEG),
+        0.0,
+    ],
+)
 
-    # Function: phi_link1 = c0 + c1*t
-    fn_mot = Function(
-        type='a',
-        coeff=[
-            np.deg2rad(_THETA1_DEG),
-            np.deg2rad(_OMEGA_DEG),
-            0.0,
-        ],
-    )
+j_l1_g = RevJoint(iMarker=g_l1,  jMarker=l1_g,
+                  q0=np.deg2rad(_THETA1_DEG),
+                  name='link_1_ground_joint')
+j_l1_l2 = RevJoint(iMarker=l1_l2, jMarker=l2_l1,
+                   q0=np.deg2rad(_THETA2_DEG - _THETA1_DEG),
+                   name='link_1_link_2_joint')
+j_l2_l3 = RevJoint(iMarker=l2_l3, jMarker=l3_l2,
+                   q0=np.deg2rad(_THETA3_DEG - _THETA2_DEG),
+                   name='link_2_link_3_joint')
+j_l3_g = RevJoint(iMarker=l3_g,  jMarker=g_l3,
+                  q0=np.deg2rad(_THETA3_DEG),
+                  name='link_3_ground_joint')
+motion = RelRotJoint(iBody=link_1, jBody=Ground, iFunct=fn_mot,
+                     name='crank_motion')
 
-    # Joints
-    j_l1_g = RevJoint(iMarker=g_l1,  jMarker=l1_g,
-                      q0=np.deg2rad(_THETA1_DEG),
-                      name='link_1_ground_joint')
-    j_l1_l2 = RevJoint(iMarker=l1_l2, jMarker=l2_l1,
-                       q0=np.deg2rad(_THETA2_DEG - _THETA1_DEG),
-                       name='link_1_link_2_joint')
-    j_l2_l3 = RevJoint(iMarker=l2_l3, jMarker=l3_l2,
-                       q0=np.deg2rad(_THETA3_DEG - _THETA2_DEG),
-                       name='link_2_link_3_joint')
-    j_l3_g = RevJoint(iMarker=l3_g,  jMarker=g_l3,
-                      q0=np.deg2rad(_THETA3_DEG),
-                      name='link_3_ground_joint')
-    motion = RelRotJoint(iBody=link_1, jBody=Ground, iFunct=fn_mot,
-                         name='crank_motion')
+fw = Weight(gravity=9.80665)
 
-    # Forces
-    fw = Weight(gravity=9.80665)
-
-    return PlanarMultibodyModel(
-        bodies=[link_1, link_2, link_3],
-        joints=[j_l1_g, j_l1_l2, j_l2_l3, j_l3_g, motion],
-        forces=[fw],
-        functions=[fn_mot],
-    )
+model = PlanarMultibodyModel(
+    bodies=[link_1, link_2, link_3],
+    joints=[j_l1_g, j_l1_l2, j_l2_l3, j_l3_g, motion],
+    forces=[fw],
+    functions=[fn_mot],
+)
 
 
 if __name__ == "__main__":
     from pmd.gui import PostProcessor
 
-    model = build_model()
     T, uT = model.solve(
-        method='CASADI-DAE',
         t_final=T_FINAL,
         t_eval=np.linspace(0, T_FINAL, N_EVAL),
         ic_correct=IC_CORRECT,

@@ -3,7 +3,7 @@
 ## Requirements
 
 - Python ≥ 3.10
-- NumPy, SciPy, CasADi, tqdm
+- NumPy, CasADi, tqdm
 - PyQt6 (optional — required for the GUI)
 
 ## Install from source

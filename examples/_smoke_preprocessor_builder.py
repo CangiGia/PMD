@@ -57,7 +57,6 @@ def main() -> int:
 
     T, uT = model.solve(
         analysis="dynamic",
-        method="CASADI-DAE",
         t_span=(0.0, 0.5),
         t_eval=np.linspace(0.0, 0.5, 200),
         ic_correct=True,

@@ -8,7 +8,7 @@ sys.path.append(os.path.dirname(__file__))
 from .utils import *
 from .mechanics import *
 from .model import Base, Ground, _GroundType, Body, Marker
-from .shapes import Rectangle, Circle, Polygon
+from .shapes import Rectangle, Circle, Polygon, Link, MATERIALS, compute_mass_props
 from .constraints import (
     Joint,
     RevJoint,
@@ -42,6 +42,9 @@ __all__ = [
     "Rectangle",
     "Circle",
     "Polygon",
+    "Link",
+    "MATERIALS",
+    "compute_mass_props",
     # Joints
     "Joint",
     "RevJoint",

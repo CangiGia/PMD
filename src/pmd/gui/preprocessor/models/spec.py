@@ -16,22 +16,38 @@ def _new_id(prefix: str) -> str:
     return f"{prefix}_{uuid4().hex[:8]}"
 
 
-#  Materials database (used by the GUI to auto-derive mass props)
+#  Materials database
+
+from pmd.core.shapes import MATERIALS as _CORE_MATERIALS
 
 #: Common engineering materials → density in kg/m³.
-MATERIALS: dict[str, float] = {
-    "Steel":         7850.0,
-    "Stainless":     7900.0,
-    "Cast Iron":     7200.0,
-    "Aluminum":      2700.0,
-    "Titanium":      4500.0,
-    "Brass":         8500.0,
-    "Copper":        8960.0,
-    "Plastic (PLA)": 1240.0,
-    "Plastic (ABS)": 1050.0,
-    "Wood (Oak)":     750.0,
-    "Custom":           0.0,
-}
+#: Inherits all entries from :data:`pmd.core.shapes.MATERIALS` plus a
+#: GUI-only ``"Custom"`` sentinel that disables auto-derivation.
+MATERIALS: dict[str, float] = {**_CORE_MATERIALS, "Custom": 0.0}
+
+
+def _spec_to_core_shape(spec_shape):
+    """Translate a GUI :class:`ShapeSpec` to a ``pmd.core.shapes`` instance.
+
+    Returns ``None`` for unknown shape kinds.
+    """
+    import numpy as np
+    from pmd.core.shapes import Circle, Link, Polygon, Rectangle
+    p    = spec_shape.params
+    kind = spec_shape.kind
+    if kind == "rectangle":
+        return Rectangle(width=float(p.get("width", 0.1)),
+                         height=float(p.get("height", 0.1)))
+    if kind == "link":
+        return Link(length=float(p.get("length", 0.1)),
+                    thickness=float(p.get("thickness", 0.01)))
+    if kind == "circle":
+        return Circle(radius=float(p.get("radius", 0.05)))
+    if kind == "polygon":
+        verts = p.get("vertices", [])
+        arr = np.array(verts) if verts else np.zeros((3, 2))
+        return Polygon(vertices=arr)
+    return None
 
 
 def compute_mass_props(spec: "BodySpec") -> tuple[float, float] | None:
@@ -44,30 +60,15 @@ def compute_mass_props(spec: "BodySpec") -> tuple[float, float] | None:
     """
     if spec.shape is None:
         return None
-    p = spec.shape.params
-    kind = spec.shape.kind
-    rho = float(spec.density)
-    tz  = float(spec.thickness_z)
-    if kind == "rectangle":
-        w = float(p.get("width", 0.0)); h = float(p.get("height", 0.0))
-        area = w * h
-        mass = rho * area * tz
-        inertia = mass * (w * w + h * h) / 12.0
-        return mass, inertia
-    if kind == "link":
-        L = float(p.get("length", 0.0)); t = float(p.get("thickness", 0.0))
-        area = L * t
-        mass = rho * area * tz
-        inertia = mass * L * L / 12.0
-        return mass, inertia
-    if kind == "circle":
-        r = float(p.get("radius", 0.0))
-        import math as _m
-        area = _m.pi * r * r
-        mass = rho * area * tz
-        inertia = 0.5 * mass * r * r
-        return mass, inertia
-    return None
+    core_shape = _spec_to_core_shape(spec.shape)
+    if core_shape is None:
+        return None
+    from pmd.core.shapes import compute_mass_props as _core_compute
+    try:
+        return _core_compute(core_shape, density=spec.density,
+                             thickness_z=spec.thickness_z)
+    except (TypeError, ValueError):
+        return None
 
 
 #  Geometry

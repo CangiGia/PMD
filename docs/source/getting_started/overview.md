@@ -24,8 +24,8 @@ building and simulating planar rigid-body mechanical systems.
 
 ## Supported analyses
 
-- **Dynamic** — full time-integration of the equations of motion via LSODA or
-  CasADi DAE (Radau collocation).
+- **Dynamic** — full time-integration of the equations of motion via
+  CasADi DAE collocation (Radau IIA).
 - **Kinematic** — position/velocity/acceleration analysis for fully-constrained
   systems (DOF = 0).
 - **Static** — static equilibrium via Newton-Raphson iteration.

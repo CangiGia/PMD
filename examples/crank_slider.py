@@ -51,6 +51,7 @@ from pmd.core import (
     TranJoint,
     Weight,
 )
+from pmd.core.shapes import Link, Rectangle
 from pmd.core.model import _GroundType
 
 
@@ -58,92 +59,76 @@ T_FINAL = 20.0
 N_EVAL = 20000
 IC_CORRECT = True
 
+if _GroundType._instance is not None:
+    _GroundType._markers = [_GroundType._instance.origin]
 
-def build_model() -> PlanarMultibodyModel:
-    """Build the crank-slider :class:`PlanarMultibodyModel` (no solve)."""
-    gt = _GroundType._instance
-    if gt is not None:
-        _GroundType._markers = [gt.origin]
+crankshaft = Body(
+    mass=0.8169313258,
+    inertia=1.294122161962e-4,
+    position=[0.03535533906, 0.03535533906],
+    orientation=np.deg2rad(45.0),
+    name='crankshaft',
+    shape=Link(length=0.10, thickness=0.015),
+)
 
-    # Bodies
-    crankshaft = Body(
-        mass=0.8169313258,           # kg
-        inertia=1.294122161962e-4,   # kg*m^2
-        position=[0.03535533906, 0.03535533906],  # m
-        orientation=np.deg2rad(45.0),
-        name='crankshaft',
-    )
+rod = Body(
+    mass=2.689171326,
+    inertia=4.414522158e-4,
+    position=[0.2675608549, 0.03535522707],
+    orientation=np.deg2rad(-10.1821),
+    name='rod',
+    shape=Link(length=0.40, thickness=0.015),
+)
 
-    rod = Body(
-        mass=2.689171326,            # kg
-        inertia=4.414522158e-4,      # kg*m^2
-        position=[0.2675608549, 0.03535522707],  # m
-        orientation=np.deg2rad(-10.1821),
-        name='rod',
-    )
+slider = Body(
+    mass=0.2614140191,
+    inertia=4.182624305e-5,
+    position=[0.4644110316, 0.0],
+    name='slider',
+    shape=Rectangle(width=0.08, height=0.04),
+)
 
-    slider = Body(
-        mass=0.2614140191,           # kg
-        inertia=4.182624305e-5,      # kg*m^2
-        position=[0.4644110316, 0.0],  # m
-        name='slider',
-    )
+mk_g_crank  = Ground.add_marker([0.0, 0.0])                       # crank pivot O1
+mk_g_slider = Ground.add_marker([0.4644110316, 0.0], theta=0.0)   # slider guide
 
-    # Ground markers
-    mk_g_crank = Ground.add_marker([0.0, 0.0])                       # crank pivot O1
-    mk_g_slider = Ground.add_marker([0.4644110316, 0.0], theta=0.0)  # slider guide
+mk_c_ground = crankshaft.add_marker([-0.05, 0.0])
+mk_c_rod    = crankshaft.add_marker([ 0.05, 0.0])
 
-    # Crankshaft markers (half-length = 0.05 m)
-    mk_c_ground = crankshaft.add_marker([-0.05, 0.0])
-    mk_c_rod = crankshaft.add_marker([0.05, 0.0])
+mk_r_crank  = rod.add_marker([-0.2, 0.0])
+mk_r_slider = rod.add_marker([ 0.2, 0.0])
 
-    # Rod markers (half-length = 0.2 m)
-    mk_r_crank = rod.add_marker([-0.2, 0.0])
-    mk_r_slider = rod.add_marker([0.2, 0.0])
+mk_s_rod    = slider.add_marker([0.0, 0.0])
+mk_s_ground = slider.add_marker([0.0, 0.0], theta=0.0)
 
-    # Slider markers
-    mk_s_rod = slider.add_marker([0.0, 0.0])
-    mk_s_ground = slider.add_marker([0.0, 0.0], theta=0.0)
+fn_mot = Function(
+    type='a',
+    coeff=[
+        np.deg2rad(55.1821),
+        np.deg2rad(20.0),
+        0.0,
+    ],
+)
 
-    # Function: phi_crank - phi_rod = c0 + c1*t
-    fn_mot = Function(
-        type='a',
-        coeff=[
-            np.deg2rad(55.1821),
-            np.deg2rad(20.0),
-            0.0,
-        ],
-    )
+j_gc  = RevJoint(iMarker=mk_g_crank,  jMarker=mk_c_ground, name='ground_crankshaft_joint')
+j_cr  = RevJoint(iMarker=mk_c_rod,    jMarker=mk_r_crank,  name='crankshaft_rod_joint')
+j_rs  = RevJoint(iMarker=mk_s_rod,    jMarker=mk_r_slider, name='rod_slider_joint')
+j_gs  = TranJoint(iMarker=mk_s_ground, jMarker=mk_g_slider, name='ground_slider_joint')
+j_mot = RelRotJoint(iBody=crankshaft, jBody=rod, iFunct=fn_mot, name='crank_rod_motor')
 
-    # Joints
-    j_gc = RevJoint(iMarker=mk_g_crank, jMarker=mk_c_ground,
-                    name='ground_crankshaft_joint')
-    j_cr = RevJoint(iMarker=mk_c_rod, jMarker=mk_r_crank,
-                    name='crankshaft_rod_joint')
-    j_rs = RevJoint(iMarker=mk_s_rod, jMarker=mk_r_slider,
-                    name='rod_slider_joint')
-    j_gs = TranJoint(iMarker=mk_s_ground, jMarker=mk_g_slider,
-                     name='ground_slider_joint')
-    j_mot = RelRotJoint(iBody=crankshaft, jBody=rod, iFunct=fn_mot,
-                        name='crank_rod_motor')
+fw = Weight(gravity=9.80665)
 
-    # Forces
-    fw = Weight(gravity=9.80665)
-
-    return PlanarMultibodyModel(
-        bodies=[crankshaft, rod, slider],
-        joints=[j_gc, j_cr, j_rs, j_gs, j_mot],
-        forces=[fw],
-        functions=[fn_mot],
-    )
+model = PlanarMultibodyModel(
+    bodies=[crankshaft, rod, slider],
+    joints=[j_gc, j_cr, j_rs, j_gs, j_mot],
+    forces=[fw],
+    functions=[fn_mot],
+)
 
 
 if __name__ == "__main__":
     from pmd.gui import PostProcessor
 
-    model = build_model()
     T, uT = model.solve(
-        method='CASADI-DAE',
         t_final=T_FINAL,
         t_eval=np.linspace(0, T_FINAL, N_EVAL),
         ic_correct=IC_CORRECT,

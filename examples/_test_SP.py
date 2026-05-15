@@ -35,7 +35,7 @@ my_dynamic_model = PlanarMultibodyModel(
     bodies=[b1, b2],
     joints=[j0_1, j1_2],
     forces=[f0_1, fw])
-T, uT = my_dynamic_model.solve(method='Radau', t_final=10.0, t_eval=np.linspace(0, 10, 10001))
+T, uT = my_dynamic_model.solve(t_final=10.0, t_eval=np.linspace(0, 10, 10001))
 
 if __name__ == '__main__':
     plot_comparison(T, uT, matlab_filename='SP.txt', model_title='SP')

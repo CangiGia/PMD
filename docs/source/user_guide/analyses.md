@@ -10,7 +10,7 @@ Full time-integration of the equations of motion:
 $$M\ddot{q} + \Phi_q^T \lambda = Q, \quad \Phi(q, t) = 0$$
 
 ```python
-result = model.solve(analysis="dynamic", method="LSODA", t_final=10.0, dt=0.01)
+result = model.solve(analysis="dynamic", t_final=10.0, dt=0.01)
 ```
 
 The result dict contains:

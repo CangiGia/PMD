@@ -1,31 +1,24 @@
-"""
-Tests for the CasADi + IDAS DAE solver (method="CASADI-DAE").
+"""Tests for the CasADi DAE dynamic solver.
 
 These tests verify:
-  1. Import guard: solve() raises ImportError when CasADi is unavailable.
-  2. Pendulum dynamics: CASADI-DAE agrees with LSODA within tolerance.
-  3. Constraint satisfaction: Phi(q_k) ≈ 0 at every output step.
-  4. Energy consistency: a conservative pendulum preserves total energy.
-  5. Output shape: T, uT conform to the expected format.
-  6. Result containers: Body and Joint result containers are populated.
-  7. Driven crank: a fully kinematic model works as a DAE too.
-  8. Spring–damper force: PtpForce handled correctly.
-  9. Torque force: constant Torque handled correctly.
- 10. RotSdaForce: torsional spring–damper handled correctly.
- 11. No constraints: pure ODE fallback (no joints) works.
+  1. Pendulum dynamics: constraint satisfaction at every step.
+  2. Constraint satisfaction: Phi(q_k) ≈ 0 at every output step.
+  3. Energy consistency: a conservative pendulum preserves total energy.
+  4. Output shape: T, uT conform to the expected format.
+  5. Result containers: Body and Joint result containers are populated.
+  6. Driven crank: a fully kinematic model works as a DAE too.
+  7. Spring–damper force: PtpForce handled correctly.
+  8. Torque force: constant Torque handled correctly.
+  9. RotSdaForce: torsional spring–damper handled correctly.
+ 10. No constraints: pure ODE fallback (no joints) works.
+ 11. UserForce: callback-based force handled correctly.
 
 Run from: C:\\Users\\Giaco\\anaconda3\\envs\\GiacoEnv\\
-Command:  python -m pytest pmd/tests/test_dae_casadi.py -v
+Command:  python -m pytest pmd/tests/test_solver.py -v
 """
 
 import numpy as np
 import pytest
-
-_has_casadi = True
-try:
-    import casadi  # noqa: F401
-except ImportError:
-    _has_casadi = False
 
 from pmd.core.model import Body, Ground, _GroundType
 from pmd.core.constraints import (
@@ -34,9 +27,6 @@ from pmd.core.constraints import (
 )
 from pmd.core.solver import PlanarMultibodyModel
 
-casadi_required = pytest.mark.skipif(
-    not _has_casadi, reason="CasADi not installed"
-)
 
 
 # ---------------------------------------------------------------------------
@@ -133,61 +123,15 @@ def _make_pendulum_with_rotsda():
 
 
 # ---------------------------------------------------------------------------
-# 1. Import guard
-# ---------------------------------------------------------------------------
-
-class TestImportGuard:
-
-    def test_casadi_import_error(self, monkeypatch):
-        """If casadi is not importable, solve must raise ImportError."""
-        import builtins
-        _original_import = builtins.__import__
-
-        def _mock_import(name, *args, **kwargs):
-            if name == 'casadi':
-                raise ImportError("mocked")
-            return _original_import(name, *args, **kwargs)
-
-        model, _ = _make_pendulum()
-        monkeypatch.setattr(builtins, '__import__', _mock_import)
-        with pytest.raises(ImportError, match="CasADi is required"):
-            model.solve(method="CASADI-DAE", t_final=0.1, dt=0.1)
-
-
-# ---------------------------------------------------------------------------
-# 2. Pendulum agreement with LSODA
-# ---------------------------------------------------------------------------
-
-class TestPendulumAgreement:
-
-    @casadi_required
-    def test_casadi_vs_lsoda(self):
-        """CASADI-DAE should match LSODA within 1e-3 on a short run."""
-        model1, _ = _make_pendulum()
-        T1, uT1 = model1.solve(method="LSODA", t_final=0.5, dt=0.05)
-
-        _GroundType._instance._markers = [_GroundType._instance.origin]
-        Body.COUNT = 0
-
-        model2, _ = _make_pendulum()
-        T2, uT2 = model2.solve(method="CASADI-DAE", t_final=0.5, dt=0.05)
-
-        np.testing.assert_allclose(T1, T2, atol=1e-12)
-        np.testing.assert_allclose(uT1, uT2, atol=1e-3,
-                                   err_msg="CASADI-DAE vs LSODA mismatch")
-
-
-# ---------------------------------------------------------------------------
-# 3. Constraint satisfaction
+# 2. Constraint satisfaction
 # ---------------------------------------------------------------------------
 
 class TestConstraintSatisfaction:
 
-    @casadi_required
     def test_constraints_satisfied_pendulum(self):
         """max |Phi(q_k)| < 1e-7 at every output step."""
         model, _ = _make_pendulum()
-        T, uT = model.solve(method="CASADI-DAE", t_final=1.0, dt=0.01)
+        T, uT = model.solve(t_final=1.0, dt=0.01)
 
         nB3 = 3 * model.nB
         max_phi = 0.0
@@ -202,11 +146,10 @@ class TestConstraintSatisfaction:
             f"Constraint violation too large: max |Phi| = {max_phi:.3e}"
         )
 
-    @casadi_required
     def test_constraints_satisfied_driven_crank(self):
         """Driven crank with DOF=0 must satisfy constraints tightly."""
         model, _ = _make_driven_crank()
-        T, uT = model.solve(method="CASADI-DAE", t_final=1.0, dt=0.01)
+        T, uT = model.solve(t_final=1.0, dt=0.01)
 
         nB3 = 3 * model.nB
         max_phi = 0.0
@@ -228,11 +171,10 @@ class TestConstraintSatisfaction:
 
 class TestEnergyConsistency:
 
-    @casadi_required
     def test_energy_conserved(self):
         """Total energy of an undamped pendulum must not drift by > 1%."""
         model, B = _make_pendulum()
-        T, uT = model.solve(method="CASADI-DAE", t_final=2.0, dt=0.01)
+        T, uT = model.solve(t_final=2.0, dt=0.01)
 
         nB3 = 3 * model.nB
         g = 9.81
@@ -257,21 +199,19 @@ class TestEnergyConsistency:
 
 class TestOutputShape:
 
-    @casadi_required
     def test_shape_pendulum(self):
         model, _ = _make_pendulum()
-        T, uT = model.solve(method="CASADI-DAE", t_final=0.5, dt=0.1)
+        T, uT = model.solve(t_final=0.5, dt=0.1)
 
         nB3 = 3 * model.nB
         assert uT.shape == (len(T), 2 * nB3)
         assert len(T) > 1
 
-    @casadi_required
     def test_t_eval(self):
         """Provide explicit t_eval array."""
         model, _ = _make_pendulum()
         t_eval = np.array([0.0, 0.1, 0.25, 0.5])
-        T, uT = model.solve(method="CASADI-DAE", t_eval=t_eval)
+        T, uT = model.solve(t_eval=t_eval)
 
         np.testing.assert_allclose(T, t_eval, atol=1e-12)
         assert uT.shape[0] == len(t_eval)
@@ -283,19 +223,17 @@ class TestOutputShape:
 
 class TestResultContainers:
 
-    @casadi_required
     def test_body_result_container(self):
         model, B = _make_pendulum()
-        model.solve(method="CASADI-DAE", t_final=0.3, dt=0.1)
+        model.solve(t_final=0.3, dt=0.1)
 
         rc = B._result_container
         for key in ("positions", "velocities", "accelerations"):
             assert key in rc, f"Missing key '{key}'"
 
-    @casadi_required
     def test_joint_result_container(self):
         model, _ = _make_pendulum()
-        model.solve(method="CASADI-DAE", t_final=0.3, dt=0.1)
+        model.solve(t_final=0.3, dt=0.1)
 
         for joint in model.Joints:
             assert 'reactions' in joint._result_container
@@ -307,11 +245,10 @@ class TestResultContainers:
 
 class TestDrivenCrank:
 
-    @casadi_required
     def test_driven_crank_phi_matches(self):
         """Angle should follow phi(t) = t for the driven crank."""
         model, B = _make_driven_crank()
-        T, uT = model.solve(method="CASADI-DAE", t_final=1.0, dt=0.1)
+        T, uT = model.solve(t_final=1.0, dt=0.1)
 
         nB3 = 3 * model.nB
         phi_vals = uT[:, 2]  # orientation of single body
@@ -325,16 +262,14 @@ class TestDrivenCrank:
 
 class TestPtpForce:
 
-    @casadi_required
     def test_spring_damper_runs(self):
         model, _ = _make_pendulum_with_spring()
-        T, uT = model.solve(method="CASADI-DAE", t_final=0.5, dt=0.05)
+        T, uT = model.solve(t_final=0.5, dt=0.05)
         assert len(T) > 1
 
-    @casadi_required
     def test_spring_constraints_satisfied(self):
         model, _ = _make_pendulum_with_spring()
-        T, uT = model.solve(method="CASADI-DAE", t_final=0.5, dt=0.05)
+        T, uT = model.solve(t_final=0.5, dt=0.05)
 
         nB3 = 3 * model.nB
         max_phi = 0.0
@@ -354,25 +289,10 @@ class TestPtpForce:
 
 class TestTorque:
 
-    @casadi_required
     def test_torque_runs(self):
         model, _ = _make_pendulum_with_torque()
-        T, uT = model.solve(method="CASADI-DAE", t_final=0.5, dt=0.05)
+        T, uT = model.solve(t_final=0.5, dt=0.05)
         assert len(T) > 1
-
-    @casadi_required
-    def test_torque_vs_lsoda(self):
-        """Torque model: CASADI-DAE agrees with LSODA."""
-        model1, _ = _make_pendulum_with_torque()
-        T1, uT1 = model1.solve(method="LSODA", t_final=0.5, dt=0.05)
-
-        _GroundType._instance._markers = [_GroundType._instance.origin]
-        Body.COUNT = 0
-
-        model2, _ = _make_pendulum_with_torque()
-        T2, uT2 = model2.solve(method="CASADI-DAE", t_final=0.5, dt=0.05)
-
-        np.testing.assert_allclose(uT1, uT2, atol=1e-3)
 
 
 # ---------------------------------------------------------------------------
@@ -381,25 +301,10 @@ class TestTorque:
 
 class TestRotSdaForce:
 
-    @casadi_required
     def test_rotsda_runs(self):
         model, _ = _make_pendulum_with_rotsda()
-        T, uT = model.solve(method="CASADI-DAE", t_final=0.5, dt=0.05)
+        T, uT = model.solve(t_final=0.5, dt=0.05)
         assert len(T) > 1
-
-    @casadi_required
-    def test_rotsda_vs_lsoda(self):
-        """RotSdaForce model: CASADI-DAE agrees with LSODA."""
-        model1, _ = _make_pendulum_with_rotsda()
-        T1, uT1 = model1.solve(method="LSODA", t_final=0.5, dt=0.05)
-
-        _GroundType._instance._markers = [_GroundType._instance.origin]
-        Body.COUNT = 0
-
-        model2, _ = _make_pendulum_with_rotsda()
-        T2, uT2 = model2.solve(method="CASADI-DAE", t_final=0.5, dt=0.05)
-
-        np.testing.assert_allclose(uT1, uT2, atol=1e-3)
 
 
 # ---------------------------------------------------------------------------
@@ -408,11 +313,10 @@ class TestRotSdaForce:
 
 class TestNoConstraints:
 
-    @casadi_required
     def test_free_body_gravity(self):
         """Free body under gravity: y(t) = -g/2 * t^2.  No joints."""
         model, B = _make_free_body()
-        T, uT = model.solve(method="CASADI-DAE", t_final=0.5, dt=0.05)
+        T, uT = model.solve(t_final=0.5, dt=0.05)
 
         g = 9.81
         y_expected = -0.5 * g * T**2
@@ -474,21 +378,19 @@ def _make_quarter_car():
 
 class TestUserForce:
 
-    @casadi_required
     def test_user_force_runs(self):
         """Quarter car with UserForce completes without error."""
         model, B2 = _make_quarter_car()
-        T, uT = model.solve(method="CASADI-DAE", t_final=1.0,
+        T, uT = model.solve(t_final=1.0,
                              t_eval=np.linspace(0, 1, 101),
                              ic_correct=True)
         assert T.shape[0] == 101
         assert uT.shape == (101, 18)
 
-    @casadi_required
     def test_user_force_constraints_satisfied(self):
         """Constraint violation stays small with UserForce."""
         model, _ = _make_quarter_car()
-        T, uT = model.solve(method="CASADI-DAE", t_final=0.5,
+        T, uT = model.solve(t_final=0.5,
                              t_eval=np.linspace(0, 0.5, 51),
                              ic_correct=True)
         nB3 = 3 * model.nB
@@ -503,18 +405,3 @@ class TestUserForce:
             Phi_k = model._compute_constraints().flatten()
             assert np.max(np.abs(Phi_k)) < 1e-6, \
                 f"Constraint violation {np.max(np.abs(Phi_k)):.2e} at step {k}"
-
-    @casadi_required
-    def test_user_force_vs_radau(self):
-        """CasADi-DAE result should be close to Radau for the quarter car."""
-        t_eval = np.linspace(0, 0.5, 501)  # fine grid for piecewise-constant UserForce
-        model_c, _ = _make_quarter_car()
-        T_c, uT_c = model_c.solve(method="CASADI-DAE", t_final=0.5,
-                                   t_eval=t_eval, ic_correct=True)
-
-        model_r, _ = _make_quarter_car()
-        T_r, uT_r = model_r.solve(method="Radau", t_final=0.5,
-                                   t_eval=t_eval, ic_correct=True)
-
-        np.testing.assert_allclose(uT_c, uT_r, atol=5e-2,
-                                   err_msg="CasADi-DAE vs Radau mismatch")

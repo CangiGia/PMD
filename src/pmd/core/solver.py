@@ -28,10 +28,9 @@ Author: Giacomo Cangi
 import logging
 import os
 
+import casadi as ca
 import numpy as np
 import numpy.linalg as lng
-import scipy as sc
-from scipy.integrate import solve_ivp
 from tqdm import tqdm
 
 from .constraints import Weight
@@ -437,135 +436,13 @@ class PlanarMultibodyModel:
             print(f"\t {row[0]:^12.5f}{row[1]:^12.5f}{row[2]:^12.5f}")
         print("\n")
 
-    def _analysis(self, t, u):
-        """Solve constrained equations of motion at time t.
-
-        Parameters
-        ----------
-        t : float
-            Current time.
-        u : ndarray
-            State vector.
-
-        Returns
-        -------
-        ndarray
-            Flattened derivative vector ud.
-        """
-        self._num += 1
-        self.t = t
-        nB3 = 3 * len(self.Bodies)
-        nConst = self.Joints[-1]._rowe if self.Joints else 0
-        self._u2bodies(u)
-        self._update_position()
-        self._update_velocity()
-        h_a = self._compute_force()
-
-        if nConst == 0:
-            ddc = self.invM_array.reshape(-1, 1) * h_a
-            Lambda = np.array([])
-        else:
-            D = self._compute_jacobian()
-            rhsA = self._rhs_acceleration()
-
-            if self._ggl_mu > 0:
-                reg_block = (1.0 / self._ggl_mu) * np.eye(nConst)
-            else:
-                reg_block = np.zeros((nConst, nConst))
-
-            DMD = np.block([
-                [self.M_matrix, -D.T],
-                [D, reg_block]
-            ])
-
-            if self._baumgarte_alpha > 0 or self._baumgarte_beta > 0:
-                Phi = np.asarray(self._compute_constraints()).flatten()
-                dq = u[nB3:]
-                dPhi = np.asarray(D @ dq).flatten()
-                gamma_stab = (rhsA.flatten()
-                              - 2.0 * self._baumgarte_alpha * dPhi
-                              - self._baumgarte_beta**2 * Phi)
-            else:
-                gamma_stab = rhsA.flatten()
-
-            rhs = np.concatenate([h_a.flatten(), gamma_stab])
-
-            cond_number = np.linalg.cond(DMD)
-            if cond_number > 1e12:
-                logger.warning("DMD matrix poorly conditioned: cond = %e", cond_number)
-
-            sol = np.linalg.solve(DMD, rhs).reshape(-1, 1)
-            ddc = sol[:nB3]
-            Lambda = sol[nB3:]
-
-        for Bi, body in enumerate(self.Bodies):
-            ir = body._index_position
-            i2 = ir + 2
-            body.acceleration = ddc[ir:i2]
-            body.angular_acceleration = ddc[i2][0]
-
-        ud = self._bodies2ud()
-        return ud.flatten()
-
-    def _taqaddum(self, t_initial, t_final, pbar):
-        """Return wrapped analysis function with progress tracking."""
-        last_progress = 0
-
-        def _wrapp_analysis(t, u):
-            nonlocal last_progress
-            progress = min(100, int(100 * (t - t_initial) / (t_final - t_initial)))
-            if progress > last_progress:
-                pbar.n = progress
-                pbar.refresh()
-                last_progress = progress
-            return self._analysis(t, u)
-        return _wrapp_analysis
-
-    def _distribute_results(self, T, uT):
-        """Push simulation results into Body and Joint _result_container dicts.
-
-        Parameters
-        ----------
-        T : ndarray
-            Time vector, shape (nSteps,).
-        uT : ndarray
-            State matrix, shape (nSteps, 2*nB3).
-        """
-        nB3 = 3 * self.nB
-        accelerations, reactions = self._post_process(T, uT)
-        for Bi, body in enumerate(self.Bodies):
-            i = 3 * Bi
-            body._result_container = {
-                'positions': {
-                    'x': uT[:, i],
-                    'y': uT[:, i + 1],
-                    'phi': uT[:, i + 2],
-                },
-                'velocities': {
-                    'dx': uT[:, nB3 + i],
-                    'dy': uT[:, nB3 + i + 1],
-                    'dphi': uT[:, nB3 + i + 2],
-                },
-                'accelerations': {
-                    'ddx': accelerations[:, i],
-                    'ddy': accelerations[:, i + 1],
-                    'ddphi': accelerations[:, i + 2],
-                },
-            }
-        for joint in self.Joints:
-            rs = joint._rows
-            re = joint._rowe
-            joint._result_container = {'reactions': reactions[:, rs:re]}
-
-    def solve(self, analysis="dynamic", method="LSODA", t_final=None, dt=None,
-              ic_correct=False, t_eval=None, t_span=None,
-              baumgarte_alpha=5.0, baumgarte_beta=5.0, ggl_penalty=1e8):
+    def solve(self, analysis="dynamic", t_final=None, dt=None,
+              ic_correct=False, t_eval=None, t_span=None):
         """Solve the model equations.
 
         The type of analysis is selected via the ``analysis`` parameter:
 
-        * ``"dynamic"``   — full time-integration of equations of motion
-          (default; previous behaviour preserved exactly).
+        * ``"dynamic"``   — full time-integration via CasADi DAE collocation.
         * ``"kinematic"`` — position/velocity/acceleration analysis at each
           time step without inertia; requires DOF = 0.
         * ``"static"``    — static equilibrium search; returns a single-step
@@ -576,11 +453,6 @@ class PlanarMultibodyModel:
         analysis : str
             Type of analysis: ``"dynamic"`` (default), ``"kinematic"``
             or ``"static"``. Case-insensitive.
-        method : str
-            ODE solver method for dynamic analysis (default ``"LSODA"``). Pass
-            ``"CASADI-DAE"`` to use a CasADi DAE solver (Radau collocation)
-            with symbolically-built constraints and forces. Ignored for
-            kinematic and static analyses.
         t_final : float, optional
             Final simulation time. If *None* and interactive, prompts the user.
             Not used for static analysis.
@@ -593,12 +465,6 @@ class PlanarMultibodyModel:
             Explicit array of output time points.
         t_span : tuple of float, optional
             ``(t_start, t_end)`` shorthand; sets *t_final* when given.
-        baumgarte_alpha : float
-            Velocity-level Baumgarte gain (default 5.0). Dynamic analysis only.
-        baumgarte_beta : float
-            Position-level Baumgarte gain (default 5.0). Dynamic analysis only.
-        ggl_penalty : float
-            GGL regularisation parameter (default 1e8). Dynamic analysis only.
 
         Returns
         -------
@@ -616,20 +482,10 @@ class PlanarMultibodyModel:
             )
 
         if analysis == "dynamic":
-            if method.upper() == "CASADI-DAE":
-                return self._solve_dae_casadi(
-                    t_final=t_final, dt=dt,
-                    ic_correct=ic_correct,
-                    t_eval=t_eval, t_span=t_span,
-                )
             return self._solve_dynamic(
-                method=method,
                 t_final=t_final, dt=dt,
                 ic_correct=ic_correct,
                 t_eval=t_eval, t_span=t_span,
-                baumgarte_alpha=baumgarte_alpha,
-                baumgarte_beta=baumgarte_beta,
-                ggl_penalty=ggl_penalty,
             )
         elif analysis == "kinematic":
             return self._solve_kinematic(
@@ -639,166 +495,6 @@ class PlanarMultibodyModel:
             )
         else:  # "static"
             return self._solve_static(ic_correct=ic_correct)
-
-    # ------------------------------------------------------------------
-    # Private: dynamic solver (original solve() body)
-    # ------------------------------------------------------------------
-
-    def _solve_dynamic(self, method="LSODA", t_final=None, dt=None,
-                       ic_correct=False, t_eval=None, t_span=None,
-                       baumgarte_alpha=5.0, baumgarte_beta=5.0,
-                       ggl_penalty=1e8):
-        """Time-integrate the equations of motion (original solve behaviour)."""
-        self.method = method
-        self._baumgarte_alpha = baumgarte_alpha
-        self._baumgarte_beta = baumgarte_beta
-        self._ggl_mu = ggl_penalty
-
-        if t_span is not None and t_final is None:
-            t_final = t_span[1]
-
-        nConst = self.Joints[-1]._rowe if self.Joints else 0
-
-        if t_final is None:
-            print("\n")
-            ans = input("\t... Do you want to correct the initial conditions? [(y)es/(n)o] ").lower()
-        else:
-            ans = 'y' if ic_correct else 'n'
-
-        if nConst != 0:
-            self.t = 0.0
-            if ans == 'y':
-                self._ic_correct()
-            D = self._compute_jacobian()
-            redund = np.linalg.matrix_rank(D)
-            if redund < nConst:
-                logger.warning("Redundancy in the constraints")
-                print("\n\t...Redundancy in the constraints")
-
-        u = self._bodies2u()
-        if np.any(np.isnan(u)) or np.any(np.isinf(u)):
-            raise ValueError("Check initial conditions: u vector contains NaN or Inf values.")
-
-        t_initial = 0.0
-        self._num = 0
-
-        if t_final is None:
-            t_final = float(input("\n\t ...Final time = ? "))
-
-        dense_sol = None
-        if t_final == 0:
-            self._analysis(0, u)
-            T = np.array([0.0])
-            uT = u.T
-        else:
-            if t_eval is not None:
-                Tspan = np.asarray(t_eval, dtype=float)
-            elif dt is not None:
-                Tspan = np.arange(t_initial, t_final + dt * 0.5, dt)
-            else:
-                dt_input = float(input("\t ...Reporting time-step = ? "))
-                Tspan = np.arange(t_initial, t_final, dt_input)
-
-            u0 = u.flatten()
-            options = {'rtol': 1e-6, 'atol': 1e-9,
-                       'max_step': float(Tspan[1] - Tspan[0])}
-
-            pbar = tqdm(total=100, desc="         ...Simulation progress",
-                        bar_format="{l_bar}{bar}| [Elapsed time: {elapsed}, Remaining time: {remaining}]",
-                        colour="green")
-
-            _wrapp_analysis = self._taqaddum(t_initial, t_final, pbar)
-
-            try:
-                _sol = solve_ivp(_wrapp_analysis,
-                                 [t_initial, t_final],
-                                 u0,
-                                 t_eval=Tspan,
-                                 method=self.method,
-                                 dense_output=True,
-                                 **options)
-            finally:
-                pbar.close()
-
-            T = _sol.t
-            uT = _sol.y.T
-            dense_sol = _sol.sol
-
-        print(f"\n ")
-        print(f"\t ...Number of function evaluations: {self._num}")
-        print(f"\t ...Simulation completed successfully!")
-        print(f"\n ")
-        self._distribute_results(T, uT)
-        return T, uT
-
-    def _post_process(self, T, uT):
-        """Recalculate accelerations and Lagrange multipliers on t_eval grid.
-
-        Parameters
-        ----------
-        T : ndarray
-            Time vector, shape (nSteps,).
-        uT : ndarray
-            State matrix, shape (nSteps, 2*nB3).
-
-        Returns
-        -------
-        tuple
-            ``(accelerations, reactions)`` arrays.
-        """
-        nB3 = 3 * self.nB
-        nConst = self.Joints[-1]._rowe if self.Joints else 0
-        nSteps = len(T)
-
-        accelerations = np.zeros((nSteps, nB3))
-        reactions = np.zeros((nSteps, nConst))
-
-        for i in range(nSteps):
-            t_i = T[i]
-            u_i = uT[i]
-
-            self.t = t_i
-            self._u2bodies(u_i)
-            self._update_position()
-            self._update_velocity()
-            h_a = self._compute_force()
-
-            if nConst == 0:
-                ddc = self.invM_array.reshape(-1, 1) * h_a
-                Lambda = np.array([])
-            else:
-                D = self._compute_jacobian()
-                rhsA = self._rhs_acceleration()
-
-                if self._ggl_mu > 0:
-                    reg_block = (1.0 / self._ggl_mu) * np.eye(nConst)
-                else:
-                    reg_block = np.zeros((nConst, nConst))
-
-                DMD = np.block([
-                    [self.M_matrix, -D.T],
-                    [D, reg_block]
-                ])
-
-                if self._baumgarte_alpha > 0 or self._baumgarte_beta > 0:
-                    Phi = np.asarray(self._compute_constraints()).flatten()
-                    dq_i = u_i[nB3:]
-                    dPhi = np.asarray(D @ dq_i).flatten()
-                    gamma_stab = (rhsA.flatten()
-                                  - 2.0 * self._baumgarte_alpha * dPhi
-                                  - self._baumgarte_beta**2 * Phi)
-                else:
-                    gamma_stab = rhsA.flatten()
-
-                rhs = np.concatenate([h_a.flatten(), gamma_stab])
-                sol = np.linalg.solve(DMD, rhs)
-                ddc = sol[:nB3]
-                Lambda = sol[nB3:]
-
-            accelerations[i] = ddc.flatten()
-            reactions[i] = Lambda.flatten()
-
-        return accelerations, reactions
 
     # ------------------------------------------------------------------
     # Private: kinematic solver
@@ -1503,9 +1199,9 @@ class PlanarMultibodyModel:
 
         return Q, has_user_forces
 
-    def _solve_dae_casadi(self, t_final=None, dt=None, ic_correct=False,
-                          t_eval=None, t_span=None):
-        """CasADi DAE solver using implicit Radau collocation.
+    def _solve_dynamic(self, t_final=None, dt=None, ic_correct=False,
+                       t_eval=None, t_span=None):
+        """Time-integrate the equations of motion via CasADi DAE collocation.
 
         Builds the constraint and force equations as CasADi SX
         expressions, then integrates step-by-step with an implicit
@@ -1535,22 +1231,11 @@ class PlanarMultibodyModel:
         Returns
         -------
         tuple
-            ``(T, uT)`` compatible with ``_solve_dynamic`` output.
+            ``(T, uT)``.
         """
-        try:
-            import casadi as ca
-        except ImportError:
-            raise ImportError(
-                "CasADi is required for method='CASADI-DAE'. "
-                "Install it with: pip install casadi"
-            ) from None
-
         nB  = len(self.Bodies)
         nB3 = 3 * nB
         nC  = self.nC
-        self._ggl_mu = 0  # no GGL penalty in DAE formulation
-        self._baumgarte_alpha = 0
-        self._baumgarte_beta = 0
 
         # ---- Build time grid ----
         if t_span is not None and t_final is None:

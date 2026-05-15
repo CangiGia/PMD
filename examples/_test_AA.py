@@ -103,7 +103,7 @@ quarter_car = PlanarMultibodyModel(
     bodies=[B1, B2, B3],
     joints=[j1, j2, j3, j4],
     forces=[s1, s2, s3])
-T, uT = quarter_car.solve(method='Radau', t_final=10.0, t_eval=np.linspace(0, 10, 10001),
+T, uT = quarter_car.solve(t_final=10.0, t_eval=np.linspace(0, 10, 10001),
                           ic_correct=True)
 
 # if __name__ == '__main__':
@@ -114,65 +114,34 @@ post_proc.show()
 
 
 #%%
-#   BENCHMARK: CasADi-DAE vs ODE solvers
+#   TIMING: CasADi-DAE solver
 #   run directly:  python _test_AA.py
-#   (starts after the main PostProcessor window is closed)
 if __name__ == '__main__':
 
-    BENCH_METHODS = [
-        ('CASADI-DAE', dict(method='CASADI-DAE', ic_correct=True)),
-        ('Radau',      dict(method='Radau',       ic_correct=True)),
-        ('BDF',        dict(method='BDF',         ic_correct=True)),
-        ('LSODA',      dict(method='LSODA',       ic_correct=True)),
-    ]
     T_FINAL     = 5.0
     BENCH_TEVAL = np.linspace(0, T_FINAL, 501)
 
     print('\n' + '=' * 62)
-    print('  BENCHMARK  —  quarter-car model  (_test_AA)')
+    print('  TIMING  —  quarter-car model  (_test_AA)')
     print('=' * 62)
     print(f'  t_final = {T_FINAL} s   |   output steps = {len(BENCH_TEVAL)}\n')
 
-    bench = {}
-    for label, kwargs in BENCH_METHODS:
-        m = _make_model()
-        t0 = time.perf_counter()
-        _T, _uT = m.solve(t_eval=BENCH_TEVAL, **kwargs)
-        elapsed = time.perf_counter() - t0
-        phi = _constraint_violation(m, _T, _uT)
-        bench[label] = {'T': _T, 'uT': _uT, 'time': elapsed, 'phi': phi}
-        print(f'  {label:12s}  CPU: {elapsed:7.2f} s   max|Phi| = {phi.max():.2e}')
-
+    m  = _make_model()
+    t0 = time.perf_counter()
+    _T, _uT = m.solve(t_eval=BENCH_TEVAL, ic_correct=True)
+    elapsed = time.perf_counter() - t0
+    phi = _constraint_violation(m, _T, _uT)
+    print(f'  CasADi-DAE  CPU: {elapsed:7.2f} s   max|Φ| = {phi.max():.2e}')
     print('=' * 62)
 
-    # Figure
-    colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red']
-    fig_b, (ax_t, ax_phi) = plt.subplots(1, 2, figsize=(13, 5))
+    fig_b, ax_phi = plt.subplots(figsize=(8, 4))
     fig_b.suptitle(
-        f'Quarter-car benchmark  (t_final = {T_FINAL} s,  {len(BENCH_TEVAL)} steps)',
+        f'Quarter-car  (t_final = {T_FINAL} s,  {len(BENCH_TEVAL)} steps)',
         fontsize=13)
-
-    # Left panel: wall-clock time
-    labels = list(bench.keys())
-    times  = [bench[k]['time'] for k in labels]
-    bars   = ax_t.bar(labels, times, color=colors, edgecolor='k', width=0.5)
-    ax_t.bar_label(bars, fmt='%.2f s', padding=4, fontsize=9)
-    ax_t.set_ylabel('Wall-clock time [s]')
-    ax_t.set_title('Simulation time')
-    ax_t.set_ylim(0, max(times) * 1.35)
-
-    # Right panel: constraint violation history
-    for (label, res), c in zip(bench.items(), colors):
-        ax_phi.semilogy(res['T'], np.maximum(res['phi'], 1e-18),
-                        label=label, color=c, lw=1.5)
+    ax_phi.semilogy(_T, np.maximum(phi, 1e-18), color='tab:blue', lw=1.5)
     ax_phi.set_xlabel('Time [s]')
     ax_phi.set_ylabel('max |Φ(q)| [-]')
     ax_phi.set_title('Constraint violation history')
-    ax_phi.legend()
     ax_phi.grid(True, which='both', ls='--', alpha=0.4)
-
     plt.tight_layout()
-    out_path = 'benchmark_AA.png'
-    # plt.savefig(out_path, dpi=150, bbox_inches='tight')
-    print(f'\n  Plot saved → {out_path}')
     plt.show()

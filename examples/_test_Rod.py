@@ -89,7 +89,7 @@ f1 = UserForce(callback=penalty_contact)
 model = PlanarMultibodyModel(
     bodies=[B1],
     forces=[f0, f1])
-T, uT = model.solve(method='Radau', t_final=3.0, t_eval=np.linspace(0, 2, 2001))
+T, uT = model.solve(t_final=3.0, t_eval=np.linspace(0, 2, 2001))
 
 if __name__ == '__main__':
     plot_comparison(T, uT, matlab_filename='Rod.txt', model_title='Rod')

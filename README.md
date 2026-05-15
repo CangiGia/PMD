@@ -37,13 +37,9 @@ A PMD model is built from three building blocks:
 | **Kinematic** | Position and velocity solution for fully driven systems |
 | **Dynamic** | Full equations of motion — positions, velocities, accelerations, constraint reactions |
 
-Available integration methods:
+Integration uses **CasADi DAE collocation** (Radau IIA) — constraints are satisfied exactly at every step, no constraint drift, no stabilisation parameters needed.
 
-- **LSODA** (default) — adaptive-step ODE via SciPy, handles stiff/non-stiff switching automatically
-- **Radau / RK45 / DOP853** — any SciPy `solve_ivp` backend
-- **CasADi-DAE** — implicit DAE collocation for stiff or highly constrained systems *(optional dependency)*
-
-All analyses include automatic Newton–Raphson initial-condition correction. Optional Baumgarte stabilisation and GGL regularisation are available for long-duration simulations.
+All analyses include automatic Newton–Raphson initial-condition correction.
 
 A configurable `UnitSystem` (m / mm / cm / in / ft · N / kN / lbf · rad / deg) handles unit conversion transparently.
 

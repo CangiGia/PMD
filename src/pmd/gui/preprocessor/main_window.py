@@ -117,12 +117,9 @@ class _SolveWorker(QThread):
             t_eval = np.linspace(cfg.t_start, cfg.t_end, cfg.n_steps)
             T, uT = self._model.solve(
                 analysis=cfg.analysis,
-                method=cfg.method,
                 t_span=(cfg.t_start, cfg.t_end),
                 t_eval=t_eval,
                 ic_correct=cfg.ic_correct,
-                baumgarte_alpha=cfg.baumgarte_alpha,
-                baumgarte_beta=cfg.baumgarte_beta,
             )
             self.finished_ok.emit(self._model, T, uT)
         except Exception:
@@ -904,7 +901,7 @@ class PreProcessorWindow(QMainWindow):
         worker = _SolveWorker(model, cfg)
 
         # Show inline progress group in the status bar.
-        self._lbl_sim.setText(f"Solving ({cfg.analysis}, {cfg.method})\u2026")
+        self._lbl_sim.setText(f"Solving ({cfg.analysis})…")
         self._sim_progress.setValue(0)
         self._sim_status_widget.show()
         try:

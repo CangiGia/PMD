@@ -22,7 +22,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from pmd.core.shapes import Rectangle, Circle, Polygon
+from pmd.core.shapes import Rectangle, Circle, Polygon, Link
 from pmd.core.constraints import RevJoint, TranJoint, PtpForce
 from pmd.core.mechanics import rotation_matrix
 from ... import icons as _icons
@@ -276,6 +276,20 @@ class AnimationCanvas(QWidget):
                     ax.add_patch(patch)
                     self._body_patches.append(patch)
 
+                elif isinstance(shape, Link):
+                    w, h = shape.length, shape.thickness
+                    patch = FancyBboxPatch(
+                        (-w / 2, -h / 2), w, h,
+                        boxstyle="round,pad=0.002",
+                        facecolor=(*matplotlib.colors.to_rgb(col), 0.30),
+                        edgecolor=(*matplotlib.colors.to_rgb(col), 1.0),
+                        linewidth=1.5,
+                    )
+                    t = Affine2D().rotate(phi).translate(x, y) + ax.transData
+                    patch.set_transform(t)
+                    ax.add_patch(patch)
+                    self._body_patches.append(patch)
+
                 else:
                     # No shape → small circle at CoM
                     patch = MplCircle(
@@ -401,7 +415,7 @@ class AnimationCanvas(QWidget):
             x, y, phi = _body_pos(body, step)
             shape = body.shape
 
-            if isinstance(shape, (Rectangle, Polygon)):
+            if isinstance(shape, (Rectangle, Polygon, Link)):
                 t = Affine2D().rotate(phi).translate(x, y) + ax.transData
                 patch.set_transform(t)
             elif isinstance(shape, Circle):

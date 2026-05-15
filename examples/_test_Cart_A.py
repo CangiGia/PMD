@@ -73,7 +73,7 @@ model = PlanarMultibodyModel(
     joints=[j0, j1, j2, j3, j4],
     forces=[fw],
     functions=[fn0])
-T, uT = model.solve(method='Radau', t_final=10.0, t_eval=np.linspace(0, 10, 10001),
+T, uT = model.solve(t_final=10.0, t_eval=np.linspace(0, 10, 10001),
                     ic_correct=True)
 
 if __name__ == '__main__':

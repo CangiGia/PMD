@@ -29,7 +29,7 @@ double_pendulum = PlanarMultibodyModel(
     bodies=[b1, b2],
     joints=[j1, j2],
     forces=[s3])
-T, uT = double_pendulum.solve(method='Radau', t_final=10.0, t_eval=np.linspace(0, 10, 10001))
+T, uT = double_pendulum.solve(t_final=10.0, t_eval=np.linspace(0, 10, 10001))
 
 if __name__ == '__main__':
     plot_comparison(T, uT, matlab_filename='DP.txt', model_title='DP')

@@ -307,6 +307,9 @@ class Body(Base):
             raise ValueError(
                 f"Body {self.COUNT}: moment of inertia cannot be negative, "
                 f"got {inertia}")
+        if shape is not None:
+            from .shapes import _validate_shape
+            _validate_shape(shape)
 
         self.name = name
         self.shape = shape
@@ -335,6 +338,51 @@ class Body(Base):
         self._torque = 0
         self._markers = []
         self._result_container = None
+
+    @classmethod
+    def from_shape(cls, shape, *, density, thickness_z=0.01,
+                   position=None, orientation=None,
+                   velocity=None, angular_velocity=0,
+                   name=None):
+        """Create a Body whose mass and inertia are derived from shape and density.
+
+        Parameters
+        ----------
+        shape : Rectangle, Circle, Link, or Polygon
+            Geometry of the body.
+        density : float
+            Material density (kg/m³).
+        thickness_z : float
+            Out-of-plane thickness (m). Defaults to 0.01 m (10 mm).
+        position : array_like, optional
+            Initial position [x, y]. Defaults to [0, 0].
+        orientation : float, optional
+            Initial orientation angle (rad). Defaults to 0.
+        velocity : array_like, optional
+            Initial velocity [dx, dy]. Defaults to [0, 0].
+        angular_velocity : float
+            Initial angular velocity (rad/s).
+        name : str, optional
+            Human-readable name.
+
+        Returns
+        -------
+        Body
+            A new Body with mass and inertia computed from the shape.
+        """
+        from .shapes import compute_mass_props
+        mass, inertia = compute_mass_props(
+            shape, density=density, thickness_z=thickness_z)
+        return cls(
+            mass=mass,
+            inertia=inertia,
+            position=position,
+            orientation=orientation,
+            velocity=velocity,
+            angular_velocity=angular_velocity,
+            name=name,
+            shape=shape,
+        )
 
     # Ensure assigned values are stored as column vectors
     velocity = as_column_property("velocity")

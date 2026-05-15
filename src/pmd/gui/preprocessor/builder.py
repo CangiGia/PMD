@@ -110,12 +110,15 @@ def build_model(spec: ModelSpec) -> PlanarMultibodyModel:
 
 # ──────────────────────────────────────────────────────────────────
 def _make_body(b: BodySpec) -> Body:
+    from pmd.gui.preprocessor.models.spec import _spec_to_core_shape
+    shape = _spec_to_core_shape(b.shape) if b.shape is not None else None
     return Body(
         mass=b.mass,
         inertia=b.inertia,
         position=list(b.position),
         orientation=b.orientation,
         name=b.name or b.id,
+        shape=shape,
     )
 
 

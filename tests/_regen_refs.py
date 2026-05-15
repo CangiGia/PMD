@@ -57,13 +57,7 @@ MODELS: dict[str, str] = {
     "fbl": "examples.four_bar_linkage",
 }
 
-SOLVERS: tuple[str, ...] = ("lsoda", "casadi")
-
-# Solver method strings expected by ``PlanarMultibodyModel.solve``.
-_METHOD = {
-    "lsoda":  "LSODA",
-    "casadi": "CASADI-DAE",
-}
+SOLVERS: tuple[str, ...] = ("casadi",)
 
 # Number of dynamic samples (decile indices: 0%, 10%, ..., 100%).
 N_SAMPLES = 11
@@ -91,11 +85,10 @@ def static_fingerprint(model) -> dict[str, np.ndarray]:
     }
 
 
-def dynamic_fingerprint(model, method: str, t_final: float, n_eval: int,
+def dynamic_fingerprint(model, t_final: float, n_eval: int,
                         ic_correct: bool) -> dict[str, np.ndarray]:
     """Run a full simulation and sample 11 decile points from the trajectory."""
     T, uT = model.solve(
-        method=method,
         t_final=t_final,
         t_eval=np.linspace(0.0, t_final, n_eval),
         ic_correct=ic_correct,
@@ -110,32 +103,30 @@ def dynamic_fingerprint(model, method: str, t_final: float, n_eval: int,
 # ---------------------------------------------------------------------------
 # Per-model driver
 # ---------------------------------------------------------------------------
+def _fresh_mod(module_name: str):
+    if module_name in sys.modules:
+        del sys.modules[module_name]
+    return importlib.import_module(module_name)
+
+
 def regenerate(model_key: str, solvers: tuple[str, ...]) -> None:
     module_name = MODELS[model_key]
     print(f"\n=== {model_key} ({module_name}) ===")
 
-    # Re-import fresh each call so that side-effecting Body() / Ground.add_marker
-    # state from a previous regeneration cannot leak through.
-    if module_name in sys.modules:
-        del sys.modules[module_name]
-    mod = importlib.import_module(module_name)
-
-    # Static snapshot (build once, fingerprint, save)
     print("  static  ...", end=" ", flush=True)
-    model = mod.build_model()
+    mod = _fresh_mod(module_name)
+    model = mod.model
     static = static_fingerprint(model)
     static_path = REFS_DIR / f"{model_key}_static.npz"
     np.savez(static_path, **static)
     print(f"OK  ({static_path.name})")
 
-    # Dynamic snapshot per solver (rebuild each time to avoid stale state)
     for solver in solvers:
         print(f"  {solver:<7} ...", end=" ", flush=True)
-        model = mod.build_model()
+        model = _fresh_mod(module_name).model
         try:
             dyn = dynamic_fingerprint(
                 model,
-                method=_METHOD[solver],
                 t_final=mod.T_FINAL,
                 n_eval=mod.N_EVAL,
                 ic_correct=mod.IC_CORRECT,
