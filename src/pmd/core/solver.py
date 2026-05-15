@@ -1617,6 +1617,19 @@ class PlanarMultibodyModel:
         else:
             lam0 = np.zeros(0)
 
+        # ---- Detect uniform time grid ----
+        # A uniform grid lets us compile the CasADi integrator exactly ONCE.
+        # We introduce "tau" as an explicit state variable that tracks
+        # absolute time so the step map [q, v, tau] -> [q', v', tau'] is
+        # identical for every step (only the initial tau changes).
+        if nSteps > 1:
+            _diffs = np.diff(T)
+            _uniform = bool(np.allclose(_diffs, _diffs[0], rtol=1e-9, atol=0.0))
+            _h = float(_diffs[0]) if _uniform else 0.0
+        else:
+            _uniform = False
+            _h = 0.0
+
         # ---- Build CasADi symbolic DAE ----
         q_sym   = ca.SX.sym('q',   nB3)
         v_sym   = ca.SX.sym('v',   nB3)
@@ -1624,9 +1637,18 @@ class PlanarMultibodyModel:
         vd_sym  = ca.SX.sym('vd',  nB3)
         t_sym   = ca.SX.sym('t')
 
-        Phi_sx = self._build_casadi_phi(ca, q_sym, t_sym)       # (nC, 1)
+        if _uniform:
+            # tau is the absolute time state; forces/constraints use it
+            # instead of the CasADi integration-time symbol.
+            tau_sym   = ca.SX.sym('tau')
+            _time_arg = tau_sym
+        else:
+            tau_sym   = None
+            _time_arg = t_sym
+
+        Phi_sx = self._build_casadi_phi(ca, q_sym, _time_arg)       # (nC, 1)
         Q_sx, has_user_forces = self._build_casadi_forces(
-            ca, q_sym, v_sym, t_sym)                              # (nB3, 1)
+            ca, q_sym, v_sym, _time_arg)                              # (nB3, 1)
 
         M_vec  = ca.SX(self.M_array.reshape(-1, 1))
         invM   = ca.SX(self.invM_array.reshape(-1, 1))
@@ -1642,33 +1664,56 @@ class PlanarMultibodyModel:
             lam_sym = ca.SX.sym('lam', nC)
             D_sx = ca.jacobian(Phi_sx, q_sym)  # (nC, nB3) — automatic!
 
-            # Semi-explicit DAE:
-            #   x = [q, v]   (differential)
-            #   z = [lam]    (algebraic)
-            #   ode: dx/dt = [v, M^{-1}(Q - D^T lam)]
-            #   alg: 0 = Phi(q, t)
-            ode = ca.vertcat(v_sym, invM * (Q_sx - D_sx.T @ lam_sym))
-            alg = Phi_sx
-
-            dae = {
-                'x':   ca.vertcat(q_sym, v_sym),
-                'z':   lam_sym,
-                'p':   p_user,
-                't':   t_sym,
-                'ode': ode,
-                'alg': alg,
-            }
+            if _uniform:
+                # State: [q, v, tau].  ode: [v, M^{-1}(Q - D^T lam), 1]
+                # No 't' key: absolute time tracked by tau, not by CasADi.
+                ode = ca.vertcat(v_sym, invM * (Q_sx - D_sx.T @ lam_sym),
+                                 ca.SX.ones(1))
+                dae = {
+                    'x':   ca.vertcat(q_sym, v_sym, tau_sym),
+                    'z':   lam_sym,
+                    'p':   p_user,
+                    'ode': ode,
+                    'alg': Phi_sx,
+                }
+            else:
+                # Semi-explicit DAE:
+                #   x = [q, v]   (differential)
+                #   z = [lam]    (algebraic)
+                #   ode: dx/dt = [v, M^{-1}(Q - D^T lam)]
+                #   alg: 0 = Phi(q, t)
+                ode = ca.vertcat(v_sym, invM * (Q_sx - D_sx.T @ lam_sym))
+                alg = Phi_sx
+                dae = {
+                    'x':   ca.vertcat(q_sym, v_sym),
+                    'z':   lam_sym,
+                    'p':   p_user,
+                    't':   t_sym,
+                    'ode': ode,
+                    'alg': alg,
+                }
         else:
-            # No constraints — pure ODE
-            ode = ca.vertcat(v_sym, invM * Q_sx)
-            dae = {
-                'x':   ca.vertcat(q_sym, v_sym),
-                'z':   ca.SX(),
-                'p':   p_user,
-                't':   t_sym,
-                'ode': ode,
-                'alg': ca.SX(),
-            }
+            if _uniform:
+                # State: [q, v, tau], pure ODE
+                ode = ca.vertcat(v_sym, invM * Q_sx, ca.SX.ones(1))
+                dae = {
+                    'x':   ca.vertcat(q_sym, v_sym, tau_sym),
+                    'z':   ca.SX(),
+                    'p':   p_user,
+                    'ode': ode,
+                    'alg': ca.SX(),
+                }
+            else:
+                # No constraints — pure ODE
+                ode = ca.vertcat(v_sym, invM * Q_sx)
+                dae = {
+                    'x':   ca.vertcat(q_sym, v_sym),
+                    'z':   ca.SX(),
+                    'p':   p_user,
+                    't':   t_sym,
+                    'ode': ode,
+                    'alg': ca.SX(),
+                }
 
         # ---- Collocation integrator options ----
         opts = {
@@ -1690,7 +1735,12 @@ class PlanarMultibodyModel:
         else:
             accelerations[0] = Q0_num / self.M_array
 
-        print(f"\n\t ...DAE analysis (CasADi-collocation): {nSteps} steps")
+        # ---- Build integrator once for uniform grids ----
+        if _uniform:
+            _integrator = ca.integrator('col_step', 'collocation', dae, 0.0, _h, opts)
+
+        print(f"\n\t ...DAE analysis (CasADi-collocation): {nSteps} steps"
+              f"{'  [one-shot integrator]' if _uniform else ''}")
 
         pbar = tqdm(total=nSteps - 1,
                     desc="         ...Simulation progress",
@@ -1744,13 +1794,19 @@ class PlanarMultibodyModel:
             else:
                 p_num = np.zeros(0)
 
-            # Build integrator for this step interval
-            integrator = ca.integrator(
-                'col_step', 'collocation', dae, t0_k, tf_k, opts
-            )
+            if _uniform:
+                # Augment state with current absolute time (tau initial cond.),
+                # run the precompiled integrator, then strip tau from the result.
+                x0_aug = np.concatenate([x_curr, [t0_k]])
+                res    = _integrator(x0=x0_aug, z0=z_curr, p=p_num)
+                xf     = np.array(res['xf']).flatten()
+                x_curr = xf[:-1]  # drop tau state
+            else:
+                res    = ca.integrator(
+                    'col_step', 'collocation', dae, t0_k, tf_k, opts
+                )(x0=x_curr, z0=z_curr, p=p_num)
+                x_curr = np.array(res['xf']).flatten()
 
-            res = integrator(x0=x_curr, z0=z_curr, p=p_num)
-            x_curr = np.array(res['xf']).flatten()
             z_curr = np.array(res['zf']).flatten() if nC > 0 else np.zeros(0)
 
             uT[k] = x_curr
