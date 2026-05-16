@@ -625,7 +625,7 @@ class PlanarMultibodyModel:
 
         print(f"\t ...Kinematic analysis completed successfully!")
         print(f"\n ")
-        self._distribute_results_kin(T, uT, accelerations, reactions)
+        self._distribute_results(T, uT, accelerations, reactions)
         return T, uT
 
     # ------------------------------------------------------------------
@@ -765,14 +765,14 @@ class PlanarMultibodyModel:
 
         print(f"\t ...Static equilibrium found (iter = {_iter + 1})")
         print(f"\n ")
-        self._distribute_results_kin(T, uT, accelerations, reactions)
+        self._distribute_results(T, uT, accelerations, reactions)
         return T, uT
 
     # ------------------------------------------------------------------
     # Private: distribute results for kinematic / static analyses
     # ------------------------------------------------------------------
 
-    def _distribute_results_kin(self, T, uT, accelerations, reactions):
+    def _distribute_results(self, T, uT, accelerations, reactions):
         """Populate ``_result_container`` from pre-computed arrays.
 
         Used by ``_solve_kinematic`` and ``_solve_static`` which compute
@@ -1535,6 +1535,6 @@ class PlanarMultibodyModel:
         print(f"\t ...Max constraint violation: {max_phi:.3e}")
         print(f"\n ")
 
-        self._distribute_results_kin(T, uT, accelerations, reactions)
+        self._distribute_results(T, uT, accelerations, reactions)
         return T, uT
 
