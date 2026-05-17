@@ -32,7 +32,7 @@ def _spec_to_core_shape(spec_shape):
     Returns ``None`` for unknown shape kinds.
     """
     import numpy as np
-    from pmd.core.shapes import Circle, Link, Polygon, Rectangle
+    from pmd.core.shapes import Circle, Link, Plate, Rectangle
     p    = spec_shape.params
     kind = spec_shape.kind
     if kind == "rectangle":
@@ -43,10 +43,13 @@ def _spec_to_core_shape(spec_shape):
                     thickness=float(p.get("thickness", 0.01)))
     if kind == "circle":
         return Circle(radius=float(p.get("radius", 0.05)))
-    if kind == "polygon":
+    if kind == "plate":
         verts = p.get("vertices", [])
-        arr = np.array(verts) if verts else np.zeros((3, 2))
-        return Polygon(vertices=arr)
+        if len(verts) >= 3:
+            v1, v2, v3 = verts[0], verts[1], verts[2]
+        else:
+            v1, v2, v3 = (0.0, 0.0), (1.0, 0.0), (0.5, 0.5)
+        return Plate(v1=tuple(v1), v2=tuple(v2), v3=tuple(v3))
     return None
 
 
@@ -73,7 +76,7 @@ def compute_mass_props(spec: "BodySpec") -> tuple[float, float] | None:
 
 #  Geometry
 
-ShapeKind = Literal["rectangle", "circle", "polygon", "link"]
+ShapeKind = Literal["rectangle", "circle", "plate", "link"]
 
 
 @dataclass
@@ -83,14 +86,14 @@ class ShapeSpec:
     Attributes
     ----------
     kind : str
-        ``"rectangle"``, ``"circle"``, ``"polygon"``, or ``"link"``
+        ``"rectangle"``, ``"circle"``, ``"plate"``, or ``"link"``
         (a simple rod between two endpoints).
     params : dict
         Shape-specific parameters. Examples:
 
         * rectangle: ``{"width": w, "height": h}``
         * circle:    ``{"radius": r}``
-        * polygon:   ``{"vertices": [(xi, eta), ...]}`` (local coords)
+        * plate:     ``{"vertices": [(x1, y1), (x2, y2), (x3, y3)]}`` (local coords, CCW)
         * link:      ``{"length": L, "thickness": t}``
     """
 

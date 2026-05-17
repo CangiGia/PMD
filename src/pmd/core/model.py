@@ -242,6 +242,16 @@ Ground = _GroundType()
 class Body(Base):
     """Rigid body in a planar multi-body dynamic simulation.
 
+    Mass properties can be specified in two ways:
+
+    1. **Explicit** – provide ``mass`` and ``inertia`` directly.  ``shape``
+       is optional and used only for visualisation.
+    2. **Auto-derived** – provide ``shape`` and ``density``; mass and moment
+       of inertia are computed from the geometry and ``thickness_z``.
+
+    When ``density`` is supplied together with explicit ``mass``/``inertia``,
+    the auto-derived values take precedence unless ``mass_override=True``.
+
     Attributes
     ----------
     name : str or None
@@ -250,6 +260,9 @@ class Body(Base):
         Mass of the body (kg).
     inertia : float
         Moment of inertia of the body (kg·m²).
+    mass_override : bool
+        ``True`` when mass and inertia were supplied explicitly by the user
+        (overriding auto-derivation from shape + density).
     position : ndarray
         Position vector (x, y), shape (2, 1).
     orientation : float
@@ -262,21 +275,39 @@ class Body(Base):
         Acceleration vector (ddx, ddy), shape (2, 1).
     angular_acceleration : float
         Angular acceleration ddphi (rad/s²).
-    shape : Rectangle or Circle or Polygon or None
-        Optional shape descriptor for visualization.
+    shape : Rectangle or Circle or Plate or Link or None
+        Optional shape descriptor for visualisation.
     """
 
-    def __init__(self, mass=1, inertia=1, position=None, orientation=None,
-                 velocity=None, angular_velocity=0, acceleration=None,
-                 angular_acceleration=0, name=None, shape=None):
+    def __init__(self, *, shape=None, density=None, thickness_z=0.01,
+                 mass=None, inertia=None, mass_override=False,
+                 position=None, orientation=None,
+                 velocity=None, angular_velocity=0,
+                 acceleration=None, angular_acceleration=0,
+                 name=None):
         """Initialize a Body.
 
         Parameters
         ----------
-        mass : float
-            Mass (must be positive).
-        inertia : float
-            Moment of inertia (must be non-negative).
+        shape : Rectangle, Circle, Plate, or Link, optional
+            Geometry used for visualisation and, when ``density`` is given,
+            for automatic mass-property computation.
+        density : float, optional
+            Material density (kg/m³).  Required when no explicit
+            ``mass``/``inertia`` are given.
+        thickness_z : float, optional
+            Out-of-plane thickness (m) used in auto-derivation.
+            Defaults to 0.01 m (10 mm).
+        mass : float, optional
+            Mass (kg, must be positive).  Required when ``density`` is not
+            given, or when ``mass_override=True``.
+        inertia : float, optional
+            Moment of inertia (kg·m², must be non-negative).  Same rules as
+            ``mass``.
+        mass_override : bool, optional
+            When ``True`` and ``density`` is also provided, the explicit
+            ``mass``/``inertia`` values are kept and density is ignored for
+            mass computation.  Defaults to ``False``.
         position : array_like, optional
             Initial position [x, y]. Defaults to [0, 0].
         orientation : float, optional
@@ -291,15 +322,68 @@ class Body(Base):
             Initial angular acceleration ddphi (rad/s²).
         name : str, optional
             Human-readable name.
-        shape : Rectangle or Circle or Polygon, optional
-            Shape descriptor for visualization.
 
         Raises
         ------
         ValueError
-            If mass is not positive or inertia is negative.
+            If mass is not positive, inertia is negative, or if the
+            combination of arguments is inconsistent.
+
+        Examples
+        --------
+        Classic (explicit mass/inertia, shape for visualisation only)::
+
+            b = Body(mass=1.5, inertia=0.02)
+            b = Body(mass=1.5, inertia=0.02, shape=Rectangle(0.4, 0.1))
+
+        Auto-derived from geometry::
+
+            b = Body(shape=Rectangle(0.4, 0.1), density=7850)
+            b = Body(shape=Plate(...), density=2700, thickness_z=0.005)
+
+        Explicit override when density is present (GUI workflow)::
+
+            b = Body(shape=Rectangle(0.4, 0.1), density=7850,
+                     mass=2.0, inertia=0.05, mass_override=True)
         """
         super().__init__()
+
+        # ── Resolve mass and inertia ───────────────────────────────
+        user_gave_mass = (mass is not None) or (inertia is not None)
+
+        if shape is None:
+            # Classic mode: explicit mass and inertia required.
+            if mass is None or inertia is None:
+                raise ValueError(
+                    f"Body {self.COUNT}: 'mass' and 'inertia' are required "
+                    f"when 'shape' is not provided.")
+        elif density is not None:
+            # Auto-derive from shape + density (unless mass_override).
+            if mass_override:
+                if mass is None or inertia is None:
+                    raise ValueError(
+                        f"Body {self.COUNT}: mass_override=True requires "
+                        f"explicit 'mass' and 'inertia'.")
+            else:
+                from .shapes import compute_mass_props
+                auto_m, auto_J = compute_mass_props(
+                    shape, density=density, thickness_z=thickness_z)
+                if user_gave_mass:
+                    warnings.warn(
+                        f"Body {self.COUNT}: density given; auto-computed "
+                        f"mass/inertia overwrite the user-supplied values. "
+                        f"Pass mass_override=True to keep user values.",
+                        UserWarning, stacklevel=2)
+                mass, inertia = auto_m, auto_J
+        else:
+            # Shape present, no density → explicit mass and inertia required.
+            if mass is None or inertia is None:
+                raise ValueError(
+                    f"Body {self.COUNT}: 'shape' without 'density' requires "
+                    f"explicit 'mass' and 'inertia' (shape is used for "
+                    f"visualisation only).  Provide 'density' to auto-compute.")
+
+        # ── Validate resolved values ───────────────────────────────
         if mass <= 0:
             raise ValueError(
                 f"Body {self.COUNT}: mass must be positive, got {mass}")
@@ -315,6 +399,7 @@ class Body(Base):
         self.shape = shape
         self.mass = mass
         self.inertia = inertia
+        self.mass_override = mass_override
         self.position = position if position is not None else colvect(0, 0)
         self.orientation = orientation if orientation is not None else 0.0
         # Set the _given flags AFTER initial assignment to avoid
@@ -338,51 +423,6 @@ class Body(Base):
         self._torque = 0
         self._markers = []
         self._result_container = None
-
-    @classmethod
-    def from_shape(cls, shape, *, density, thickness_z=0.01,
-                   position=None, orientation=None,
-                   velocity=None, angular_velocity=0,
-                   name=None):
-        """Create a Body whose mass and inertia are derived from shape and density.
-
-        Parameters
-        ----------
-        shape : Rectangle, Circle, Link, or Polygon
-            Geometry of the body.
-        density : float
-            Material density (kg/m³).
-        thickness_z : float
-            Out-of-plane thickness (m). Defaults to 0.01 m (10 mm).
-        position : array_like, optional
-            Initial position [x, y]. Defaults to [0, 0].
-        orientation : float, optional
-            Initial orientation angle (rad). Defaults to 0.
-        velocity : array_like, optional
-            Initial velocity [dx, dy]. Defaults to [0, 0].
-        angular_velocity : float
-            Initial angular velocity (rad/s).
-        name : str, optional
-            Human-readable name.
-
-        Returns
-        -------
-        Body
-            A new Body with mass and inertia computed from the shape.
-        """
-        from .shapes import compute_mass_props
-        mass, inertia = compute_mass_props(
-            shape, density=density, thickness_z=thickness_z)
-        return cls(
-            mass=mass,
-            inertia=inertia,
-            position=position,
-            orientation=orientation,
-            velocity=velocity,
-            angular_velocity=angular_velocity,
-            name=name,
-            shape=shape,
-        )
 
     # Ensure assigned values are stored as column vectors
     velocity = as_column_property("velocity")

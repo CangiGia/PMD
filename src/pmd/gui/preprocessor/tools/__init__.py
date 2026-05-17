@@ -5,6 +5,7 @@ from .select_tool import SelectTool
 from .move_tool import MoveTool
 from .body_rect_tool import BodyRectTool
 from .body_link_tool import BodyLinkTool
+from .body_plate_tool import BodyPlateTool
 from .marker_tool import MarkerTool
 from .joint_tool import JointTool, RevJointTool, TranJointTool
 from .ptp_force_tool import PtpForceTool
@@ -16,6 +17,7 @@ TOOL_REGISTRY = {
     "move":        MoveTool,
     "body_rect":   BodyRectTool,
     "body_link":   BodyLinkTool,
+    "body_plate":  BodyPlateTool,
     "marker":      MarkerTool,
     "joint_rev":   RevJointTool,
     "joint_tran":  TranJointTool,
@@ -31,7 +33,7 @@ def make_tool(key: str, window) -> Tool:
 
 __all__ = [
     "Tool", "SelectTool", "MoveTool",
-    "BodyRectTool", "BodyLinkTool",
+    "BodyRectTool", "BodyLinkTool", "BodyPlateTool",
     "MarkerTool",
     "JointTool", "RevJointTool", "TranJointTool",
     "PtpForceTool",

@@ -69,18 +69,94 @@ class Link:
 
 
 @dataclass(frozen=True)
-class Polygon:
-    """Arbitrary polygon shape in the body's local frame.
+class Plate:
+    """Triangular plate shape defined by three vertices in the body local frame.
+
+    The frame origin is always the centroid (CoM) of the triangle, which is
+    required by the PMD solver (mass matrix is diagonal only when the body
+    origin coincides with the CoM).  Vertices passed by the user are
+    automatically re-centred: the stored :attr:`vertices` are shifted so that
+    their mean is exactly ``(0, 0)``.
+
+    Parameters
+    ----------
+    v1, v2, v3 : tuple of float
+        Triangle vertices ``(x, y)`` in the body's local frame, listed in
+        **counter-clockwise** order.
 
     Attributes
     ----------
-    vertices : numpy.ndarray
-        Array of shape (N, 2) with vertices in local frame, CCW order.
+    vertices : numpy.ndarray, shape (3, 2)
+        Vertices re-centred on the centroid.  Used for rendering and inertia
+        computation.
+    input_vertices : numpy.ndarray, shape (3, 2)
+        Original vertices exactly as supplied by the user.
+
+    Examples
+    --------
+    >>> plate = Plate(v1=(0, 0), v2=(2, 0), v3=(1, 1.5))
+    >>> plate.vertices.mean(axis=0)   # centroid at origin
+    array([0., 0.])
+
+    To create a Plate from three world-frame pin positions use the
+    :meth:`from_world_points` factory, which also returns the centroid
+    world coordinates so you can set ``body.position`` consistently:
+
+    >>> plate, centroid = Plate.from_world_points((0,0), (2,0), (1,1.5))
     """
-    vertices: np.ndarray
+
+    v1: tuple[float, float]
+    v2: tuple[float, float]
+    v3: tuple[float, float]
 
     def __post_init__(self):
-        object.__setattr__(self, 'vertices', np.asarray(self.vertices, dtype=float))
+        raw = np.array([self.v1, self.v2, self.v3], dtype=float)
+        if raw.shape != (3, 2):
+            raise ValueError(
+                "Each vertex must be a 2-element (x, y) sequence.")
+        centroid = raw.mean(axis=0)
+        object.__setattr__(self, 'input_vertices', raw.copy())
+        object.__setattr__(self, 'vertices', raw - centroid)
+
+    @classmethod
+    def from_world_points(
+        cls,
+        p1: tuple[float, float],
+        p2: tuple[float, float],
+        p3: tuple[float, float],
+    ) -> tuple["Plate", np.ndarray]:
+        """Create a :class:`Plate` from three **world-frame** pin positions.
+
+        Computes the centroid, expresses the vertices in the local frame
+        (centred on the centroid), and returns both the :class:`Plate`
+        instance and the centroid world coordinates so that you can set
+        ``body.position`` correctly.
+
+        Parameters
+        ----------
+        p1, p2, p3 : tuple of float
+            World-frame coordinates ``(x, y)`` of the three vertices, CCW.
+
+        Returns
+        -------
+        plate : Plate
+        centroid : numpy.ndarray, shape (2,)
+            World position of the centroid (set this as ``body.position``).
+
+        Examples
+        --------
+        >>> plate, centroid = Plate.from_world_points((0, 0), (2, 0), (1, 1.5))
+        >>> body = Body(shape=plate, density=7850.0)
+        >>> body.position = centroid.reshape(2, 1)
+        """
+        pts = np.array([p1, p2, p3], dtype=float)
+        centroid = pts.mean(axis=0)
+        local = pts - centroid
+        return cls(
+            v1=tuple(local[0]),
+            v2=tuple(local[1]),
+            v3=tuple(local[2]),
+        ), centroid
 
 
 def _validate_shape(shape) -> None:
@@ -88,14 +164,14 @@ def _validate_shape(shape) -> None:
 
     Parameters
     ----------
-    shape : Rectangle, Circle, Link, or Polygon
+    shape : Rectangle, Circle, Link, or Plate
         Shape instance to check.
 
     Raises
     ------
     ValueError
-        If any dimension is non-positive, or a Polygon is not CCW / has
-        fewer than 3 vertices.
+        If any dimension is non-positive, or a Plate is not CCW / has
+        zero (or negative) area.
     TypeError
         If *shape* is not a recognised shape type.
     """
@@ -113,22 +189,15 @@ def _validate_shape(shape) -> None:
             raise ValueError(
                 f"Link length and thickness must be positive, "
                 f"got length={shape.length}, thickness={shape.thickness}")
-    elif isinstance(shape, Polygon):
-        verts = shape.vertices
-        if len(verts) < 3:
+    elif isinstance(shape, Plate):
+        raw = shape.input_vertices
+        if np.any(np.isnan(raw)):
+            raise ValueError("Plate vertices contain NaN values")
+        (x0, y0), (x1, y1), (x2, y2) = raw
+        signed_area_2 = (x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0)
+        if signed_area_2 <= 0:
             raise ValueError(
-                f"Polygon must have at least 3 vertices, got {len(verts)}")
-        if np.any(np.isnan(verts)):
-            raise ValueError("Polygon vertices contain NaN values")
-        n = len(verts)
-        signed_area = sum(
-            verts[i, 0] * verts[(i + 1) % n, 1]
-            - verts[(i + 1) % n, 0] * verts[i, 1]
-            for i in range(n)
-        )
-        if signed_area <= 0:
-            raise ValueError(
-                "Polygon vertices must be in counter-clockwise order "
+                "Plate vertices must be in counter-clockwise order "
                 "(signed area must be positive)")
     else:
         raise TypeError(f"Unsupported shape type: {type(shape).__name__}")
@@ -143,7 +212,7 @@ def compute_mass_props(shape, *, density: float,
 
     Parameters
     ----------
-    shape : Rectangle, Circle, Link, or Polygon
+    shape : Rectangle, Circle, Link, or Plate
         Geometry of the body.
     density : float
         Material density (kg/m³).
@@ -179,14 +248,14 @@ def compute_mass_props(shape, *, density: float,
         inertia = 0.5 * mass * r * r
         return mass, inertia
 
-    if isinstance(shape, Polygon):
-        verts = shape.vertices
-        n = len(verts)
+    if isinstance(shape, Plate):
+        # vertices are already re-centred on the CoM (centroid)
+        verts = shape.vertices   # shape (3, 2)
         signed_area_2 = 0.0
         Jz = 0.0
-        for i in range(n):
+        for i in range(3):
             xi, yi = verts[i]
-            xj, yj = verts[(i + 1) % n]
+            xj, yj = verts[(i + 1) % 3]
             cross = xi * yj - xj * yi
             signed_area_2 += cross
             Jz += (xi*xi + xi*xj + xj*xj + yi*yi + yi*yj + yj*yj) * cross

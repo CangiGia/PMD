@@ -50,6 +50,13 @@ class BodyItem(QGraphicsObject):
         elif kind == "rectangle":
             self._w = float(params.get("width",  0.20))
             self._h = float(params.get("height", 0.10))
+        elif kind == "plate":
+            raw = params.get("vertices", [[-0.1, -0.1], [0.1, -0.1], [0.0, 0.1]])
+            self._plate_verts = [(float(v[0]), float(v[1])) for v in raw]
+            xs = [v[0] for v in self._plate_verts]
+            ys = [v[1] for v in self._plate_verts]
+            self._w = max(xs) - min(xs) if xs else 0.20
+            self._h = max(ys) - min(ys) if ys else 0.10
         else:
             self._w = 0.20
             self._h = 0.10
@@ -80,8 +87,6 @@ class BodyItem(QGraphicsObject):
         return path
 
     def paint(self, painter, option, widget=None):
-        rect = QRectF(-self._w / 2, -self._h / 2, self._w, self._h)
-
         fill = self._FILL_SELECTED if self.isSelected() else self._FILL
         pen = QPen(self._STROKE)
         pen.setCosmetic(True)
@@ -89,12 +94,24 @@ class BodyItem(QGraphicsObject):
 
         painter.setBrush(QBrush(fill))
         painter.setPen(pen)
-        painter.drawRect(rect)
 
-        # CoM cross
-        painter.setPen(QPen(QColor("#1c2033"), 0))
-        painter.drawLine(-self._w * 0.05, 0, self._w * 0.05, 0)
-        painter.drawLine(0, -self._h * 0.05, 0, self._h * 0.05)
+        if self._kind == "plate":
+            from PySide6.QtGui import QPolygonF
+            from PySide6.QtCore import QPointF
+            poly = QPolygonF([QPointF(x, y) for x, y in self._plate_verts])
+            painter.drawPolygon(poly)
+            # CoM cross at origin (centroid = local (0,0))
+            r = max(self._w, self._h) * 0.05
+            painter.setPen(QPen(QColor("#1c2033"), 0))
+            painter.drawLine(-r, 0.0, r, 0.0)
+            painter.drawLine(0.0, -r, 0.0, r)
+        else:
+            rect = QRectF(-self._w / 2, -self._h / 2, self._w, self._h)
+            painter.drawRect(rect)
+            # CoM cross
+            painter.setPen(QPen(QColor("#1c2033"), 0))
+            painter.drawLine(-self._w * 0.05, 0, self._w * 0.05, 0)
+            painter.drawLine(0, -self._h * 0.05, 0, self._h * 0.05)
 
     # ──────────────────────────────────────────────────────────
     # Sync spec on move
