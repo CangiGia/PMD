@@ -242,7 +242,7 @@ class RibbonBar(QTabWidget):
         self._add_tool(g, "body_rect",   "Rect",    "Rectangular rigid body")
         self._add_tool(g, "body_link",   "Link",    "Two-point link / rod")
         self._add_tool(g, "body_circle", "Circle",  "Circular rigid body")
-        self._add_tool(g, "body_poly",   "Polygon", "Polygonal rigid body")
+        self._add_tool(g, "body_plate",  "Plate",   "Triangular plate body")
 
         lay.addStretch(1)
 

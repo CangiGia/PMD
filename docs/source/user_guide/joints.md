@@ -57,17 +57,17 @@ from pmd.core import DiscJoint
 j = DiscJoint(iBody=wheel, R=0.3, x0=0.0)
 ```
 
-## Relative Rotation — `RelRotJoint`
+## Rotational Motion — `RotMotion`
 
 Prescribed relative rotation between two bodies, driven by a `Function`.
 
 ```python
-from pmd.core import RelRotJoint, Function
+from pmd.core import RotMotion, Function
 
 f   = Function(type='a', coeff=[0.0, 10.0 * 3.14159/180, 0.0])  # 10 deg/s ramp
-drv = RelRotJoint(iBody=crank, jBody=Ground, iFunct=f)
+drv = RotMotion(iBody=crank, jBody=Ground, iFunct=f)
 ```
 
-## Relative Translation — `RelTranJoint`
+## Translational Motion — `TranMotion`
 
 Prescribed relative translation between two markers, driven by a `Function`.

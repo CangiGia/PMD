@@ -134,6 +134,17 @@ def functEval(funct, t):
         ``(f, f_d, f_dd)``: function value, first derivative, and second
         derivative at time ``t``.
     """
+    # Symbolic/callable mode: expr(t) evaluated numerically with finite diffs
+    if getattr(funct, 'expr', None) is not None:
+        _eps = 1e-7
+        f    = float(funct.expr(t))
+        f_d  = float((funct.expr(t + _eps) - funct.expr(t - _eps)) / (2.0 * _eps))
+        f_dd = float(
+            (funct.expr(t + _eps) - 2.0 * funct.expr(t) + funct.expr(t - _eps))
+            / _eps ** 2
+        )
+        return f, f_d, f_dd
+
     ftype = funct.type
     c = funct.coeff
 

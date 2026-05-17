@@ -8,7 +8,7 @@ sys.path.append(os.path.dirname(__file__))
 from .utils import *
 from .mechanics import *
 from .model import Base, Ground, _GroundType, Body, Marker
-from .shapes import Rectangle, Circle, Polygon, Link, MATERIALS, compute_mass_props
+from .shapes import Rectangle, Circle, Plate, Link, MATERIALS, compute_mass_props
 from .constraints import (
     Joint,
     RevJoint,
@@ -17,8 +17,9 @@ from .constraints import (
     RevTranJoint,
     RigidJoint,
     DiscJoint,
-    RelRotJoint,
-    RelTranJoint,
+)
+from .motion import Motion, RotMotion, TranMotion
+from .forces import (
     Force,
     Weight,
     PtpForce,
@@ -27,7 +28,9 @@ from .constraints import (
     GlobalForce,
     Torque,
     UserForce,
+    Actuator,
     Function,
+    BodyState,
 )
 from .builder import *
 from .solver import PlanarMultibodyModel
@@ -41,7 +44,7 @@ __all__ = [
     # Geometric shapes (for Body.shape)
     "Rectangle",
     "Circle",
-    "Polygon",
+    "Plate",
     "Link",
     "MATERIALS",
     "compute_mass_props",
@@ -53,8 +56,10 @@ __all__ = [
     "RevTranJoint",
     "RigidJoint",
     "DiscJoint",
-    "RelRotJoint",
-    "RelTranJoint",
+    # Motions
+    "Motion",
+    "RotMotion",
+    "TranMotion",
     # Forces
     "Force",
     "Weight",
@@ -64,8 +69,11 @@ __all__ = [
     "GlobalForce",
     "Torque",
     "UserForce",
+    "Actuator",
     # Driver function
     "Function",
+    # Data types
+    "BodyState",
     # Solver
     "PlanarMultibodyModel",
     # Units

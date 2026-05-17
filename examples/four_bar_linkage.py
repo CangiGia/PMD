@@ -41,7 +41,7 @@ TOPOLOGY & JOINTS
 
 ACTIVE FORCES
 -------------
-* Driver (motion) : RelRotJoint imposing 25 deg/s constant angular velocity on 
+* Driver (motion) : RotMotion imposing 25 deg/s constant angular velocity on 
                     link_1_ground_joint.
 * Gravity (fw)   : Active along the -Y axis.
 """
@@ -52,7 +52,7 @@ from pmd.core import (
     Function,
     Ground,
     PlanarMultibodyModel,
-    RelRotJoint,
+    RotMotion,
     RevJoint,
     Weight,
 )
@@ -119,7 +119,7 @@ j_l2_l3 = RevJoint(iMarker=l2_l3, jMarker=l3_l2,
 j_l3_g = RevJoint(iMarker=l3_g,  jMarker=g_l3,
                   q0=np.deg2rad(_THETA3_DEG),
                   name='link_3_ground_joint')
-motion = RelRotJoint(iBody=link_1, jBody=Ground, iFunct=fn_mot,
+motion = RotMotion(iBody=link_1, jBody=Ground, iFunct=fn_mot,
                      name='crank_motion')
 
 fw = Weight(gravity=9.80665)

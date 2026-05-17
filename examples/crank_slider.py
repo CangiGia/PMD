@@ -35,7 +35,7 @@ TOPOLOGY & JOINTS
 
 BOUNDARY CONDITIONS & SOLVER
 ----------------------------
-* Driver (j_mot) : RelRotJoint on O2 (j_cr). Imposes a constant relative angular 
+* Driver (j_mot) : RotMotion on O2 (j_cr). Imposes a constant relative angular 
                    velocity of 20 deg/s BETWEEN the Crankshaft and the Rod.
 * Gravity (fw)   : Active along the -Y axis.
 """
@@ -46,7 +46,7 @@ from pmd.core import (
     Function,
     Ground,
     PlanarMultibodyModel,
-    RelRotJoint,
+    RotMotion,
     RevJoint,
     TranJoint,
     Weight,
@@ -113,7 +113,7 @@ j_gc  = RevJoint(iMarker=mk_g_crank,  jMarker=mk_c_ground, name='ground_cranksha
 j_cr  = RevJoint(iMarker=mk_c_rod,    jMarker=mk_r_crank,  name='crankshaft_rod_joint')
 j_rs  = RevJoint(iMarker=mk_s_rod,    jMarker=mk_r_slider, name='rod_slider_joint')
 j_gs  = TranJoint(iMarker=mk_s_ground, jMarker=mk_g_slider, name='ground_slider_joint')
-j_mot = RelRotJoint(iBody=crankshaft, jBody=rod, iFunct=fn_mot, name='crank_rod_motor')
+j_mot = RotMotion(iBody=crankshaft, jBody=rod, iFunct=fn_mot, name='crank_rod_motor')
 
 fw = Weight(gravity=9.80665)
 

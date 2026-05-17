@@ -27,8 +27,17 @@ Joints
    RevTranJoint
    RigidJoint
    DiscJoint
-   RelRotJoint
-   RelTranJoint
+
+Motions
+-------
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   Motion
+   RotMotion
+   TranMotion
 
 Forces
 ------
@@ -44,6 +53,16 @@ Forces
    GlobalForce
    Torque
    UserForce
+   Actuator
+
+Data Types
+----------
+
+.. autosummary::
+   :toctree: generated/
+   :nosignatures:
+
+   BodyState
 
 Driver Functions
 ----------------

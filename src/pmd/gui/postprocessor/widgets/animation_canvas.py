@@ -22,7 +22,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from pmd.core.shapes import Rectangle, Circle, Polygon, Link
+from pmd.core.shapes import Rectangle, Circle, Plate, Link
 from pmd.core.constraints import RevJoint, TranJoint, PtpForce
 from pmd.core.mechanics import rotation_matrix
 from ... import icons as _icons
@@ -263,7 +263,7 @@ class AnimationCanvas(QWidget):
                     ax.add_patch(patch)
                     self._body_patches.append(patch)
 
-                elif isinstance(shape, Polygon):
+                elif isinstance(shape, Plate):
                     verts = shape.vertices.copy()
                     patch = MplPolygon(
                         verts, closed=True,

@@ -11,7 +11,9 @@ These tests verify:
   8. Torque force: constant Torque handled correctly.
   9. RotSdaForce: torsional spring–damper handled correctly.
  10. No constraints: pure ODE fallback (no joints) works.
- 11. UserForce: callback-based force handled correctly.
+ 11. UserForce: callback signature (t, iState, jState) handled correctly.
+ 12. Function(expr=...): callable symbolic mode works in solver.
+ 13. Actuator: force- and length-control modes.
 
 Run from: C:\\Users\\Giaco\\anaconda3\\envs\\GiacoEnv\\
 Command:  python -m pytest pmd/tests/test_solver.py -v
@@ -21,9 +23,10 @@ import numpy as np
 import pytest
 
 from pmd.core.model import Body, Ground, _GroundType
-from pmd.core.constraints import (
-    RevJoint, Weight, RelRotJoint, Function,
-    PtpForce, RotSdaForce, Torque, UserForce,
+from pmd.core.constraints import RevJoint
+from pmd.core.motion import RotMotion
+from pmd.core.forces import (
+    Weight, Function, PtpForce, RotSdaForce, Torque, UserForce, Actuator, BodyState,
 )
 from pmd.core.solver import PlanarMultibodyModel
 
@@ -59,13 +62,13 @@ def _make_pendulum():
 
 
 def _make_driven_crank():
-    """Crank driven by RelRotJoint: DOF = 0."""
+    """Crank driven by RotMotion: DOF = 0."""
     B = Body(mass=1.0, inertia=0.1, position=[0.0, 0.0], orientation=0.0)
     mk_pivot = B.add_marker([0.0, 0.0])
     mk_G = Ground.add_marker([0.0, 0.0])
     j_pin = RevJoint(iMarker=mk_pivot, jMarker=mk_G)
     f = Function(type='a', coeff=[0.0, 1.0, 0.0])
-    j_rot = RelRotJoint(iMarker=mk_pivot, jMarker=mk_G, iFunct=f)
+    j_rot = RotMotion(iMarker=mk_pivot, jMarker=mk_G, iFunct=f)
     model = PlanarMultibodyModel(
         bodies=[B], joints=[j_pin, j_rot], forces=[], functions=[f]
     )
@@ -359,14 +362,14 @@ def _make_quarter_car():
 
     _k_wh, _L0_wh, _dc_wh = 50000, 0.35, 1000
 
-    def wheel_contact():
-        dely = B2.position[1] - _L0_wh
+    def wheel_contact(t, i_state, j_state):
+        dely = i_state.position[1] - _L0_wh
         if dely < 0:
-            fy = (_k_wh * dely + _dc_wh * B2.velocity[1]).item()
-            return [{'body': B2, 'force': [0, -fy], 'torque': 0}]
-        return []
+            fy = (_k_wh * dely + _dc_wh * i_state.velocity[1]).item()
+            return {'force': [0, -fy], 'torque': 0}
+        return None
 
-    s2 = UserForce(callback=wheel_contact)
+    s2 = UserForce(iBody=B2, callback=wheel_contact)
     s3 = Weight()
 
     model = PlanarMultibodyModel(
@@ -405,3 +408,100 @@ class TestUserForce:
             Phi_k = model._compute_constraints().flatten()
             assert np.max(np.abs(Phi_k)) < 1e-6, \
                 f"Constraint violation {np.max(np.abs(Phi_k)):.2e} at step {k}"
+
+
+# ---------------------------------------------------------------------------
+# 12. Function(expr=callable) — symbolic mode
+# ---------------------------------------------------------------------------
+
+class TestFunctionExpr:
+
+    def test_expr_in_rot_motion(self):
+        """Function(expr=lambda) drives a RotMotion and model runs."""
+        _GroundType._instance._markers = [_GroundType._instance.origin]
+        Body.COUNT = 0
+
+        B1 = Body(mass=1.0, inertia=0.1,
+                  position=[0.5, 0.0], orientation=0.0)
+        p0 = Ground.add_marker([0.0, 0.0])
+        p1 = B1.add_marker([0.0, 0.0])
+
+        # Linear ramp: theta(t) = 0.5 * t
+        funct = Function(expr=lambda t: 0.5 * t)
+        j1 = RotMotion(iMarker=p1, jMarker=p0, iFunct=funct)
+
+        model = PlanarMultibodyModel(
+            bodies=[B1],
+            joints=[j1],
+            forces=[Weight()])
+        T, uT = model.solve(t_final=0.5, t_eval=np.linspace(0, 0.5, 11))
+        assert T.shape[0] == 11
+        # At t=0.5 the orientation should be ≈ 0.25 rad (within solver tolerance)
+        B1.orientation = float(uT[-1, 2])
+        assert abs(B1.orientation - 0.25) < 1e-2
+
+    def test_expr_casadi_symbolic(self):
+        """Function(expr=...) with CasADi SX builds without error."""
+        import casadi as ca
+        t_sym = ca.SX.sym('t')
+        funct = Function(expr=lambda t: 2.0 * t + 1.0)
+        result = PlanarMultibodyModel._casadi_functEval(ca, funct, t_sym)
+        # Should be a CasADi expression (not a plain Python float)
+        assert isinstance(result, ca.SX)
+
+
+# ---------------------------------------------------------------------------
+# 13. Actuator — force-control mode
+# ---------------------------------------------------------------------------
+
+class TestActuator:
+
+    def test_actuator_force_mode_runs(self):
+        """Actuator in force mode completes a dynamic solve."""
+        _GroundType._instance._markers = [_GroundType._instance.origin]
+        Body.COUNT = 0
+
+        B1 = Body(mass=2.0, inertia=0.5,
+                  position=[0.0, 0.5], orientation=0.0)
+        p0 = Ground.add_marker([0.0, 0.0])
+        p1 = B1.add_marker([0.0, -0.5])
+        p2 = B1.add_marker([0.0, 0.0])
+        p3 = Ground.add_marker([0.0, 0.5])
+
+        j1 = RevJoint(iMarker=p1, jMarker=p0)
+        # Constant 10 N actuator force between body centre and a ground anchor
+        act = Actuator(iMarker=p2, jMarker=p3, control='force',
+                       law=Function(expr=lambda t: 10.0))
+
+        model = PlanarMultibodyModel(
+            bodies=[B1],
+            joints=[j1],
+            forces=[Weight(), act])
+        T, uT = model.solve(t_final=0.5, t_eval=np.linspace(0, 0.5, 11))
+        assert T.shape[0] == 11
+        assert uT.shape == (11, 6)  # 1 body: 3 pos + 3 vel
+
+    def test_actuator_repr(self):
+        """Actuator __repr__ is informative."""
+        _GroundType._instance._markers = [_GroundType._instance.origin]
+        Body.COUNT = 0
+        B1 = Body(mass=1.0, inertia=0.1,
+                  position=[0.0, 0.5], orientation=0.0)
+        p0 = Ground.add_marker([0.0, 0.0])
+        p1 = B1.add_marker([0.0, 0.0])
+        act = Actuator(iMarker=p1, jMarker=p0, control='force',
+                       law=Function(expr=lambda t: 5.0))
+        r = repr(act)
+        assert 'Actuator' in r
+        assert 'force' in r
+
+    def test_bodystate_namedtuple(self):
+        """BodyState is a proper namedtuple with expected fields."""
+        bs = BodyState(
+            position=np.array([[1.0], [2.0]]),
+            velocity=np.zeros((2, 1)),
+            orientation=0.1,
+            angular_velocity=0.0,
+        )
+        assert bs.position[0, 0] == pytest.approx(1.0)
+        assert bs.orientation == pytest.approx(0.1)

@@ -17,9 +17,9 @@ import numpy as np
 import pytest
 
 from pmd.core.model import Body, Ground, _GroundType
-from pmd.core.constraints import (
-    RevJoint, Weight, RelRotJoint, Function
-)
+from pmd.core.constraints import RevJoint
+from pmd.core.motion import RotMotion
+from pmd.core.forces import Weight, Function
 from pmd.core.solver import PlanarMultibodyModel
 
 
@@ -52,7 +52,7 @@ def _make_pendulum():
 
 
 def _make_driven_crank():
-    """Single body driven by a RelRotJoint — fully kinematic (DOF = 0).
+    """Single body driven by a RotMotion — fully kinematic (DOF = 0).
 
     The crank rotates at constant angular velocity via Function type 'a'.
     DOF = 3*1 - 3 = 0.
@@ -67,7 +67,7 @@ def _make_driven_crank():
     # Drive rotation: phi(t) = 0 + 1*t  (omega = 1 rad/s)
     # Function type 'a': f(t) = c0 + c1*t + c2*t^2
     f = Function(type='a', coeff=[0.0, 1.0, 0.0])  # f = t
-    j_rot = RelRotJoint(iMarker=mk_pivot, jMarker=mk_G, iFunct=f)
+    j_rot = RotMotion(iMarker=mk_pivot, jMarker=mk_G, iFunct=f)
 
     model = PlanarMultibodyModel(
         bodies=[B], joints=[j_pin, j_rot], forces=[], functions=[f]

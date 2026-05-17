@@ -33,7 +33,7 @@ import numpy as np
 import numpy.linalg as lng
 from tqdm import tqdm
 
-from .constraints import Weight
+from .forces import Weight
 from .mechanics import *
 from .model import Ground
 from .utils import *
@@ -145,6 +145,12 @@ class PlanarMultibodyModel:
         for force in self.Forces:
             if isinstance(force, Weight):
                 force.initialize_weights(self.Bodies)
+
+        # Actuator expansion: length-mode actuators register a TranMotion joint
+        from .forces import Actuator
+        for force in list(self.Forces):
+            if isinstance(force, Actuator):
+                force.expand(self)
 
         # Joints — polymorphic initialization
         for joint in self.Joints:
@@ -354,8 +360,9 @@ class PlanarMultibodyModel:
             body._force = colvect([0.0, 0.0])
             body._torque = 0.0
 
-        # Polymorphic force application
+        # Polymorphic force application (inject current time for UserForce/Actuator)
         for force in self.Forces:
+            force._t = self.t
             force.apply(self.Bodies)
 
         # Build force array
@@ -505,7 +512,7 @@ class PlanarMultibodyModel:
         """Position/velocity/acceleration analysis at each time step.
 
         Requires DOF = 0 (fully determined model).  At least one driven
-        joint (``RelRotJoint`` or ``RelTranJoint`` with a ``Function``)
+        joint (``RotMotion`` or ``TranMotion`` with a ``Function``)
         must exist to supply kinematic input at each instant.
 
         Algorithm per step *k*:
@@ -520,7 +527,7 @@ class PlanarMultibodyModel:
         if nDOF != 0:
             raise ValueError(
                 f"Kinematic analysis requires DOF = 0, but this model has "
-                f"DOF = {nDOF}. Add driven joints (RelRotJoint / RelTranJoint) "
+                f"DOF = {nDOF}. Add driven joints (RotMotion / TranMotion) "
                 f"or remove free bodies."
             )
 
@@ -826,7 +833,7 @@ class PlanarMultibodyModel:
         CasADi computes it automatically via ``ca.jacobian``.
 
         Supported joint types: RevJoint, TranJoint, RevRevJoint,
-        RevTranJoint, RigidJoint, DiscJoint, RelRotJoint, RelTranJoint.
+        RevTranJoint, RigidJoint, DiscJoint, RotMotion, TranMotion.
 
         Parameters
         ----------
@@ -843,8 +850,8 @@ class PlanarMultibodyModel:
             Column vector of shape (nC, 1).
         """
         from .constraints import (RevJoint, TranJoint, RevRevJoint,
-                                  RevTranJoint, RigidJoint, DiscJoint,
-                                  RelRotJoint, RelTranJoint)
+                                  RevTranJoint, RigidJoint, DiscJoint)
+        from .motion import RotMotion, TranMotion
         from .model import Ground
 
         phi_blocks = []
@@ -954,8 +961,7 @@ class PlanarMultibodyModel:
                     (pos_i[0] - joint.x0) + joint.R * (phi_i - joint._p0),
                 )
 
-            elif isinstance(joint, RelRotJoint):
-                from .mechanics import functEval as _fE
+            elif isinstance(joint, RotMotion):
                 # Build symbolic function value from the Function object
                 fun_sx = self._casadi_functEval(ca, joint.iFunct, t_sym)
                 _, phi_i, _ = _body_state(iBody)
@@ -967,7 +973,7 @@ class PlanarMultibodyModel:
                 else:
                     block = phi_i - phi_j - fun_sx
 
-            elif isinstance(joint, RelTranJoint):
+            elif isinstance(joint, TranMotion):
                 rPi = _marker_rP(joint.iMarker, iBody)
                 rPj = _marker_rP(joint.jMarker, jBody)
                 d = rPi - rPj
@@ -989,9 +995,14 @@ class PlanarMultibodyModel:
     def _casadi_functEval(ca, funct, t_sym):
         """Build CasADi SX expression for a Function value f(t).
 
-        Supports types 'a', 'b', 'c' — mirrors ``mechanics.functEval``
-        but as a single symbolic SX graph using ``ca.if_else``.
+        Supports types 'a', 'b', 'c' and the callable *expr* mode
+        (``funct.expr(t_sym)``).  Mirrors ``mechanics.functEval`` but
+        as a single symbolic SX graph using ``ca.if_else``.
         """
+        # Symbolic/callable mode: let the callable build the SX graph
+        if funct.expr is not None:
+            return funct.expr(t_sym)
+
         ftype = funct.type
         c = funct.coeff
 
@@ -1043,9 +1054,9 @@ class PlanarMultibodyModel:
         ca.SX
             Column vector of shape (nB3, 1).
         """
-        from .constraints import (Weight, PtpForce, RotSdaForce,
-                                  LocalForce, GlobalForce, Torque,
-                                  UserForce)
+        from .forces import (Weight, PtpForce, RotSdaForce,
+                              LocalForce, GlobalForce, Torque,
+                              UserForce, Actuator)
         from .model import Ground
 
         nB3 = 3 * len(self.Bodies)
@@ -1191,6 +1202,11 @@ class PlanarMultibodyModel:
 
             elif isinstance(force, UserForce):
                 has_user_forces = True  # handled via numeric parameters
+
+            elif isinstance(force, Actuator):
+                if force.control == 'force':
+                    has_user_forces = True  # evaluated numerically each step
+                # 'length' mode is handled by the TranMotion joint, skip
 
             else:
                 raise NotImplementedError(
@@ -1433,17 +1449,18 @@ class PlanarMultibodyModel:
                                "Elapsed: {elapsed}, Remaining: {remaining}]",
                     colour="green")
 
-        # ---- Helper: evaluate UserForce contributions numerically ----
+        # ---- Helper: evaluate UserForce/Actuator contributions numerically ----
         if has_user_forces:
-            from .constraints import UserForce
+            from .forces import UserForce, Actuator
 
             def _eval_user_forces():
-                """Zero body forces, apply only UserForce, collect vector."""
+                """Zero body forces, apply only UserForce/Actuator, collect vector."""
                 for body in self.Bodies:
                     body._force = colvect([0.0, 0.0])
                     body._torque = 0.0
                 for force in self.Forces:
-                    if isinstance(force, UserForce):
+                    if isinstance(force, (UserForce, Actuator)):
+                        force._t = self.t
                         force.apply(self.Bodies)
                 g = np.zeros(nB3)
                 for Bi, body in enumerate(self.Bodies):
