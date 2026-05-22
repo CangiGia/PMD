@@ -4,7 +4,7 @@ import matplotlib as mpl
 from pmd.core import *
 import matplotlib.pyplot as plt
 plt.style.use('dark_background')
-from examples._plot_utils import plot_comparison
+from examples.deprecated._plot_utils import plot_comparison
 
 
 #%% bodies

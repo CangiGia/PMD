@@ -517,6 +517,187 @@ class Body(Base):
         self._markers.append(marker)
         return marker
 
+    # ── Geometry-driven factories ─────────────────────────────────
+    @classmethod
+    def from_link(cls, p1, p2, *, thickness, marker_theta=None, **body_kwargs):
+        """Build a Link-shaped body from its two world-frame endpoints.
+
+        Parameters
+        ----------
+        p1, p2 : array_like
+            World coordinates ``(x, y)`` of the link endpoints.
+        thickness : float
+            Link visual/geometric thickness (m).
+        marker_theta : float or None, optional
+            Local orientation (rad) applied to both endpoint markers.
+            Defaults to ``None`` (markers without orientation kinematics).
+            Set to ``0.0`` to give the endpoint markers an x-axis aligned
+            with the link itself (required by translational joints,
+            actuators with ``control='length'``, etc.).
+        **body_kwargs
+            Forwarded to :class:`Body` (``mass``, ``inertia``, ``density``,
+            ``name``, ...).  ``position``, ``orientation`` and ``shape``
+            are computed automatically and must not be supplied.
+
+        Returns
+        -------
+        body : Body
+        mk_p1, mk_p2 : Marker
+            Markers attached at ``p1`` and ``p2`` (local coords
+            ``[-L/2, 0]`` and ``[+L/2, 0]``).
+        """
+        for k in ("position", "orientation", "shape"):
+            if k in body_kwargs:
+                raise TypeError(f"Body.from_link() does not accept {k!r}")
+        from .shapes import Link
+        p1 = np.asarray(p1, dtype=float).flatten()
+        p2 = np.asarray(p2, dtype=float).flatten()
+        d = p2 - p1
+        length = float(np.linalg.norm(d))
+        if length < 1e-12:
+            raise ValueError("Link endpoints coincide.")
+        body = cls(
+            position=(p1 + p2) / 2.0,
+            orientation=float(np.arctan2(d[1], d[0])),
+            shape=Link(length=length, thickness=thickness),
+            **body_kwargs,
+        )
+        mk_p1 = body.add_marker([-length / 2.0, 0.0], theta=marker_theta)
+        mk_p2 = body.add_marker([ length / 2.0, 0.0], theta=marker_theta)
+        return body, mk_p1, mk_p2
+
+    @classmethod
+    def from_plate(cls, v1, v2, v3, *, orientation=0.0, **body_kwargs):
+        """Build a triangular Plate body from its three world-frame vertices.
+
+        Parameters
+        ----------
+        v1, v2, v3 : array_like
+            World coordinates of the triangle vertices in
+            **counter-clockwise** order.
+        orientation : float, optional
+            Body orientation angle (rad).  Defaults to ``0`` so the local
+            frame is axis-aligned with the world frame.
+        **body_kwargs
+            Forwarded to :class:`Body`.  ``position`` and ``shape`` are
+            computed automatically and must not be supplied.
+
+        Returns
+        -------
+        body : Body
+        mk_v1, mk_v2, mk_v3 : Marker
+            Markers attached at the three vertices.
+        """
+        for k in ("position", "shape"):
+            if k in body_kwargs:
+                raise TypeError(f"Body.from_plate() does not accept {k!r}")
+        from .shapes import Plate
+        shape, centroid = Plate.from_world_points(
+            tuple(np.asarray(v1, dtype=float).flatten()),
+            tuple(np.asarray(v2, dtype=float).flatten()),
+            tuple(np.asarray(v3, dtype=float).flatten()),
+        )
+        body = cls(
+            position=centroid,
+            orientation=orientation,
+            shape=shape,
+            **body_kwargs,
+        )
+        mk_v1 = body.add_marker((np.asarray(v1, dtype=float).flatten() - centroid).tolist())
+        mk_v2 = body.add_marker((np.asarray(v2, dtype=float).flatten() - centroid).tolist())
+        mk_v3 = body.add_marker((np.asarray(v3, dtype=float).flatten() - centroid).tolist())
+        return body, mk_v1, mk_v2, mk_v3
+
+    @classmethod
+    def from_rectangle(cls, c1, c2, c3, c4, **body_kwargs):
+        """Build a Rectangle body from its four world-frame corners (CCW).
+
+        The local frame is oriented so that the edge ``c1→c2`` lies along
+        the local +x axis (``width``) and ``c2→c3`` along the local +y
+        axis (``height``).
+
+        Parameters
+        ----------
+        c1, c2, c3, c4 : array_like
+            World coordinates of the four corners in
+            **counter-clockwise** order.
+        **body_kwargs
+            Forwarded to :class:`Body`.  ``position``, ``orientation`` and
+            ``shape`` are computed automatically and must not be supplied.
+
+        Returns
+        -------
+        body : Body
+        mk_c1, mk_c2, mk_c3, mk_c4 : Marker
+            Markers attached at the four corners.
+        """
+        for k in ("position", "orientation", "shape"):
+            if k in body_kwargs:
+                raise TypeError(f"Body.from_rectangle() does not accept {k!r}")
+        from .shapes import Rectangle
+        corners = [np.asarray(c, dtype=float).flatten() for c in (c1, c2, c3, c4)]
+        d12 = corners[1] - corners[0]
+        d23 = corners[2] - corners[1]
+        d34 = corners[3] - corners[2]
+        d41 = corners[0] - corners[3]
+        width  = float(np.linalg.norm(d12))
+        height = float(np.linalg.norm(d23))
+        if width < 1e-12 or height < 1e-12:
+            raise ValueError("Rectangle has a degenerate (zero-length) side.")
+        atol = 1e-9 * max(width, height)
+        if (not np.isclose(np.linalg.norm(d34), width,  atol=atol) or
+            not np.isclose(np.linalg.norm(d41), height, atol=atol) or
+            not np.isclose(float(np.dot(d12, d23)), 0.0, atol=atol * max(width, height))):
+            raise ValueError("Four corners do not form a rectangle.")
+        centroid = sum(corners) / 4.0
+        body = cls(
+            position=centroid,
+            orientation=float(np.arctan2(d12[1], d12[0])),
+            shape=Rectangle(width=width, height=height),
+            **body_kwargs,
+        )
+        mk_c1 = body.add_marker([-width / 2.0, -height / 2.0])
+        mk_c2 = body.add_marker([ width / 2.0, -height / 2.0])
+        mk_c3 = body.add_marker([ width / 2.0,  height / 2.0])
+        mk_c4 = body.add_marker([-width / 2.0,  height / 2.0])
+        return body, mk_c1, mk_c2, mk_c3, mk_c4
+
+    @classmethod
+    def from_circle(cls, center, radius, *, orientation=0.0, **body_kwargs):
+        """Build a Circle body from its world-frame centre and radius.
+
+        Parameters
+        ----------
+        center : array_like
+            World coordinates ``(x, y)`` of the disc centre.
+        radius : float
+            Disc radius (m).
+        orientation : float, optional
+            Body orientation angle (rad).  A circle is rotationally
+            symmetric, but the local frame is still meaningful for
+            attaching markers later via :meth:`add_marker`.
+        **body_kwargs
+            Forwarded to :class:`Body`.  ``position`` and ``shape`` are
+            computed automatically and must not be supplied.
+
+        Returns
+        -------
+        body : Body
+            No natural markers are returned (the disc is symmetric).
+            Attach markers explicitly via :meth:`add_marker` if needed.
+        """
+        for k in ("position", "shape"):
+            if k in body_kwargs:
+                raise TypeError(f"Body.from_circle() does not accept {k!r}")
+        from .shapes import Circle
+        body = cls(
+            position=np.asarray(center, dtype=float).flatten(),
+            orientation=orientation,
+            shape=Circle(radius=radius),
+            **body_kwargs,
+        )
+        return body
+
     def __repr__(self):
         label = f"'{self.name}'" if self.name else f"#{self.COUNT}"
         return f"Body({label}, mass={self.mass}, inertia={self.inertia})"

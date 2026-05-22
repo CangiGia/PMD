@@ -37,7 +37,7 @@ Forces:
 import numpy as np
 import os
 from pmd.core import *
-from examples._plot_utils import plot_comparison
+from examples.deprecated._plot_utils import plot_comparison
 
 # MODEL DEFINITION
 

@@ -35,7 +35,6 @@ class PostProcessor:
 
         Returns *self* so calls can be chained.
         """
-        model._distribute_results(T, uT)
         self._sessions.append(Session(model, T, uT, name=name))
         return self
 

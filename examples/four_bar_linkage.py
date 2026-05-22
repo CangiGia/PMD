@@ -1,8 +1,5 @@
-"""
-FBL (Four-Bar Linkage) Model - Planar Multibody Dynamics (pmd)
-==============================================================
-KINEMATIC SCHEME
-----------------
+""" FBL (Four-Bar Linkage) Model - Planar Multibody Dynamics (pmd)
+
                                                 (O3)
                                             *    *
                                         *       *
@@ -21,8 +18,6 @@ KINEMATIC SCHEME
 
 BODY PARAMETERS
 ----------------
-All links are modeled as standard rigid bodies.
-
 +----------+-----------------+----------+----------+---------------+
 | Body     | Kinematic Role  |  Length  |  Width   | Initial Angle |
 |          |                 |   [mm]   |  [mm]    |    [deg]      |
@@ -31,19 +26,6 @@ All links are modeled as standard rigid bodies.
 | link_2   |     Coupler     |  120.0   |   8.0    |    20.298     |
 | link_3   |    Follower     |   80.0   |   8.0    |  −122.605     |
 +----------+-----------------+----------+----------+---------------+
-
-TOPOLOGY & JOINTS
------------------
-* O1 [link_1_ground_joint] : RevJoint     Ground <-> link_1  @ (0, 0)
-* O2 [link_1_link_2_joint] : RevJoint     link_1 <-> link_2  @ Crank tip
-* O3 [j_23]                : RevJoint     link_2 <-> link_3  @ Coupler tip
-* O4 [j_3g]                : RevJoint     link_3 <-> Ground  @ (~100, 0) [Loop Closure]
-
-ACTIVE FORCES
--------------
-* Driver (motion) : RotMotion imposing 25 deg/s constant angular velocity on 
-                    link_1_ground_joint.
-* Gravity (fw)   : Active along the -Y axis.
 """
 
 import numpy as np
@@ -57,7 +39,6 @@ from pmd.core import (
     Weight,
 )
 from pmd.core.shapes import Link
-from pmd.core.model import _GroundType
 
 
 T_FINAL = 25.0
@@ -75,9 +56,6 @@ _THETA3_DEG = -122.605
 
 _O4 = [0.100, 0.000]
 _OMEGA_DEG = -25.0
-
-if _GroundType._instance is not None:
-    _GroundType._markers = [_GroundType._instance.origin]
 
 link_1 = Body(mass=1.1528090607e-02, inertia=7.4696175803e-05, name='link_1',
               shape=Link(length=_L1, thickness=8.0e-3))

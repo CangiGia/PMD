@@ -23,7 +23,8 @@ from PySide6.QtWidgets import (
 )
 
 from pmd.core.shapes import Rectangle, Circle, Plate, Link
-from pmd.core.constraints import RevJoint, TranJoint, PtpForce
+from pmd.core.constraints import RevJoint, TranJoint
+from pmd.core.forces import PtpForce
 from pmd.core.mechanics import rotation_matrix
 from ... import icons as _icons
 from ...style import CANVAS_BG_DARK, CANVAS_BG_LIGHT, CANVAS_FG_DARK, CANVAS_FG_LIGHT
@@ -415,7 +416,7 @@ class AnimationCanvas(QWidget):
             x, y, phi = _body_pos(body, step)
             shape = body.shape
 
-            if isinstance(shape, (Rectangle, Polygon, Link)):
+            if isinstance(shape, (Rectangle, Plate, Link)):
                 t = Affine2D().rotate(phi).translate(x, y) + ax.transData
                 patch.set_transform(t)
             elif isinstance(shape, Circle):

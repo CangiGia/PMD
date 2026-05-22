@@ -174,12 +174,12 @@ class TranMotion(Motion):
         fun, fun_d, fun_dd = functEval(self.iFunct, model.t)
         f = fun * fun_dd + fun_d ** 2
         if Bi is Ground:
-            f = f + d.T @ rotate_90(jPt._dsP).T @ Bj.angular_velocity
+            f = f + float(d.T @ rotate_90(jPt._dsP)) * Bj.angular_velocity
         elif Bj is Ground:
-            f = (f - d.T @ rotate_90(iPt._dsP).T @ Bi.angular_velocity
-                 - dd.T @ dd)
+            f = (f - float(d.T @ rotate_90(iPt._dsP)) * Bi.angular_velocity
+                 - float(dd.T @ dd))
         else:
-            f = (f + d.T @ rotate_90(jPt._dsP).T @ Bj.angular_velocity
-                 - d.T @ rotate_90(iPt._dsP).T @ Bi.angular_velocity
-                 - dd.T @ dd)
+            f = (f + float(d.T @ rotate_90(jPt._dsP)) * Bj.angular_velocity
+                 - float(d.T @ rotate_90(iPt._dsP)) * Bi.angular_velocity
+                 - float(dd.T @ dd))
         return f

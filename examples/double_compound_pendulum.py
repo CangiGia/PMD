@@ -1,8 +1,4 @@
-"""
-DCP (Double Compound Pendulum) Model - Planar Multibody Dynamics (pmd)
-=======================================================================
-KINEMATIC SCHEME
-----------------
+""" DCP (Double Compound Pendulum) Model - Planar Multibody Dynamics (pmd)
 
       (O1)
         *
@@ -14,23 +10,12 @@ KINEMATIC SCHEME
                 
 BODY PARAMETERS
 ---------------
-All links are modeled as standard rigid bodies.
-
 +--------+-----------+------------------+---------------------+------------------+
 | Body   | Mass [kg] | Inertia [kg·m²]  | IC: CM pos [m]      | IC: angle [deg]  |
 +--------+-----------+------------------+---------------------+------------------+
 | link_1 | 1.756261  |    0.011854      | (0.1218, −0.0281)   | −12.9946 (=347°) |
 | link_2 | 2.692381  |    0.042171      | (0.4378, −0.0086)   | +13.7698         |
 +--------+-----------+------------------+---------------------+------------------+
-
-TOPOLOGY & JOINTS
------------------
-* O1  [ground_link_1_joint] : RevJoint   Ground ↔ link_1  @ (0, 0)
-* O2  [link_1_link_2_joint] : RevJoint   link_1 ↔ link_2  @ end of link_1
-
-ACTIVE FORCES
--------------
-* Gravity (fw) : Weight along the −Y axis (g = 9.80665 m/s²).
 """
 
 import numpy as np
@@ -42,7 +27,6 @@ from pmd.core import (
     Weight,
 )
 from pmd.core.shapes import Link
-from pmd.core.model import _GroundType
 
 
 T_FINAL    = 35.0
@@ -61,9 +45,6 @@ _M1 = 1.756261   # kg
 _J1 = 0.011854   # kg·m²
 _M2 = 2.692381   # kg
 _J2 = 0.042171   # kg·m²
-
-if _GroundType._instance is not None:
-    _GroundType._markers = [_GroundType._instance.origin]
 
 _th1 = np.deg2rad(_THETA1_DEG)
 _th2 = np.deg2rad(_THETA2_DEG)

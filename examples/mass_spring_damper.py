@@ -1,8 +1,4 @@
-r"""
-MSD (Mass-Spring-Damper) Model - Planar Multibody Dynamics (pmd)
-================================================================
-KINEMATIC SCHEME & INITIAL STATE
----------------------------------
+""" MSD (Mass-Spring-Damper) Model - Planar Multibody Dynamics (pmd)
 
           +---------+
           |         |
@@ -19,13 +15,11 @@ KINEMATIC SCHEME & INITIAL STATE
          ===+=====+=== ground
 
 BODY PARAMETERS
----------------
 +------+----------+---------------+------------+--------------+
 | Body | m  [kg]  |  I  [kg·m²]   | pos  [m]   | vel  [m/s]   |
 +------+----------+---------------+------------+--------------+
 | mass | 1000.0   |  0.5  (†)     | (0.0, 2.0) | (0.0, 10.0)  |
 +------+----------+---------------+------------+--------------+
-(†) Placeholder — rotation is blocked by TranJoint, so I has no effect.
 """
 
 import numpy as np
@@ -37,15 +31,11 @@ from pmd.core import (
     TranJoint,
 )
 from pmd.core.shapes import Rectangle
-from pmd.core.model import _GroundType
 
 
 T_FINAL = 3.0
 N_EVAL = 3001
 IC_CORRECT = True
-
-if _GroundType._instance is not None:
-    _GroundType._markers = [_GroundType._instance.origin]
 
 mass = Body(
     mass=1000.0,

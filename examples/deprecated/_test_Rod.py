@@ -37,7 +37,7 @@ NOTE: MATLAB uses the Lankarani-Nikravesh model with K=1e11, e=0.95 which
 import numpy as np
 import os
 from pmd.core import *
-from examples._plot_utils import plot_comparison
+from examples.deprecated._plot_utils import plot_comparison
 
 # =============================================================================
 # MODEL DEFINITION

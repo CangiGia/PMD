@@ -52,15 +52,11 @@ from pmd.core import (
     Weight,
 )
 from pmd.core.shapes import Link, Rectangle
-from pmd.core.model import _GroundType
 
 
 T_FINAL = 20.0
 N_EVAL = 20000
 IC_CORRECT = True
-
-if _GroundType._instance is not None:
-    _GroundType._markers = [_GroundType._instance.origin]
 
 crankshaft = Body(
     mass=0.8169313258,

@@ -4,7 +4,7 @@ import scipy as sc
 from pmd.core import *
 from pmd.core.model import _GroundType
 import matplotlib.pyplot as plt
-from examples._plot_utils import plot_comparison
+from examples.deprecated._plot_utils import plot_comparison
 from pmd.gui import PostProcessor
 
 #%% bodies

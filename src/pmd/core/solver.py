@@ -562,6 +562,12 @@ class PlanarMultibodyModel:
 
         print(f"\n\t ...Kinematic analysis: {nSteps} steps")
 
+        pbar = tqdm(total=nSteps - 1,
+                    desc="         ...Simulation progress",
+                    bar_format="{l_bar}{bar}| [{n_fmt}/{total_fmt} steps, "
+                               "Elapsed: {elapsed}, Remaining: {remaining}]",
+                    colour="green")
+
         for k, t_k in enumerate(T):
             self.t = float(t_k)
 
@@ -629,7 +635,10 @@ class PlanarMultibodyModel:
             uT[k] = u_k
             accelerations[k] = ddq.flatten()
             reactions[k] = lam.flatten()
+            if k < nSteps - 1:
+                pbar.update(1)
 
+        pbar.close()
         print(f"\t ...Kinematic analysis completed successfully!")
         print(f"\n ")
         self._distribute_results(T, uT, accelerations, reactions)
