@@ -1,4 +1,4 @@
-""" MSD (Mass-Spring-Damper) Model - Planar Multibody Dynamics (pmd)
+"""MSD (Mass-Spring-Damper) Model - Planar Multibody Dynamics (pmd)
 
           +---------+
           |         |
@@ -6,9 +6,9 @@
           |         |
           +---------+
             |     |
-            /     |  
+            /     |
             \    _|_
-    spring  /   |___| 
+    spring  /   |___|
             \   | | |damper
             /     |
             |     |
@@ -23,6 +23,7 @@ BODY PARAMETERS
 """
 
 import numpy as np
+
 from pmd.core import (
     Body,
     Ground,
@@ -32,38 +33,37 @@ from pmd.core import (
 )
 from pmd.core.shapes import Rectangle
 
-
 T_FINAL = 3.0
 N_EVAL = 3001
 IC_CORRECT = True
 
 mass = Body(
     mass=1000.0,
-    inertia=0.5,           # placeholder — rotation blocked by TranJoint
+    inertia=0.5,  # placeholder — rotation blocked by TranJoint
     position=[0.0, 0.0],
     velocity=[0.0, 10.0],
-    name='mass',
+    name="mass",
     shape=Rectangle(width=0.4, height=0.3),
 )
 
 mk_g_spring = Ground.add_marker([0.0, -2.0])
-mk_g_tran   = Ground.add_marker([0.0, 0.0], theta=np.pi / 2)
+mk_g_tran = Ground.add_marker([0.0, 0.0], theta=np.pi / 2)
 mk_m_spring = mass.add_marker([0.0, -0.5])
-mk_m_tran   = mass.add_marker([0.0,  0.0], theta=np.pi / 2)
+mk_m_tran = mass.add_marker([0.0, 0.0], theta=np.pi / 2)
 
 f_sd = PtpForce(
     iMarker=mk_m_spring,
     jMarker=mk_g_spring,
     k=1.0e6,
-    L0=1.5,     # natural (undeformed) length [m]
+    L0=1.5,  # natural (undeformed) length [m]
     dc=6500.0,
-    name='spring_damper',
+    name="spring_damper",
 )
 
 j_gs = TranJoint(
     iMarker=mk_m_tran,
     jMarker=mk_g_tran,
-    name='vertical_slider',
+    name="vertical_slider",
 )
 
 model = PlanarMultibodyModel(

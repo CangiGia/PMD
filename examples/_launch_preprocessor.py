@@ -2,6 +2,5 @@
 
 from pmd.gui.preprocessor import PreProcessor
 
-
 if __name__ == "__main__":
     PreProcessor().show()

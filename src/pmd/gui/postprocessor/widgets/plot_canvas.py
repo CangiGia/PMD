@@ -8,11 +8,11 @@ matplotlib.use("qtagg")
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg, NavigationToolbar2QT
 from matplotlib.figure import Figure
 from matplotlib.widgets import RectangleSelector
-from PySide6.QtCore import Signal, Qt
+from PySide6.QtCore import Signal, Qt, QEvent
+from PySide6.QtGui import QCursor
+from PySide6.QtWidgets import QMenu, QToolBar, QToolButton, QVBoxLayout, QWidget
 
 from ._zoom_inset import ZoomInset
-from PySide6.QtWidgets import QToolBar, QToolButton, QVBoxLayout, QWidget
-
 from ..models import CurveItem
 from ... import icons as _icons
 from ...style import CANVAS_BG_DARK, CANVAS_BG_LIGHT, CANVAS_FG_DARK, CANVAS_FG_LIGHT
@@ -28,6 +28,8 @@ class PlotCanvas(QWidget):
     """
 
     step_requested = Signal(int)  # emitted on click: nearest time-step index
+    # Emitted when the time-cursor lock state changes.
+    cursor_lock_changed = Signal(bool)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -66,12 +68,16 @@ class PlotCanvas(QWidget):
         # *shown* while the animation pane is visible.
         self._time_cursor_t: float | None = None
         self._time_cursor_visible: bool = False
+        self._time_cursor_locked: bool = False
         # ax -> {"vline": Line2D, "dots": list[Line2D], "labels":
         # list[Annotation], "curves": list[CurveItem]}
         self._time_cursor_artists: dict = {}
         # Backwards-compat alias used by older code paths that only
         # need to invalidate the dict on figure rebuilds.
         self._time_cursor_lines: dict = self._time_cursor_artists
+
+        # Intercept right-clicks for the time-cursor lock menu.
+        self._canvas.installEventFilter(self)
 
         # Custom visible toolbar (built after instance vars)
         self._toolbar = self._build_toolbar()
@@ -856,11 +862,101 @@ class PlotCanvas(QWidget):
 
         Pass ``None`` to clear the cursor entirely. The cursor only
         renders while it is also marked visible
-        (:meth:`set_time_cursor_visible`).
+        (:meth:`set_time_cursor_visible`).  When the cursor is locked,
+        normal animation updates are silently ignored; use
+        :meth:`force_time_cursor` to move it regardless.
         """
+        if self._time_cursor_locked:
+            return  # animation updates suppressed while locked
         self._time_cursor_t = None if t is None else float(t)
         self._refresh_time_cursor()
         self._canvas.draw_idle()
+
+    def force_time_cursor(self, t: float) -> None:
+        """Move the cursor to *t* even while locked (used by locked spin box)."""
+        self._time_cursor_t = float(t)
+        self._refresh_time_cursor()
+        self._canvas.draw_idle()
+
+    def lock_time_cursor(self, t: float | None = None) -> None:
+        """Lock the cursor at *t* (or keep current position if *t* is None)."""
+        if t is not None:
+            self._time_cursor_t = float(t)
+        self._time_cursor_locked = True
+        self._update_time_cursor_style()
+        self._canvas.draw_idle()
+        self.cursor_lock_changed.emit(True)
+
+    def unlock_time_cursor(self) -> None:
+        """Unlock the cursor, allowing animation updates again."""
+        self._time_cursor_locked = False
+        self._update_time_cursor_style()
+        self._canvas.draw_idle()
+        self.cursor_lock_changed.emit(False)
+
+    @property
+    def time_cursor_locked(self) -> bool:
+        return self._time_cursor_locked
+
+    @property
+    def time_cursor_t(self) -> float | None:
+        return self._time_cursor_t
+
+    def _update_time_cursor_style(self) -> None:
+        """Thicken/restore the time-cursor vline to signal lock state."""
+        lw = 2.0 if self._time_cursor_locked else 1.0
+        ls = "-"  if self._time_cursor_locked else "--"
+        for entry in self._time_cursor_artists.values():
+            v = entry.get("vline")
+            if v is not None:
+                v.set_linewidth(lw)
+                v.set_linestyle(ls)
+
+    def _near_time_cursor(self, qt_x: int) -> bool:
+        """Return True if Qt pixel x is within 10 px of the time-cursor vline."""
+        if not self._time_cursor_visible or self._time_cursor_t is None:
+            return False
+        for ax, entry in self._time_cursor_artists.items():
+            v = entry.get("vline")
+            if v is None or not v.get_visible():
+                continue
+            try:
+                cx_px, _ = ax.transData.transform(
+                    (self._time_cursor_t, ax.get_ylim()[0]))
+                if abs(qt_x - cx_px) <= 10:
+                    return True
+            except Exception:
+                pass
+        return False
+
+    def _show_time_cursor_menu(self) -> None:
+        """Display a Lock / Unlock context menu for the time cursor."""
+        menu = QMenu(self)
+        if self._time_cursor_locked:
+            act = menu.addAction("Unlock cursor")
+            try:
+                act.setIcon(_icons.icon("mdi6.lock-open-variant-outline"))
+            except Exception:
+                pass
+            act.triggered.connect(self.unlock_time_cursor)
+        else:
+            act = menu.addAction("Lock cursor")
+            try:
+                act.setIcon(_icons.icon("mdi6.lock-outline"))
+            except Exception:
+                pass
+            act.triggered.connect(lambda: self.lock_time_cursor(self._time_cursor_t))
+        menu.exec_(QCursor.pos())
+
+    def eventFilter(self, obj, ev):
+        """Intercept right-clicks on the canvas to show the cursor lock menu."""
+        if (obj is self._canvas
+                and ev.type() == QEvent.Type.MouseButtonPress
+                and ev.button() == Qt.MouseButton.RightButton
+                and self._near_time_cursor(ev.pos().x())):
+            self._show_time_cursor_menu()
+            return True  # consume
+        return super().eventFilter(obj, ev)
 
     def set_time_cursor_visible(self, on: bool):
         """Show / hide the synced time cursor without dropping its position."""
@@ -1036,6 +1132,8 @@ class PlotCanvas(QWidget):
 
     def _on_click(self, event):
         """Convert a matplotlib click to the nearest time-step index and emit it."""
+        if self._time_cursor_locked:
+            return  # animation step changes blocked while cursor is locked
         if (self._btn_pan.isChecked() or self._btn_zoom.isChecked()
                 or self._btn_add_zoom.isChecked() or self._btn_cursor.isChecked()):
             return

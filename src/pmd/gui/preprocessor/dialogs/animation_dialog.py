@@ -17,7 +17,7 @@ import time
 from typing import Iterable
 
 from PySide6.QtCore import Qt, QSize, QTimer, Signal
-from PySide6.QtGui import QColor, QPainter, QTransform
+from PySide6.QtGui import QColor, QKeySequence, QPainter, QShortcut, QTransform
 from PySide6.QtWidgets import (
     QDialog,
     QDoubleSpinBox,
@@ -221,6 +221,19 @@ class PreprocessorAnimationCanvas(QWidget):
         self._fit_btn = QPushButton("Fit")
         self._fit_btn.clicked.connect(self._fit_view)
 
+        # Marker visibility toggle.  Default ON.  Same UX as the
+        # postprocessor's AnimationCanvas: "V" shortcut mirrors Adams.
+        self._markers_btn = QToolButton()
+        self._markers_btn.setIcon(_icons.icon("mdi6.eye-outline"))
+        self._markers_btn.setIconSize(_ICN_SIZE)
+        self._markers_btn.setFixedSize(_BTN_SIZE)
+        self._markers_btn.setAutoRaise(True)
+        self._markers_btn.setCursor(Qt.PointingHandCursor)
+        self._markers_btn.setToolTip("Show / hide markers (V)")
+        self._markers_btn.setCheckable(True)
+        self._markers_btn.setChecked(True)
+        self._markers_btn.toggled.connect(self._on_toggle_markers)
+
         self._export_btn = QPushButton("Export\u2026")
         self._export_btn.setToolTip(
             "Export the animation as a sequence of PNG frames")
@@ -236,6 +249,7 @@ class PreprocessorAnimationCanvas(QWidget):
         ctrl.addWidget(self._fps_spin)
         ctrl.addSpacing(8)
         ctrl.addWidget(self._fit_btn)
+        ctrl.addWidget(self._markers_btn)
         ctrl.addWidget(self._export_btn)
 
         lay = QVBoxLayout(self)
@@ -252,16 +266,25 @@ class PreprocessorAnimationCanvas(QWidget):
         self._sim_t0: float = 0.0
         self._update_timer_interval()
 
+        # "V" toggles marker visibility (mirrors Adams / the
+        # postprocessor's AnimationCanvas).  Window-scope so the
+        # shortcut works regardless of which child currently has
+        # keyboard focus.
+        self._markers_shortcut = QShortcut(QKeySequence(Qt.Key_V), self)
+        self._markers_shortcut.setContext(Qt.WindowShortcut)
+        self._markers_shortcut.activated.connect(self._markers_btn.click)
+
         # First frame.
         self._apply_step(0)
     # ------------------------------------------------------------------
     # Scene build
     # ------------------------------------------------------------------
     def _build_scene(self) -> None:
-        # Bodies only -- markers and joint glyphs are intentionally
-        # omitted from the playback view: on non-trivial models they
-        # add visual noise that obscures motion. The user wanted a
-        # clean "bodies only" animation.
+        # Bodies, plus the same MarkerItem glyphs used on the
+        # preprocessor's editing canvas so position *and* orientation
+        # of each frame are legible during playback.  Visibility is
+        # user-controlled (toolbar button or shortcut "V") -- toggle
+        # off for a clean "bodies only" view.
         for b in self._spec.bodies:
             if b.id == "ground":
                 continue
@@ -271,6 +294,17 @@ class PreprocessorAnimationCanvas(QWidget):
             item.setFlag(QGraphicsItem.ItemIsSelectable, False)
             self._scene.addItem(item)
             self._body_items[b.id] = item
+
+        # Markers: parent to their owning BodyItem so they follow the
+        # body automatically through setPos / setRotation.  Ground
+        # markers (if any) are added at scene level.
+        for m in self._spec.markers:
+            parent_item = self._body_items.get(m.body_id) if m.body_id != "ground" else None
+            mk_item = MarkerItem(m, parent_body=parent_item)
+            mk_item.setFlag(QGraphicsItem.ItemIsSelectable, False)
+            if parent_item is None:
+                self._scene.addItem(mk_item)
+            self._marker_items[m.id] = mk_item
 
     # ------------------------------------------------------------------
     # Auto-fit lifecycle
@@ -434,6 +468,13 @@ class PreprocessorAnimationCanvas(QWidget):
     def set_step(self, step: int) -> None:
         """Public hook (used by the postprocessor's plot canvas)."""
         self._goto(step)
+
+    def _on_toggle_markers(self, checked: bool) -> None:
+        """Show / hide all marker glyphs (shortcut: V)."""
+        for mk in self._marker_items.values():
+            mk.setVisible(checked)
+        self._markers_btn.setIcon(_icons.icon(
+            "mdi6.eye-outline" if checked else "mdi6.eye-off-outline"))
 
     def _apply_step(self, step: int) -> None:
         self._step = step

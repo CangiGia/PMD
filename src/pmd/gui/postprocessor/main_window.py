@@ -144,8 +144,22 @@ class MainWindow(QMainWindow):
         if hasattr(self._anim_canvas, "time_changed"):
             self._anim_canvas.time_changed.connect(
                 self._plot_canvas.set_time_cursor)
-        viz_splitter.setStretchFactor(0, 1)
-        viz_splitter.setStretchFactor(1, 1)
+        # Cursor lock: PlotCanvas ↔ AnimationCanvas (both directions)
+        if (hasattr(self._plot_canvas, "cursor_lock_changed")
+                and hasattr(self._anim_canvas, "set_cursor_locked")):
+            self._plot_canvas.cursor_lock_changed.connect(
+                self._on_plot_cursor_lock_changed)
+        if (hasattr(self._anim_canvas, "cursor_time_changed")
+                and hasattr(self._plot_canvas, "force_time_cursor")):
+            self._anim_canvas.cursor_time_changed.connect(
+                self._plot_canvas.force_time_cursor)
+        if (hasattr(self._anim_canvas, "request_cursor_unlock")
+                and hasattr(self._plot_canvas, "unlock_time_cursor")):
+            self._anim_canvas.request_cursor_unlock.connect(
+                self._plot_canvas.unlock_time_cursor)
+        viz_splitter.setStretchFactor(0, 2)
+        viz_splitter.setStretchFactor(1, 3)
+        self._viz_splitter = viz_splitter
         right_layout.addWidget(viz_splitter, stretch=1)
 
         self._result_set_panel = ResultSetPanel()
@@ -181,6 +195,14 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(self._status_base)
 
     # Slots
+
+    def _on_plot_cursor_lock_changed(self, locked: bool) -> None:
+        """Propagate PlotCanvas cursor lock state to AnimationCanvas."""
+        if hasattr(self._anim_canvas, "set_cursor_locked"):
+            t = None
+            if locked and hasattr(self._plot_canvas, "time_cursor_t"):
+                t = self._plot_canvas.time_cursor_t
+            self._anim_canvas.set_cursor_locked(locked, t)
 
     def _on_selection_changed(self, selection):
         """Receives list of checked descriptor dicts from SimulationPanel."""
@@ -218,6 +240,17 @@ class MainWindow(QMainWindow):
     def _on_toggle_animation(self, checked: bool):
         """Show/hide the AnimationCanvas."""
         self._anim_canvas.setVisible(checked)
+        if checked:
+            # Give the animation pane ~60% of the horizontal space and
+            # the plot panel ~40%.  Do this every time the pane is
+            # shown so the layout resets even if the user had manually
+            # dragged the splitter to a different position.
+            total = self._viz_splitter.width()
+            if total > 0:
+                self._viz_splitter.setSizes([
+                    int(total * 2 / 5),
+                    int(total * 3 / 5),
+                ])
         # Show the time cursor on the plots only while the animation
         # pane is visible -- the two are conceptually one feature.
         if hasattr(self._plot_canvas, "set_time_cursor_visible"):

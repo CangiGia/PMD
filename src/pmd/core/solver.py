@@ -386,11 +386,11 @@ class PlanarMultibodyModel:
             D = self._compute_jacobian()
             ff = np.sqrt(Phi.T @ Phi)
 
-            if ff < 1.0e-10:
+            if ff < 1.0e-8:
                 flag = True
                 break
 
-            delta_c = -D.T @ np.linalg.solve(D @ D.T, Phi)
+            delta_c = np.linalg.lstsq(D, -Phi, rcond=None)[0]
 
             nB = len(self.Bodies)
             for Bi in range(nB):
@@ -410,7 +410,7 @@ class PlanarMultibodyModel:
             Phi[ir + 2] = self.Bodies[Bi].angular_velocity
 
         rhsv = self._rhs_velocity()
-        delta_v = -D.T @ np.linalg.solve(D @ D.T, D @ Phi - rhsv)
+        delta_v = np.linalg.lstsq(D, rhsv - D @ Phi, rcond=None)[0]
 
         for Bi in range(nB):
             ir = 3 * Bi
@@ -577,12 +577,12 @@ class PlanarMultibodyModel:
                 self._update_position()
                 Phi = self._compute_constraints()
                 res = float(np.linalg.norm(Phi))
-                if res < 1.0e-10:
+                if res < 1.0e-8:
                     _pos_converged = True
                     break
                 D = self._compute_jacobian()
-                # Minimum-norm correction: delta_q = -D^+ Phi  (1-D)
-                delta_q = (-D.T @ np.linalg.solve(D @ D.T, Phi)).flatten()
+                # Minimum-norm correction: delta_q = -D^+ Phi  (SVD/lstsq)
+                delta_q = np.linalg.lstsq(D, -Phi.flatten(), rcond=None)[0]
                 for Bi in range(nB):
                     ir = 3 * Bi
                     self.Bodies[Bi].position = (

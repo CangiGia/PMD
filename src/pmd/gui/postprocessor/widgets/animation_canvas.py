@@ -1,5 +1,7 @@
 """AnimationCanvas — 2-D model animation with shape rendering."""
 
+import time
+
 import numpy as np
 
 import matplotlib
@@ -7,11 +9,13 @@ matplotlib.use("qtagg")
 
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg, NavigationToolbar2QT
 from matplotlib.figure import Figure
-from matplotlib.patches import Circle as MplCircle, FancyBboxPatch, Polygon as MplPolygon
+from matplotlib.patches import Circle as MplCircle, FancyArrowPatch, FancyBboxPatch, Polygon as MplPolygon
 from matplotlib.transforms import Affine2D
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
+    QDoubleSpinBox,
     QHBoxLayout,
     QLabel,
     QPushButton,
@@ -55,6 +59,36 @@ def _marker_global(marker, step):
     return np.array([x, y]) + rotation_matrix(phi) @ marker.local_position.ravel()[:2]
 
 
+def _marker_global_angle(marker, step) -> float:
+    """Return the marker's global X-axis orientation (rad) at *step*.
+
+    A marker without an explicit ``theta`` still tracks the parent body's
+    rotation (it is body-fixed), so the triad rotates with the body.
+    """
+    body = marker.body
+    phi_body = 0.0 if not body else _body_pos(body, step)[2]
+    return phi_body + float(getattr(marker, "theta", None) or 0.0)
+
+
+# ---------------------------------------------------------------
+# Marker triad rendering constants (mirror MarkerItem in the
+# preprocessor's widgets.marker_item to keep both views visually
+# consistent: red X / green Y arrows, yellow origin dot, label
+# offset slightly below-left of the origin so it never overlaps
+# the dot or the axes).
+# ---------------------------------------------------------------
+_TRIAD_C_X      = "#d65a5a"   # red  -- X axis
+_TRIAD_C_Y      = "#3aa35a"   # green -- Y axis
+_TRIAD_C_DOT_FC = "#ffd400"   # yellow origin fill
+_TRIAD_C_DOT_EC = "#1c2033"   # origin edge in light theme
+_TRIAD_C_DOT_ED = "#f0f0f0"   # origin edge in dark theme
+_TRIAD_DOT_SIZE = 3.5         # markersize (pt)
+_TRIAD_LW       = 1.4         # arrow line width (pt)
+_TRIAD_LABEL_PT = 9.5         # label font size (mirrors MarkerItem)
+_TRIAD_LABEL_DX = -2.0        # label offset (points, +x = right)
+_TRIAD_LABEL_DY = -6.0        # label offset (points, +y = up)
+
+
 class AnimationCanvas(QWidget):
     """2-D animation of the multi-body model at each time step.
 
@@ -66,7 +100,17 @@ class AnimationCanvas(QWidget):
         Optional parent widget.
     """
 
-    time_changed = Signal(int)
+    # Emits the current simulation time (seconds) every time the
+    # displayed frame changes.  The postprocessor's PlotCanvas connects
+    # to it to draw a synchronised vertical cursor on all subplots.
+    time_changed = Signal(float)
+    # Emitted when the locked-cursor spin box changes (to force-update
+    # the PlotCanvas cursor even when it is in locked state).
+    cursor_time_changed = Signal(float)
+    # Emitted from the locked-play dialog when the user chooses
+    # "Unlock & Play" so that main_window can call
+    # PlotCanvas.unlock_time_cursor().
+    request_cursor_unlock = Signal()
 
     def __init__(self, sessions, parent=None):
         super().__init__(parent)
@@ -75,12 +119,19 @@ class AnimationCanvas(QWidget):
         self._n_steps = len(self._T)
         self._step = 0
         self._playing = False
+        self._cursor_locked = False  # True when the plot cursor is locked
+        self._joint_legend = None    # matplotlib Legend for the joint-type key
 
         # --- matplotlib widgets ---
-        self._figure = Figure(tight_layout=True)
+        self._figure = Figure()
+        # Fixed margins prevent tight_layout from recalculating on every
+        # draw, which caused the axes box to jump/resize during pan.
+        self._figure.subplots_adjust(left=0.06, right=0.97,
+                                     top=0.96,  bottom=0.06)
         self._ax = self._figure.add_subplot(111)
         self._ax.set_aspect("equal")
         self._canvas = FigureCanvasQTAgg(self._figure)
+        self._canvas.mpl_connect("scroll_event", self._on_scroll)
 
         # Backend nav toolbar (hidden) — used only for navigate state/history
         self._nav = NavigationToolbar2QT(self._canvas, self)
@@ -103,10 +154,49 @@ class AnimationCanvas(QWidget):
 
         self._time_lbl = QLabel(self._time_text(0))
 
+        # Playback speed multiplier (× real-time).  Mirrors the
+        # preprocessor's AnimationCanvas: rendering happens at a fixed
+        # ~60 Hz and the wall-clock-driven _advance_frame() skips frames
+        # as needed so that "Speed" actually behaves like a speed knob.
+        self._fps_spin = QDoubleSpinBox()
+        self._fps_spin.setDecimals(2)
+        self._fps_spin.setRange(0.05, 100.0)
+        self._fps_spin.setSingleStep(0.25)
+        self._fps_spin.setValue(1.0)
+        self._fps_spin.setSuffix("\u00d7")
+        self._fps_spin.setMinimumWidth(96)
+        self._fps_spin.setToolTip(
+            "Playback speed multiplier (\u00d7 real-time).\n"
+            "1\u00d7 plays the simulation at its physical wall-clock rate.")
+        self._fps_spin.valueChanged.connect(self._on_speed_changed)
+
+        # Locked-cursor controls (hidden when cursor is free)
+        self._cursor_lock_lbl = QLabel("\U0001f512 t =")
+        self._cursor_lock_lbl.setToolTip("Plot cursor locked — edit time to jump to a configuration")
+        self._cursor_lock_lbl.setVisible(False)
+        self._cursor_time_spin = QDoubleSpinBox()
+        self._cursor_time_spin.setDecimals(4)
+        _T0 = float(self._T[0])
+        _T1 = float(self._T[-1])
+        _dT = float(self._T[1] - self._T[0]) if len(self._T) > 1 else 0.001
+        self._cursor_time_spin.setRange(_T0, _T1)
+        self._cursor_time_spin.setSingleStep(_dT)
+        self._cursor_time_spin.setMinimumWidth(100)
+        self._cursor_time_spin.setToolTip(
+            "Locked cursor time (s) — edit to jump to a specific configuration")
+        self._cursor_time_spin.setVisible(False)
+        self._cursor_time_spin.valueChanged.connect(self._on_locked_time_changed)
+
         ctrl = QHBoxLayout()
         ctrl.addWidget(self._play_btn)
         ctrl.addWidget(self._slider, stretch=1)
         ctrl.addWidget(self._time_lbl)
+        ctrl.addSpacing(4)
+        ctrl.addWidget(self._cursor_lock_lbl)
+        ctrl.addWidget(self._cursor_time_spin)
+        ctrl.addSpacing(8)
+        ctrl.addWidget(QLabel("Speed:"))
+        ctrl.addWidget(self._fps_spin)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -116,19 +206,50 @@ class AnimationCanvas(QWidget):
 
         # --- artist storage ---
         self._body_patches = []
-        self._body_info = []       # list of (body, session_idx)
+        self._body_info = []           # (body, session_idx)
+        self._body_labels = []         # Text at body CM (always visible, colour = body edge)
         self._marker_dots = []
-        self._marker_info = []     # (marker, session_idx)
-        self._joint_markers = []
-        self._joint_info = []      # (joint, session_idx)
+        self._marker_arrows_x = []     # FancyArrowPatch, parallel to _marker_dots
+        self._marker_arrows_y = []     # FancyArrowPatch, parallel to _marker_dots
+        self._marker_labels = []       # text annotations, parallel to _marker_dots
+        self._marker_info = []         # (marker, session_idx)
+        self._joint_patches = []       # MplCircle (RevJoint) or FancyBboxPatch (TranJoint)
+        self._joint_transforms = []    # Affine2D for TranJoint squares; None otherwise
+        self._joint_rail1 = []         # Line2D upper rail (TranJoint); None otherwise
+        self._joint_rail2 = []         # Line2D lower rail (TranJoint); None otherwise
+        self._joint_info = []          # (joint, session_idx)
+        self._joint_coord_labels = []  # Annotation showing global (x, y) per joint
         self._force_lines = []
-        self._force_info = []      # (force, session_idx)
+        self._force_info = []          # (force, session_idx)
+
+        # Triad length (data units) is fixed at init from the full
+        # trajectory envelope so the visual size stays stable through
+        # the animation and across sessions.  4% of the largest span
+        # is small enough to never dominate the body footprint yet big
+        # enough to convey orientation.
+        self._triad_L = self._compute_triad_length()
 
         self._init_artists()
 
-        # --- animation timer ---
-        self._timer = self._canvas.new_timer(interval=30)
-        self._timer.add_callback(self._advance_frame)
+        # --- animation timer (wall-clock driven) ---
+        # Display refresh at ~60 Hz; the wall-clock anchors are
+        # (re-)set every time playback starts or the speed changes.
+        self._timer = QTimer(self)
+        self._timer.setTimerType(Qt.PreciseTimer)
+        self._timer.setInterval(16)
+        self._timer.timeout.connect(self._advance_frame)
+        self._wall_t0 = 0.0
+        self._sim_t0 = 0.0
+
+        # "V" toggles marker visibility (mirrors Adams).  The shortcut
+        # is wired to the toolbar button so its checked state stays in
+        # sync and the slot logic lives in a single place.  Window-
+        # scope means it fires whenever this widget's window is
+        # active, regardless of which child currently has focus (the
+        # matplotlib canvas does not take keyboard focus by default).
+        self._markers_shortcut = QShortcut(QKeySequence(Qt.Key_V), self)
+        self._markers_shortcut.setContext(Qt.WindowShortcut)
+        self._markers_shortcut.activated.connect(self._btn_markers.click)
 
     # ------------------------------------------------------------------
     # Custom toolbar
@@ -143,6 +264,19 @@ class AnimationCanvas(QWidget):
         tb.addSeparator()
         self._btn_pan  = self._make_btn(tb, "Pan",     "mdi6.hand-back-right-outline", self._on_pan,  checkable=True)
         self._btn_zoom = self._make_btn(tb, "Zoom",    "mdi6.magnify",                 self._on_zoom, checkable=True)
+        tb.addSeparator()
+        # Marker visibility toggle — icon is a reference-frame triad so
+        # the button's meaning is immediately recognisable. Default ON.
+        self._btn_markers = self._make_btn(
+            tb, "Show / hide markers (V)", "mdi6.axis-arrow",
+            self._on_toggle_markers, checkable=True)
+        self._btn_markers.setChecked(True)
+        # Joint coordinates toggle — shows the global (x, y) of each
+        # joint next to its symbol. Default OFF.
+        self._btn_coords = self._make_btn(
+            tb, "Show / hide joint coordinates", "mdi6.crosshairs-gps",
+            self._on_toggle_coords, checkable=True)
+        self._btn_coords.setChecked(False)
         tb.addSeparator()
         self._btn_save = self._make_btn(tb, "Save",    "mdi6.content-save",            self._on_save)
         return tb
@@ -166,6 +300,8 @@ class AnimationCanvas(QWidget):
         self._btn_pan.setIcon( _icons.icon("mdi6.hand-back-right-outline"))
         self._btn_zoom.setIcon(_icons.icon("mdi6.magnify"))
         self._btn_save.setIcon(_icons.icon("mdi6.content-save"))
+        self._btn_markers.setIcon(_icons.icon("mdi6.axis-arrow"))
+        self._btn_coords.setIcon(_icons.icon("mdi6.crosshairs-gps"))
         play_icon = "mdi6.pause" if self._playing else "mdi6.play"
         self._play_btn.setIcon(_icons.icon(play_icon))
 
@@ -181,6 +317,24 @@ class AnimationCanvas(QWidget):
         self._ax.title.set_color(fg)
         for spine in self._ax.spines.values():
             spine.set_edgecolor(fg)
+        # Marker glyphs: keep the yellow fill (pops on both themes)
+        # but flip the ring edge + label colour so they stay legible.
+        edge = _TRIAD_C_DOT_ED if enabled else _TRIAD_C_DOT_EC
+        for dot in self._marker_dots:
+            dot.set_markeredgecolor(edge)
+        for label in self._marker_labels:
+            label.set_color(fg)
+        for label in self._joint_coord_labels:
+            label.set_color(fg)
+        if self._joint_legend is not None:
+            self._joint_legend.get_frame().set_facecolor(bg)
+            self._joint_legend.get_frame().set_edgecolor(
+                "#555555" if enabled else "#cccccc")
+            for text in self._joint_legend.get_texts():
+                text.set_color(fg)
+            title = self._joint_legend.get_title()
+            if title:
+                title.set_color(fg)
         self._canvas.draw_idle()
 
     def _on_home(self):
@@ -205,8 +359,38 @@ class AnimationCanvas(QWidget):
             self._btn_pan.setChecked(False)
         self._nav.zoom()
 
+    def _on_scroll(self, event):
+        """Zoom in/out with the scroll wheel, centred on the cursor."""
+        if event.inaxes is not self._ax:
+            return
+        factor = 0.85 if event.button == "up" else (1.0 / 0.85)
+        x0, y0 = event.xdata, event.ydata
+        xlim = self._ax.get_xlim()
+        ylim = self._ax.get_ylim()
+        self._ax.set_xlim([x0 + (x - x0) * factor for x in xlim])
+        self._ax.set_ylim([y0 + (y - y0) * factor for y in ylim])
+        self._canvas.draw_idle()
+
     def _on_save(self):
         self._nav.save_figure()
+
+    def _on_toggle_markers(self, checked: bool):
+        """Show / hide marker glyphs and their labels (shortcut: V)."""
+        for dot in self._marker_dots:
+            dot.set_visible(checked)
+        for arr in self._marker_arrows_x:
+            arr.set_visible(checked)
+        for arr in self._marker_arrows_y:
+            arr.set_visible(checked)
+        for label in self._marker_labels:
+            label.set_visible(checked)
+        self._canvas.draw_idle()
+
+    def _on_toggle_coords(self, checked: bool):
+        """Show / hide global (x, y) coordinates next to each joint."""
+        for lbl in self._joint_coord_labels:
+            lbl.set_visible(checked)
+        self._canvas.draw_idle()
 
     # ------------------------------------------------------------------
     # helpers
@@ -215,6 +399,34 @@ class AnimationCanvas(QWidget):
     def _time_text(self, step):
         return f"t = {self._T[step]:.4f} s"
 
+    def _compute_triad_length(self) -> float:
+        """Pick a data-unit length for marker triads.
+
+        Uses the full trajectory envelope (all bodies, all steps, all
+        sessions) so the value is independent of the current frame and
+        of the matplotlib autoscale state.  Falls back to a sensible
+        default if no per-step data is available.
+        """
+        xs: list[float] = []
+        ys: list[float] = []
+        for s in self._sessions:
+            for body in getattr(s.model, "Bodies", []):
+                rc = getattr(body, "_result_container", None)
+                if rc is None:
+                    continue
+                try:
+                    xs.extend(float(v) for v in rc["positions"]["x"])
+                    ys.extend(float(v) for v in rc["positions"]["y"])
+                except Exception:
+                    continue
+        if not xs or not ys:
+            return 0.05
+        span = max(max(xs) - min(xs), max(ys) - min(ys), 0.05)
+        # 8% of the scene span: large enough that the marker axes are
+        # immediately recognisable as a reference frame (rather than a
+        # decorative tick) even on dense models.
+        return 0.08 * span
+
     # ------------------------------------------------------------------
     # _init_artists  — draw everything at frame 0
     # ------------------------------------------------------------------
@@ -222,6 +434,30 @@ class AnimationCanvas(QWidget):
     def _init_artists(self):
         ax = self._ax
         color_idx = 0
+
+        # Co-location bookkeeping: when several markers share (almost)
+        # the same scene origin -- typical at a joint endpoint where 2+
+        # bodies meet -- their labels would draw on top of one another
+        # and become illegible.  Mirror the preprocessor's MarkerItem
+        # behaviour and stack them vertically: the first label sits at
+        # the default offset, each subsequent label is pushed one line
+        # further down.  Tolerance is a fraction of the triad length so
+        # it scales with the model.
+        label_stack: list[list[float]] = []  # [x, y, count_so_far]
+        tol = max(self._triad_L * 0.6, 1e-9)
+        tol2 = tol * tol
+
+        def _label_row(px: float, py: float) -> int:
+            for slot in label_stack:
+                dx = px - slot[0]; dy = py - slot[1]
+                if dx * dx + dy * dy <= tol2:
+                    row = int(slot[2])
+                    slot[2] = row + 1
+                    return row
+            label_stack.append([px, py, 1.0])
+            return 0
+
+        line_h = _TRIAD_LABEL_PT * 1.3   # points per stacked label row
 
         for si, session in enumerate(self._sessions):
             model = session.model
@@ -304,34 +540,162 @@ class AnimationCanvas(QWidget):
 
                 self._body_info.append((body, si))
 
-                # markers attached to this body
-                for mk in body._markers:
+                # Body name label — follows the CM, keeps the body's
+                # edge colour, never rotated (always readable).  Uses
+                # annotate so _auto_place_labels() can set the offset.
+                _bname = getattr(body, "name", "") or ""
+                _blbl = ax.annotate(
+                    _bname,
+                    xy=(x, y),
+                    xytext=(12, 12),
+                    textcoords="offset points",
+                    ha="left", va="bottom",
+                    fontsize=9.5, fontweight="bold",
+                    color=col, zorder=11,
+                    annotation_clip=False,
+                    visible=bool(_bname),
+                )
+                self._body_labels.append(_blbl)
+
+                # markers attached to this body, drawn as a small
+                # red-X / green-Y triad with a yellow origin dot and a
+                # name label offset slightly below-left.  Matches the
+                # preprocessor's MarkerItem so both views read the
+                # same.  Triad length is chosen as a fraction of the
+                # trajectory envelope (see _compute_triad_length).
+                L_triad = self._triad_L
+                for mk_idx, mk in enumerate(body._markers):
                     gp = _marker_global(mk, 0)
-                    dot, = ax.plot(gp[0], gp[1], "k.", markersize=3)
+                    a = _marker_global_angle(mk, 0)
+                    head_x = (gp[0] + L_triad * np.cos(a),
+                              gp[1] + L_triad * np.sin(a))
+                    head_y = (gp[0] - L_triad * np.sin(a),
+                              gp[1] + L_triad * np.cos(a))
+                    arrow_x = FancyArrowPatch(
+                        (gp[0], gp[1]), head_x,
+                        arrowstyle="-|>",
+                        mutation_scale=8,
+                        color=_TRIAD_C_X,
+                        linewidth=_TRIAD_LW,
+                        shrinkA=0, shrinkB=0,
+                        zorder=5,
+                    )
+                    arrow_y = FancyArrowPatch(
+                        (gp[0], gp[1]), head_y,
+                        arrowstyle="-|>",
+                        mutation_scale=8,
+                        color=_TRIAD_C_Y,
+                        linewidth=_TRIAD_LW,
+                        shrinkA=0, shrinkB=0,
+                        zorder=5,
+                    )
+                    ax.add_patch(arrow_x)
+                    ax.add_patch(arrow_y)
+                    dot, = ax.plot(
+                        gp[0], gp[1],
+                        marker="o",
+                        linestyle="none",
+                        markersize=_TRIAD_DOT_SIZE,
+                        markerfacecolor=_TRIAD_C_DOT_FC,
+                        markeredgecolor=_TRIAD_C_DOT_EC,
+                        markeredgewidth=0.8,
+                        zorder=6,
+                    )
+                    # Show a label only for markers that carry an explicit
+                    # name.  Structural markers created by as_link/as_plate
+                    # have name=None and appear as unlabelled triads.
+                    mk_name = getattr(mk, "name", "") or ""
+                    row = _label_row(gp[0], gp[1])
+                    label = ax.annotate(
+                        mk_name,
+                        xy=(gp[0], gp[1]),
+                        xytext=(_TRIAD_LABEL_DX,
+                                _TRIAD_LABEL_DY - row * line_h),
+                        textcoords="offset points",
+                        fontsize=_TRIAD_LABEL_PT,
+                        color="#1c2033",
+                        ha="right",
+                        va="top",
+                        zorder=7,
+                        annotation_clip=False,
+                        visible=bool(mk_name),
+                    )
                     self._marker_dots.append(dot)
+                    self._marker_arrows_x.append(arrow_x)
+                    self._marker_arrows_y.append(arrow_y)
+                    self._marker_labels.append(label)
                     self._marker_info.append((mk, si))
 
             # ---- Joints ----
+            _r_joint = self._triad_L * 0.18   # RevJoint disc radius
+            _sh      = self._triad_L * 0.18   # TranJoint square half-side
+            _rail_hw = self._triad_L * 0.45   # TranJoint rail half-width
+            _gap_y   = _sh * 1.6              # perpendicular offset of rails
             for joint in model.Joints:
                 mk = joint.iMarker or joint.jMarker
                 if mk is None:
                     continue
-                gp = _marker_global(mk, 0)
+                gp  = _marker_global(mk, 0)
+                ang = _marker_global_angle(mk, 0)
+                t_sq = None; r1_art = None; r2_art = None
 
                 if isinstance(joint, RevJoint):
-                    dot, = ax.plot(gp[0], gp[1], "o", color="#333333",
-                                   markersize=8, markerfacecolor="none",
-                                   markeredgewidth=1.5)
+                    patch = MplCircle(
+                        gp, radius=_r_joint,
+                        facecolor="#ff2bd6", edgecolor="#1c2033",
+                        linewidth=1.0, zorder=7,
+                    )
+                    ax.add_patch(patch)
                 elif isinstance(joint, TranJoint):
-                    dot, = ax.plot(gp[0], gp[1], "s", color="#333333",
-                                   markersize=8, markerfacecolor="none",
-                                   markeredgewidth=1.5)
+                    t_sq = Affine2D().rotate(ang).translate(gp[0], gp[1])
+                    patch = FancyBboxPatch(
+                        (-_sh, -_sh), 2 * _sh, 2 * _sh,
+                        boxstyle="square,pad=0",
+                        facecolor="#00bcd4", edgecolor="#006978",
+                        linewidth=1.2, zorder=7,
+                    )
+                    patch.set_transform(t_sq + ax.transData)
+                    ax.add_patch(patch)
+                    # Two rails parallel to the joint translation axis,
+                    # offset ±gap_y in the local-Y direction.
+                    c, s = np.cos(ang), np.sin(ang)
+                    ex = np.array([c, s]); ey = np.array([-s, c])
+                    p1 = gp - _rail_hw * ex + _gap_y * ey
+                    p2 = gp + _rail_hw * ex + _gap_y * ey
+                    p3 = gp - _rail_hw * ex - _gap_y * ey
+                    p4 = gp + _rail_hw * ex - _gap_y * ey
+                    r1_art, = ax.plot([p1[0], p2[0]], [p1[1], p2[1]],
+                                      color="#006978", linewidth=1.4,
+                                      solid_capstyle="butt", zorder=7)
+                    r2_art, = ax.plot([p3[0], p4[0]], [p3[1], p4[1]],
+                                      color="#006978", linewidth=1.4,
+                                      solid_capstyle="butt", zorder=7)
                 else:
-                    dot, = ax.plot(gp[0], gp[1], ".", color="#333333",
-                                   markersize=6)
+                    patch = MplCircle(
+                        gp, radius=_r_joint * 0.5,
+                        facecolor="#888888", edgecolor="#333333",
+                        linewidth=0.8, zorder=7,
+                    )
+                    ax.add_patch(patch)
 
-                self._joint_markers.append(dot)
+                self._joint_patches.append(patch)
+                self._joint_transforms.append(t_sq)
+                self._joint_rail1.append(r1_art)
+                self._joint_rail2.append(r2_art)
                 self._joint_info.append((joint, si))
+
+                # Coordinate annotation — hidden until toolbar button ON.
+                _jname = getattr(joint, "name", "") or ""
+                _clbl = ax.annotate(
+                    f"{_jname}\n({gp[0]:.1f}, {gp[1]:.1f})",
+                    xy=(gp[0], gp[1]),
+                    xytext=(6, 6), textcoords="offset points",
+                    fontsize=8.5, color="#1c2033",
+                    ha="left", va="bottom",
+                    zorder=9, annotation_clip=False,
+                    visible=False,
+                )
+                self._joint_coord_labels.append(_clbl)
 
             # ---- Forces ----
             for force in model.Forces:
@@ -346,7 +710,14 @@ class AnimationCanvas(QWidget):
                     self._force_info.append((force, si))
 
         # ---- axis limits from first + last frame ----
+        # Disable autoscale BEFORE computing limits: FancyArrowPatch
+        # patches are added in data-coordinates and can silently
+        # expand ax.dataLim after an explicit set_xlim/set_ylim call
+        # when autoscale is still active.
+        self._ax.autoscale(False)
         self._auto_limits()
+        self._auto_place_labels()
+        self._build_joint_legend()
         self._canvas.draw_idle()
 
     # ------------------------------------------------------------------
@@ -376,12 +747,18 @@ class AnimationCanvas(QWidget):
                        float(rc["positions"]["y"].max())])
 
         # Markers across all frames — captures link endpoints and any
-        # off-CM features the user attached a frame to.
+        # off-CM features the user attached a frame to.  We also add
+        # the four cardinal triad tip positions (origin ± L in both
+        # data axes) so the worst-case arrow direction never escapes
+        # the padded envelope regardless of body orientation.
+        L = self._triad_L
         for mk, _si in self._marker_info:
             body = mk.body
             lp = mk.local_position.ravel()[:2]
             if not body:
-                xs.append(float(lp[0])); ys.append(float(lp[1]))
+                px, py = float(lp[0]), float(lp[1])
+                xs.extend([px - L, px + L])
+                ys.extend([py - L, py + L])
                 continue
             rc = body._result_container
             bx = np.asarray(rc["positions"]["x"], dtype=float)
@@ -390,19 +767,172 @@ class AnimationCanvas(QWidget):
             cos_p = np.cos(ph); sin_p = np.sin(ph)
             mx_t = bx + cos_p * lp[0] - sin_p * lp[1]
             my_t = by + sin_p * lp[0] + cos_p * lp[1]
-            xs.extend([float(mx_t.min()), float(mx_t.max())])
-            ys.extend([float(my_t.min()), float(my_t.max())])
+            xs.extend([float(mx_t.min()) - L, float(mx_t.max()) + L])
+            ys.extend([float(my_t.min()) - L, float(my_t.max()) + L])
 
         if not xs:
             return
         x_min, x_max = min(xs), max(xs)
         y_min, y_max = min(ys), max(ys)
-        # 10% margin on the larger span; keep a sensible floor so a
-        # static model doesn't collapse to a zero-size window.
+        # 15% breathing room on the larger span.  The triad extents
+        # are already baked into xs/ys above so no extra _triad_L term
+        # is needed here.
         span = max((x_max - x_min), (y_max - y_min), 0.1)
-        mx = span * 0.10
-        self._ax.set_xlim(x_min - mx, x_max + mx)
-        self._ax.set_ylim(y_min - mx, y_max + mx)
+        pad = span * 0.15
+        self._ax.set_xlim(x_min - pad, x_max + pad)
+        self._ax.set_ylim(y_min - pad, y_max + pad)
+
+    # ------------------------------------------------------------------
+    # _build_joint_legend
+    # ------------------------------------------------------------------
+
+    def _build_joint_legend(self) -> None:
+        """Create (or refresh) a joint-type key in the upper-right corner.
+
+        Shows one sample symbol per joint TYPE present in the model,
+        with a human-readable label.  The legend is recreated from
+        scratch whenever the model is loaded so it stays in sync.
+        """
+        from matplotlib.lines import Line2D as _Line2D
+
+        # Gather which joint types are present across all sessions.
+        has_rev  = False
+        has_tran = False
+        for session in self._sessions:
+            for joint in session.model.Joints:
+                if isinstance(joint, RevJoint):
+                    has_rev = True
+                elif isinstance(joint, TranJoint):
+                    has_tran = True
+
+        handles = []
+        if has_rev:
+            handles.append(_Line2D(
+                [0], [0], marker="o", linestyle="none",
+                markerfacecolor="#ff2bd6", markeredgecolor="#1c2033",
+                markeredgewidth=0.8, markersize=9,
+                label="Revolute Joint",
+            ))
+        if has_tran:
+            handles.append(_Line2D(
+                [0], [0], marker="s", linestyle="none",
+                markerfacecolor="#00bcd4", markeredgecolor="#006978",
+                markeredgewidth=0.8, markersize=9,
+                label="Translational Joint",
+            ))
+
+        if not handles:
+            return
+
+        if self._joint_legend is not None:
+            try:
+                self._joint_legend.remove()
+            except Exception:
+                pass
+
+        self._joint_legend = self._ax.legend(
+            handles=handles,
+            loc="upper right",
+            fontsize=8.5,
+            framealpha=0.88,
+            edgecolor="#cccccc",
+            title="Joint types",
+            title_fontsize=8.0,
+            borderpad=0.6,
+            handlelength=1.2,
+            handletextpad=0.5,
+        )
+        self._joint_legend.set_zorder(12)
+
+    # ------------------------------------------------------------------
+    # _auto_place_labels
+    # ------------------------------------------------------------------
+
+    def _auto_place_labels(self) -> None:
+        """Greedy label placement: adjust each annotation's pixel offset so
+        estimated bounding boxes have minimal overlap at frame 0.
+
+        Priority order: joint-coord labels → marker labels → body names.
+        Joint labels are reserved even when invisible so that toggling them
+        on later does not suddenly overlap other labels.
+        """
+        dpi = self._figure.get_dpi()
+        pt_to_px = dpi / 72.0
+
+        # Candidate offsets (dx_pt, dy_pt) in priority order per category.
+        JOINT_CANDS = [
+            (  6,   6), ( -6,   6), (  6, -10), ( -6, -10),
+            ( 12,   0), (-12,   0), (  0,  10), (  0, -12),
+            ( 18,   6), (-18,   6), ( 18, -10), (-18, -10),
+        ]
+        MK_CANDS = [
+            (  5,  -4), ( -4, -14), (  5,   8), ( -4,   8),
+            ( 14,  -4), (-18,  -4), ( 14,   8), (-18,   8),
+            (  5, -18), ( -4, -18), ( 24,  -4), (-24,  -4),
+        ]
+        BODY_CANDS = [
+            ( 44,  24), (-44,  24), ( 44, -24), (-44, -24),
+            ( 62,   0), (-62,   0), (  0,  44), (  0, -44),
+            ( 60,  38), (-60,  38), ( 60, -38), (-60, -38),
+            ( 80,  28), (-80,  28), ( 80, -28), (-80, -28),
+        ]
+
+        def _est_px(ann) -> tuple[float, float]:
+            """Estimate rendered (width, height) in display pixels."""
+            txt = ann.get_text() or " "
+            lines = txt.split("\n")
+            n_c = max((len(l) for l in lines), default=5)
+            fs  = ann.get_fontsize()
+            return (n_c * fs * 0.58 * pt_to_px,
+                    len(lines) * fs * 1.38 * pt_to_px)
+
+        def _overlap(a, b) -> float:
+            ox = max(0.0, min(a[2], b[2]) - max(a[0], b[0]))
+            oy = max(0.0, min(a[3], b[3]) - max(a[1], b[1]))
+            return ox * oy
+
+        placed: list[tuple[float, float, float, float]] = []
+
+        def _place(ann, cands, anchor_data) -> None:
+            try:
+                adx, ady = self._ax.transData.transform(anchor_data)
+            except Exception:
+                return
+            w, h = _est_px(ann)
+            best_off = cands[0]
+            best_ov  = float("inf")
+            for (ox_pt, oy_pt) in cands:
+                bx0 = adx + ox_pt * pt_to_px
+                by0 = ady + oy_pt * pt_to_px
+                box = (bx0, by0, bx0 + w, by0 + h)
+                ov  = sum(_overlap(box, pb) for pb in placed)
+                if ov < best_ov:
+                    best_ov  = ov
+                    best_off = (ox_pt, oy_pt)
+                    if ov == 0.0:
+                        break
+            ox_pt, oy_pt = best_off
+            ann.xyann = (ox_pt, oy_pt)
+            bx0 = adx + ox_pt * pt_to_px
+            by0 = ady + oy_pt * pt_to_px
+            placed.append((bx0, by0, bx0 + w, by0 + h))
+
+        # 1. Joint coord labels (always reserved, even when invisible)
+        for clbl, (joint, _) in zip(self._joint_coord_labels, self._joint_info):
+            mk = joint.iMarker or joint.jMarker
+            if mk is not None:
+                _place(clbl, JOINT_CANDS, _marker_global(mk, 0))
+
+        # 2. Marker labels
+        for lbl, (mk, _) in zip(self._marker_labels, self._marker_info):
+            _place(lbl, MK_CANDS, _marker_global(mk, 0))
+
+        # 3. Body names (largest offset to clear the body boundary)
+        for lbl, (body, _) in zip(self._body_labels, self._body_info):
+            if not lbl.get_visible():
+                continue
+            x, y, _ = _body_pos(body, 0)
+            _place(lbl, BODY_CANDS, (x, y))
 
     # ------------------------------------------------------------------
     # _update_artists — move everything to *step*
@@ -424,17 +954,60 @@ class AnimationCanvas(QWidget):
             else:
                 patch.set_center((x, y))
 
-        # marker dots
-        for dot, (mk, _si) in zip(self._marker_dots, self._marker_info):
+        # body name labels — follow the CM (xy anchor; xyann fixed by placement)
+        for lbl, (body, _si) in zip(self._body_labels, self._body_info):
+            bx, by, _ = _body_pos(body, step)
+            lbl.xy = (bx, by)
+
+        # marker triads (dot + X arrow + Y arrow + label)
+        L_triad = self._triad_L
+        for i, (mk, _si) in enumerate(self._marker_info):
             gp = _marker_global(mk, step)
-            dot.set_data([gp[0]], [gp[1]])
+            a  = _marker_global_angle(mk, step)
+            head_x = (gp[0] + L_triad * np.cos(a),
+                      gp[1] + L_triad * np.sin(a))
+            head_y = (gp[0] - L_triad * np.sin(a),
+                      gp[1] + L_triad * np.cos(a))
+            self._marker_arrows_x[i].set_positions((gp[0], gp[1]), head_x)
+            self._marker_arrows_y[i].set_positions((gp[0], gp[1]), head_y)
+            self._marker_dots[i].set_data([gp[0]], [gp[1]])
+            # Only move the anchor (`xy`).  ``set_position`` would
+            # overwrite ``xyann`` and -- because we use
+            # ``textcoords="offset points"`` -- silently destroy the
+            # row-stacking offsets computed at init time.
+            self._marker_labels[i].xy = (gp[0], gp[1])
 
         # joints
-        for dot, (joint, _si) in zip(self._joint_markers, self._joint_info):
+        _rail_hw = self._triad_L * 0.45
+        _gap_y   = self._triad_L * 0.18 * 1.6
+        for patch, t_sq, r1, r2, clbl, (joint, _si) in zip(
+            self._joint_patches, self._joint_transforms,
+            self._joint_rail1, self._joint_rail2,
+            self._joint_coord_labels, self._joint_info,
+        ):
             mk = joint.iMarker or joint.jMarker
-            if mk is not None:
-                gp = _marker_global(mk, step)
-                dot.set_data([gp[0]], [gp[1]])
+            if mk is None:
+                continue
+            gp  = _marker_global(mk, step)
+            ang = _marker_global_angle(mk, step)
+            if isinstance(joint, RevJoint):
+                patch.set_center(gp)
+            elif isinstance(joint, TranJoint) and t_sq is not None:
+                t_sq.clear().rotate(ang).translate(gp[0], gp[1])
+                c, s = np.cos(ang), np.sin(ang)
+                ex = np.array([c, s]); ey = np.array([-s, c])
+                p1 = gp - _rail_hw * ex + _gap_y * ey
+                p2 = gp + _rail_hw * ex + _gap_y * ey
+                p3 = gp - _rail_hw * ex - _gap_y * ey
+                p4 = gp + _rail_hw * ex - _gap_y * ey
+                r1.set_data([p1[0], p2[0]], [p1[1], p2[1]])
+                r2.set_data([p3[0], p4[0]], [p3[1], p4[1]])
+            else:
+                patch.set_center(gp)
+            # Update coordinate annotation text and anchor.
+            _jname = getattr(joint, "name", "") or ""
+            clbl.xy = (gp[0], gp[1])
+            clbl.set_text(f"{_jname}\n({gp[0]:.1f}, {gp[1]:.1f})")
 
         # forces
         for line, (force, _si) in zip(self._force_lines, self._force_info):
@@ -456,7 +1029,9 @@ class AnimationCanvas(QWidget):
         self._slider.blockSignals(False)
         self._time_lbl.setText(self._time_text(step))
         self._update_artists(step)
-        self.time_changed.emit(step)
+        # Emit the simulation time (seconds), not the step index, so
+        # PlotCanvas.set_time_cursor() receives the value it expects.
+        self.time_changed.emit(float(self._T[step]))
 
     # ------------------------------------------------------------------
     # slots
@@ -466,13 +1041,100 @@ class AnimationCanvas(QWidget):
         self.set_step(value)
 
     def _on_play_pause(self):
+        if not self._playing and self._cursor_locked:
+            # Cursor is locked — ask before starting playback.
+            from PySide6.QtWidgets import QMessageBox
+            dlg = QMessageBox(self)
+            dlg.setWindowTitle("Cursor locked")
+            dlg.setText(
+                "The plot cursor is currently locked.\n"
+                "Unlock it to resume animation playback.")
+            dlg.setIcon(QMessageBox.Icon.Warning)
+            btn_unlock = dlg.addButton(
+                "Unlock & Play", QMessageBox.ButtonRole.AcceptRole)
+            dlg.addButton("Cancel", QMessageBox.ButtonRole.RejectRole)
+            dlg.exec()
+            if dlg.clickedButton() is not btn_unlock:
+                return
+            # Unlock locally and ask PlotCanvas to unlock too.
+            self.set_cursor_locked(False)
+            self.request_cursor_unlock.emit()
         if self._playing:
             self._timer.stop()
             self._play_btn.setIcon(_icons.icon("mdi6.play"))
         else:
+            if self._step >= self._n_steps - 1:
+                self._step = 0
+            # Pin wall-clock to the current sim time so playback resumes
+            # smoothly from here instead of jumping forward.
+            self._anchor_playback()
             self._timer.start()
             self._play_btn.setIcon(_icons.icon("mdi6.pause"))
         self._playing = not self._playing
 
+    def _anchor_playback(self):
+        """Pin (wall_now, sim_now) so wall-clock advance resumes here."""
+        self._wall_t0 = time.monotonic()
+        try:
+            self._sim_t0 = float(self._T[self._step])
+        except Exception:
+            self._sim_t0 = 0.0
+
+    def set_cursor_locked(self, locked: bool, t: float | None = None) -> None:
+        """Show / hide the locked-cursor UI and update internal state.
+
+        Called by main_window when PlotCanvas.cursor_lock_changed fires,
+        and internally from the "Unlock & Play" dialog branch.
+        """
+        self._cursor_locked = locked
+        self._cursor_lock_lbl.setVisible(locked)
+        self._cursor_time_spin.setVisible(locked)
+        if locked and t is not None:
+            self._cursor_time_spin.blockSignals(True)
+            self._cursor_time_spin.setValue(t)
+            self._cursor_time_spin.blockSignals(False)
+
+    def _on_locked_time_changed(self, t: float) -> None:
+        """Handle spin-box edits while the cursor is locked.
+
+        Jumps the animation to the step nearest to *t* and emits
+        cursor_time_changed so PlotCanvas can force-update its cursor.
+        """
+        if not self._cursor_locked:
+            return
+        T = self._T
+        step = int(np.argmin(np.abs(T - t)))
+        step = max(0, min(step, self._n_steps - 1))
+        self.set_step(step)
+        self.cursor_time_changed.emit(float(T[step]))
+
+    def _on_speed_changed(self, _val: float):
+        # Re-anchor so the speed change takes effect from "now" without
+        # a discontinuous jump in displayed time.
+        if self._playing:
+            self._anchor_playback()
+
     def _advance_frame(self):
-        self.set_step((self._step + 1) % self._n_steps)
+        # Wall-clock driven: figure out which step corresponds to the
+        # elapsed wall time at the current playback speed, snap to it,
+        # and stop at the end of the trajectory.
+        speed = max(1e-6, float(self._fps_spin.value()))
+        elapsed = time.monotonic() - self._wall_t0
+        sim_t = self._sim_t0 + elapsed * speed
+        try:
+            t_end = float(self._T[-1])
+        except Exception:
+            t_end = 0.0
+        if sim_t >= t_end:
+            self.set_step(self._n_steps - 1)
+            self._timer.stop()
+            self._playing = False
+            self._play_btn.setIcon(_icons.icon("mdi6.play"))
+            return
+        # Linear forward scan (T is monotonic; we never go backwards here).
+        s = self._step
+        n = self._n_steps
+        while s + 1 < n and float(self._T[s + 1]) <= sim_t:
+            s += 1
+        if s != self._step:
+            self.set_step(s)

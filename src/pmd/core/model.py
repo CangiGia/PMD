@@ -424,6 +424,13 @@ class Body(Base):
         self._markers = []
         self._result_container = None
 
+        # Auto-create a marker at the body's centre of mass.  Lives in
+        # local coords [0, 0] regardless of how the body was built (direct
+        # constructor or geometry factory) and is named ``<body>.cm`` so
+        # it can be referenced unambiguously from joints, forces, etc.
+        _cm_label = self.name if self.name else f"body_{self.COUNT}"
+        self.cm = self.add_marker([0.0, 0.0], name=f"{_cm_label}.cm")
+
     # Ensure assigned values are stored as column vectors
     velocity = as_column_property("velocity")
     acceleration = as_column_property("acceleration")
@@ -519,7 +526,7 @@ class Body(Base):
 
     # ── Geometry-driven factories ─────────────────────────────────
     @classmethod
-    def from_link(cls, p1, p2, *, thickness, marker_theta=None, **body_kwargs):
+    def as_link(cls, p1, p2, *, thickness, marker_theta=None, **body_kwargs):
         """Build a Link-shaped body from its two world-frame endpoints.
 
         Parameters
@@ -567,7 +574,7 @@ class Body(Base):
         return body, mk_p1, mk_p2
 
     @classmethod
-    def from_plate(cls, v1, v2, v3, *, orientation=0.0, **body_kwargs):
+    def as_plate(cls, v1, v2, v3, *, orientation=0.0, **body_kwargs):
         """Build a triangular Plate body from its three world-frame vertices.
 
         Parameters
@@ -609,7 +616,7 @@ class Body(Base):
         return body, mk_v1, mk_v2, mk_v3
 
     @classmethod
-    def from_rectangle(cls, c1, c2, c3, c4, **body_kwargs):
+    def as_rectangle(cls, c1, c2, c3, c4, **body_kwargs):
         """Build a Rectangle body from its four world-frame corners (CCW).
 
         The local frame is oriented so that the edge ``c1→c2`` lies along
@@ -663,7 +670,7 @@ class Body(Base):
         return body, mk_c1, mk_c2, mk_c3, mk_c4
 
     @classmethod
-    def from_circle(cls, center, radius, *, orientation=0.0, **body_kwargs):
+    def as_circle(cls, center, radius, *, orientation=0.0, **body_kwargs):
         """Build a Circle body from its world-frame centre and radius.
 
         Parameters
