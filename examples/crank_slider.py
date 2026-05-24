@@ -13,6 +13,8 @@ KINEMATIC SCHEME & INITIAL STATE
         (O1) - - - - - - - - - - - - - - - - - (O3)|              | - - -> X (Axis)
                                                    +--------------+
                                                    
+BODY PARAMETERS
+---------------                                       
 +------------+------------------+----------------------+-------------------+
 | Body Name  | Kinematic Role   | Geometry / Length    |  Initial Angle    |
 |            |                  |        [m]           |       [deg]       |
