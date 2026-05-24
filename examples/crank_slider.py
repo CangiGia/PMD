@@ -12,11 +12,7 @@ KINEMATIC SCHEME & INITIAL STATE
            *                                 *     +--------------+
         (O1) - - - - - - - - - - - - - - - - - (O3)|              | - - -> X (Axis)
                                                    +--------------+
-
-BODY PARAMETERS
----------------
-All links are modeled as standard rigid bodies.
-
+                                                   
 +------------+------------------+----------------------+-------------------+
 | Body Name  | Kinematic Role   | Geometry / Length    |  Initial Angle    |
 |            |                  |        [m]           |       [deg]       |
@@ -25,19 +21,6 @@ All links are modeled as standard rigid bodies.
 | rod        |  Connecting Rod  |     L = 0.40         |     −10.1821      |
 | slider     |   Slider Block   | Sphere (R = 0.02)*   |       0.0000      |
 +------------+------------------+----------------------+-------------------+
-
-TOPOLOGY & JOINTS
------------------
-* O1 [j_gc]  : RevJoint   Ground <-> Crankshaft  @ (0, 0)
-* O2 [j_cr]  : RevJoint   Crankshaft <-> Rod     @ Crank tip
-* O3 [j_rs]  : RevJoint   Rod <-> Slider         @ Rod tip
-* X  [j_gs]  : TranJoint  Ground <-> Slider      @ Y=0 (Sliding along X-axis)
-
-BOUNDARY CONDITIONS & SOLVER
-----------------------------
-* Driver (j_mot) : RotMotion on O2 (j_cr). Imposes a constant relative angular
-                   velocity of 20 deg/s BETWEEN the Crankshaft and the Rod.
-* Gravity (fw)   : Active along the -Y axis.
 """
 
 import numpy as np
