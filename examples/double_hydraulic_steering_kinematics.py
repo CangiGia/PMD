@@ -29,13 +29,14 @@ SHIFT = 130.026  # x-offset of the right-side tie-rod yoke attachment
 # =============================================================================
 
 tie_rod, tie_rod_yoke_left_reference_frame, tie_rod_yoke_right_reference_frame = Body.as_link(
-    np.array([-675.507, -193.445]),
-    np.array([675.507 + SHIFT, -193.445]),
+    np.array([-610.494, -103.872]),
+    np.array([610.494 + SHIFT, -103.872]),
     mass=6.74,
     inertia=1234456.10,
     thickness=35,
     marker_theta=0.0,
     name="tie_rod",
+    color="tab:red",
 )
 
 # =============================================================================
@@ -51,6 +52,7 @@ barrel_left, barrel_ground_reference_frame_left, barrel_rod_reference_frame_left
     thickness=77,
     marker_theta=0.0,
     name="barrel_left",
+    color="tab:orange",
 )
 
 rod_left, rod_end_reference_frame_left, rod_yoke_reference_frame_left = Body.as_link(
@@ -61,6 +63,7 @@ rod_left, rod_end_reference_frame_left, rod_yoke_reference_frame_left = Body.as_
     thickness=40,
     marker_theta=0.0,
     name="rod_left",
+    color="tab:gray",
 )
 
 # Yoke vertices CCW: rod-connection → ground-pivot → wheel-pivot
@@ -76,6 +79,7 @@ rod_left, rod_end_reference_frame_left, rod_yoke_reference_frame_left = Body.as_
     mass=31.31,
     inertia=5.28e05,
     name="yoke_left",
+    color="tab:blue",
 )
 
 wheel_left = Body(
@@ -85,6 +89,7 @@ wheel_left = Body(
     mass=127,
     inertia=2.695e06,
     name="wheel_left",
+    color="silver",
 )
 
 # ground markers
@@ -134,23 +139,25 @@ yoke_wheel_rigid_joint_left = RevJoint(
 
 # bodies
 barrel_right, barrel_ground_reference_frame_right, barrel_rod_reference_frame_right = Body.as_link(
-    np.array([0.0, 0.0]),
-    np.array([432.957, -45.106]),
+    np.array([SHIFT, 0.0]),
+    np.array([432.957 + SHIFT, -45.106]),
     mass=4.55,
     inertia=86113.72,
     thickness=77,
     marker_theta=0.0,
     name="barrel_right",
+    color="tab:orange",
 )
 
 rod_right, rod_end_reference_frame_right, rod_yoke_reference_frame_right = Body.as_link(
-    np.array([207.733, -21.642]),
-    np.array([676.982, -70.529]),
+    np.array([207.733 + SHIFT, -21.642]),
+    np.array([676.982 + SHIFT, -70.529]),
     mass=4.52,
     inertia=81024.95,
     thickness=40,
     marker_theta=0.0,
     name="rod_right",
+    color="tab:gray",
 )
 
 # Yoke vertices CCW: wheel-pivot → ground-pivot → rod-connection
@@ -160,26 +167,28 @@ rod_right, rod_end_reference_frame_right, rod_yoke_reference_frame_right = Body.
     yoke_ground_reference_frame_right,
     yoke_rod_reference_frame_right,
 ) = Body.as_plate(
-    np.array([905.3226, 215.573]),
-    np.array([712.987, 215.573]),
-    np.array([676.982, -70.529]),
+    np.array([905.3226 + SHIFT, 215.573]),
+    np.array([712.987 + SHIFT, 215.573]),
+    np.array([676.982 + SHIFT, -70.529]),
     mass=31.31,
     inertia=5.28e05,
     name="yoke_right",
+    color="tab:blue",
 )
 
 wheel_right = Body(
-    position=np.array([905.3226, 215.573]),
+    position=np.array([905.3226 + SHIFT, 215.573]),
     orientation=0.0,
     shape=Rectangle(width=300.0, height=412.0),
     mass=127,
     inertia=2.695e06,
     name="wheel_right",
+    color="silver",
 )
 
 # ground markers
-ground_yoke_reference_frame_right = Ground.add_marker(np.array([712.987, 215.573]))
-ground_barrel_reference_frame_right = Ground.add_marker(np.array([0.0, 0.0]))
+ground_yoke_reference_frame_right = Ground.add_marker(np.array([712.987 + SHIFT, 215.573]))
+ground_barrel_reference_frame_right = Ground.add_marker(np.array([SHIFT, 0.0]))
 
 # deferred marker: tie-rod attachment on yoke_right
 yoke_right_tie_rod_reference_frame = yoke_right.add_marker_at(
@@ -298,8 +307,10 @@ double_hydralic_steering_model = PlanarMultibodyModel(
         yoke_right_tie_rod_revolute_joint,
         yoke_left_tie_rod_revolute_joint,
     ],
-    forces=[actuator_left, actuator_right],
-    functions=[extension_law, retraction_law],
+    # forces=[actuator_left, actuator_right],
+    # functions=[extension_law, retraction_law],
+    forces=[actuator_left],
+    functions=[extension_law],
     units=units,
 )
 
