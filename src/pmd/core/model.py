@@ -284,7 +284,7 @@ class Body(Base):
                  position=None, orientation=None,
                  velocity=None, angular_velocity=0,
                  acceleration=None, angular_acceleration=0,
-                 name=None):
+                 name=None, color=None):
         """Initialize a Body.
 
         Parameters
@@ -396,6 +396,7 @@ class Body(Base):
             _validate_shape(shape)
 
         self.name = name
+        self.color = color
         self.shape = shape
         self.mass = mass
         self.inertia = inertia

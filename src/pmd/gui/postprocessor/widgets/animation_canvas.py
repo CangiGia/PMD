@@ -466,8 +466,11 @@ class AnimationCanvas(QWidget):
             for body in model.Bodies:
                 if not body:
                     continue                 # skip Ground
-                col = _BODY_COLORS[color_idx % len(_BODY_COLORS)]
-                color_idx += 1
+                if getattr(body, 'color', None) is not None:
+                    col = body.color
+                else:
+                    col = _BODY_COLORS[color_idx % len(_BODY_COLORS)]
+                    color_idx += 1
 
                 x, y, phi = _body_pos(body, 0)
                 shape = body.shape
