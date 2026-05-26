@@ -134,8 +134,8 @@ yoke_wheel_rigid_joint_left = RevJoint(
 
 # bodies
 barrel_right, barrel_ground_reference_frame_right, barrel_rod_reference_frame_right = Body.as_link(
-    np.array([0.0, 0.0]),
-    np.array([432.957, -45.106]),
+    np.array([SHIFT, 0.0]),
+    np.array([432.957+SHIFT, -45.106]),
     mass=4.55,
     inertia=86113.72,
     thickness=77,
@@ -144,8 +144,8 @@ barrel_right, barrel_ground_reference_frame_right, barrel_rod_reference_frame_ri
 )
 
 rod_right, rod_end_reference_frame_right, rod_yoke_reference_frame_right = Body.as_link(
-    np.array([207.733, -21.642]),
-    np.array([676.982, -70.529]),
+    np.array([207.733+SHIFT, -21.642]),
+    np.array([676.982+SHIFT, -70.529]),
     mass=4.52,
     inertia=81024.95,
     thickness=40,
@@ -160,16 +160,16 @@ rod_right, rod_end_reference_frame_right, rod_yoke_reference_frame_right = Body.
     yoke_ground_reference_frame_right,
     yoke_rod_reference_frame_right,
 ) = Body.as_plate(
-    np.array([905.3226, 215.573]),
-    np.array([712.987, 215.573]),
-    np.array([676.982, -70.529]),
+    np.array([905.3226+SHIFT, 215.573]),
+    np.array([712.987+SHIFT, 215.573]),
+    np.array([676.982+SHIFT, -70.529]),
     mass=31.31,
     inertia=5.28e05,
     name="yoke_right",
 )
 
 wheel_right = Body(
-    position=np.array([905.3226, 215.573]),
+    position=np.array([905.3226+SHIFT, 215.573]),
     orientation=0.0,
     shape=Rectangle(width=300.0, height=412.0),
     mass=127,
@@ -178,8 +178,8 @@ wheel_right = Body(
 )
 
 # ground markers
-ground_yoke_reference_frame_right = Ground.add_marker(np.array([712.987, 215.573]))
-ground_barrel_reference_frame_right = Ground.add_marker(np.array([0.0, 0.0]))
+ground_yoke_reference_frame_right = Ground.add_marker(np.array([712.987+SHIFT, 215.573]))
+ground_barrel_reference_frame_right = Ground.add_marker(np.array([SHIFT, 0.0]))
 
 # deferred marker: tie-rod attachment on yoke_right
 yoke_right_tie_rod_reference_frame = yoke_right.add_marker_at(
@@ -298,13 +298,15 @@ double_hydralic_steering_model = PlanarMultibodyModel(
         yoke_right_tie_rod_revolute_joint,
         yoke_left_tie_rod_revolute_joint,
     ],
-    forces=[actuator_left, actuator_right],
-    functions=[extension_law, retraction_law],
+    forces=[actuator_left],
+    functions=[extension_law],
     units=units,
 )
 
 if __name__ == "__main__":
-    from pmd.gui import PostProcessor
+    from pmd.gui import PostProcessor, preview_model
+
+    preview_model(double_hydralic_steering_model)
 
     T, uT = double_hydralic_steering_model.solve(
         analysis="kinematic",

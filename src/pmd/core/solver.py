@@ -66,13 +66,15 @@ class PlanarMultibodyModel:
         self.Functs = list(functions) if functions else []
 
         # Auto-assembly trigger
-        from .builder import _assemble
+        from .builder import _assemble, _resolve_deferred_markers
         needs_assembly = any(
             not b._position_given and not b._orientation_given
             for b in self.Bodies
         )
         if needs_assembly:
             _assemble(self.Bodies, self.Joints)
+        else:
+            _resolve_deferred_markers(self.Bodies)
 
         self._initialize()
 
