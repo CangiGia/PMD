@@ -65,6 +65,7 @@ from matplotlib.transforms import Affine2D
 
 from pmd.core.constraints import RevJoint, TranJoint
 from pmd.core.mechanics import rotation_matrix
+from pmd.core.motion import Motion
 from pmd.core.shapes import Circle, Link, Plate, Rectangle
 
 # ── Colour constants (mirror animation_canvas) ────────────────────────────
@@ -262,6 +263,8 @@ def _draw_marker(ax, mk, triad_L: float) -> None:
 
 def _draw_joint(ax, joint, r_joint, sh, rail_hw, gap_y) -> None:
     """Draw one joint glyph (RevJoint disc or TranJoint square + rails)."""
+    if isinstance(joint, Motion):
+        return
     mk = joint.iMarker or joint.jMarker
     if mk is None:
         return

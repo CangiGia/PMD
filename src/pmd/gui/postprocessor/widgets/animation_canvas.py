@@ -12,7 +12,7 @@ from matplotlib.figure import Figure
 from matplotlib.patches import Circle as MplCircle, FancyArrowPatch, FancyBboxPatch, Polygon as MplPolygon
 from matplotlib.transforms import Affine2D
 
-from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtCore import Qt, QEvent, QTimer, Signal
 from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QDoubleSpinBox,
@@ -29,6 +29,7 @@ from PySide6.QtWidgets import (
 from pmd.core.shapes import Rectangle, Circle, Plate, Link
 from pmd.core.constraints import RevJoint, TranJoint
 from pmd.core.forces import PtpForce
+from pmd.core.motion import Motion
 from pmd.core.mechanics import rotation_matrix
 from ... import icons as _icons
 from ...style import CANVAS_BG_DARK, CANVAS_BG_LIGHT, CANVAS_FG_DARK, CANVAS_FG_LIGHT
@@ -131,6 +132,8 @@ class AnimationCanvas(QWidget):
         self._ax = self._figure.add_subplot(111)
         self._ax.set_aspect("equal")
         self._canvas = FigureCanvasQTAgg(self._figure)
+        self._canvas.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self._canvas.installEventFilter(self)
         self._canvas.mpl_connect("scroll_event", self._on_scroll)
 
         # Backend nav toolbar (hidden) — used only for navigate state/history
@@ -228,6 +231,11 @@ class AnimationCanvas(QWidget):
         # is small enough to never dominate the body footprint yet big
         # enough to convey orientation.
         self._triad_L = self._compute_triad_length()
+        # Joint glyph radius (data-units): decoupled from the scene span so
+        # it can be resized at runtime via View → Joint glyph size.
+        self._joint_radius: float = self._triad_L * 0.10
+        # Artists hidden while playback runs; restored when animation ends.
+        self._play_hidden: list = []
 
         self._init_artists()
 
@@ -250,6 +258,13 @@ class AnimationCanvas(QWidget):
         self._markers_shortcut = QShortcut(QKeySequence(Qt.Key_V), self)
         self._markers_shortcut.setContext(Qt.WindowShortcut)
         self._markers_shortcut.activated.connect(self._btn_markers.click)
+
+        # T-key: hold T to activate temporary pan mode while the key is held.
+        # Implemented via Qt eventFilter (registered above on self._canvas) so
+        # that the shortcut works without the canvas needing matplotlib keyboard
+        # focus first.
+        self._t_pan_active: bool = False
+        self._pre_t_pan_state: bool = False
 
     # ------------------------------------------------------------------
     # Custom toolbar
@@ -557,7 +572,10 @@ class AnimationCanvas(QWidget):
                     color=col, zorder=11,
                     annotation_clip=False,
                     visible=bool(_bname),
+                    arrowprops=dict(arrowstyle="-", color="#bbbbbb", lw=0.6,
+                                    shrinkA=0, shrinkB=2),
                 )
+                _blbl.draggable(True)
                 self._body_labels.append(_blbl)
 
                 # markers attached to this body, drawn as a small
@@ -622,7 +640,10 @@ class AnimationCanvas(QWidget):
                         zorder=7,
                         annotation_clip=False,
                         visible=bool(mk_name),
+                        arrowprops=dict(arrowstyle="-", color="#bbbbbb", lw=0.6,
+                                        shrinkA=0, shrinkB=2),
                     )
+                    label.draggable(True)
                     self._marker_dots.append(dot)
                     self._marker_arrows_x.append(arrow_x)
                     self._marker_arrows_y.append(arrow_y)
@@ -630,11 +651,13 @@ class AnimationCanvas(QWidget):
                     self._marker_info.append((mk, si))
 
             # ---- Joints ----
-            _r_joint = self._triad_L * 0.18   # RevJoint disc radius
-            _sh      = self._triad_L * 0.18   # TranJoint square half-side
-            _rail_hw = self._triad_L * 0.45   # TranJoint rail half-width
-            _gap_y   = _sh * 1.6              # perpendicular offset of rails
+            _r_joint = self._joint_radius          # RevJoint disc radius
+            _sh      = self._joint_radius          # TranJoint square half-side
+            _rail_hw = self._joint_radius * 2.5    # TranJoint rail half-width
+            _gap_y   = self._joint_radius * 1.6    # perpendicular offset of rails
             for joint in model.Joints:
+                if isinstance(joint, Motion):
+                    continue
                 mk = joint.iMarker or joint.jMarker
                 if mk is None:
                     continue
@@ -981,8 +1004,8 @@ class AnimationCanvas(QWidget):
             self._marker_labels[i].xy = (gp[0], gp[1])
 
         # joints
-        _rail_hw = self._triad_L * 0.45
-        _gap_y   = self._triad_L * 0.18 * 1.6
+        _rail_hw = self._joint_radius * 2.5
+        _gap_y   = self._joint_radius * 1.6
         for patch, t_sq, r1, r2, clbl, (joint, _si) in zip(
             self._joint_patches, self._joint_transforms,
             self._joint_rail1, self._joint_rail2,
@@ -1073,6 +1096,7 @@ class AnimationCanvas(QWidget):
             self._anchor_playback()
             self._timer.start()
             self._play_btn.setIcon(_icons.icon("mdi6.pause"))
+            self._hide_for_play()
         self._playing = not self._playing
 
     def _anchor_playback(self):
@@ -1133,6 +1157,7 @@ class AnimationCanvas(QWidget):
             self._timer.stop()
             self._playing = False
             self._play_btn.setIcon(_icons.icon("mdi6.play"))
+            self._restore_play_hidden()
             return
         # Linear forward scan (T is monotonic; we never go backwards here).
         s = self._step
@@ -1141,3 +1166,162 @@ class AnimationCanvas(QWidget):
             s += 1
         if s != self._step:
             self.set_step(s)
+
+    # ------------------------------------------------------------------
+    # Hide / restore artists during playback (Feature A)
+    # ------------------------------------------------------------------
+
+    def _hide_for_play(self) -> None:
+        """Hide labels and marker triads while playback is running."""
+        self._play_hidden.clear()
+        for art in (
+            self._body_labels
+            + self._marker_arrows_x
+            + self._marker_arrows_y
+            + self._marker_dots
+            + self._marker_labels
+            + self._joint_coord_labels
+        ):
+            if art.get_visible():
+                art.set_visible(False)
+                self._play_hidden.append(art)
+        self._canvas.draw_idle()
+
+    def _restore_play_hidden(self) -> None:
+        """Restore artists that were hidden by _hide_for_play."""
+        for art in self._play_hidden:
+            art.set_visible(True)
+        self._play_hidden.clear()
+        self._canvas.draw_idle()
+
+    # ------------------------------------------------------------------
+    # T-key temporary pan mode (Feature B) — Qt eventFilter
+    # ------------------------------------------------------------------
+
+    def eventFilter(self, obj, event) -> bool:
+        """Intercept Qt key events on the matplotlib canvas.
+
+        Holding **T** activates pan mode; releasing T restores the
+        previous pan state.  Using Qt's event filter rather than
+        ``mpl_connect("key_press_event")`` avoids the requirement that
+        the matplotlib canvas already has Qt keyboard focus.
+        """
+        if obj is self._canvas:
+            etype = event.type()
+            if etype == QEvent.Type.KeyPress:
+                if event.key() == Qt.Key.Key_T and not event.isAutoRepeat():
+                    if not self._t_pan_active:
+                        self._t_pan_active = True
+                        self._pre_t_pan_state = self._btn_pan.isChecked()
+                        self._btn_pan.setChecked(True)
+                        self._on_pan(True)
+                    return True
+            elif etype == QEvent.Type.KeyRelease:
+                if event.key() == Qt.Key.Key_T and not event.isAutoRepeat():
+                    if self._t_pan_active:
+                        self._t_pan_active = False
+                        if not self._pre_t_pan_state:
+                            self._btn_pan.setChecked(False)
+                            self._on_pan(False)
+                    return True
+        return super().eventFilter(obj, event)
+
+    # ------------------------------------------------------------------
+    # Joint glyph resize (Feature E)
+    # ------------------------------------------------------------------
+
+    def _rebuild_joint_glyphs(self, new_radius: float) -> None:
+        """Remove existing joint patches and recreate them with *new_radius*.
+
+        Called by main_window when the user changes the joint glyph size
+        via View → Joint glyph size.
+        """
+        self._joint_radius = new_radius
+        ax = self._ax
+        step = self._step
+
+        # Remove old patches and rails from the axes.
+        for p in self._joint_patches:
+            try:
+                p.remove()
+            except Exception:
+                pass
+        for r in self._joint_rail1:
+            if r is not None:
+                try:
+                    r.remove()
+                except Exception:
+                    pass
+        for r in self._joint_rail2:
+            if r is not None:
+                try:
+                    r.remove()
+                except Exception:
+                    pass
+
+        self._joint_patches.clear()
+        self._joint_transforms.clear()
+        self._joint_rail1.clear()
+        self._joint_rail2.clear()
+
+        _r = new_radius
+        _sh = _r
+        _rail_hw = _r * 2.5
+        _gap_y = _r * 1.6
+
+        for joint, _si in self._joint_info:
+            mk = joint.iMarker or joint.jMarker
+            gp = _marker_global(mk, step)
+            ang = _marker_global_angle(mk, step)
+            t_sq = None
+            r1_art = None
+            r2_art = None
+
+            if isinstance(joint, RevJoint):
+                patch = MplCircle(
+                    gp, radius=_r,
+                    facecolor="#ff2bd6", edgecolor="#1c2033",
+                    linewidth=1.0, zorder=7,
+                )
+                ax.add_patch(patch)
+            elif isinstance(joint, TranJoint):
+                t_sq = Affine2D().rotate(ang).translate(gp[0], gp[1])
+                patch = FancyBboxPatch(
+                    (-_sh, -_sh), 2 * _sh, 2 * _sh,
+                    boxstyle="square,pad=0",
+                    facecolor="#00bcd4", edgecolor="#006978",
+                    linewidth=1.2, zorder=7,
+                )
+                patch.set_transform(t_sq + ax.transData)
+                ax.add_patch(patch)
+                c, s = np.cos(ang), np.sin(ang)
+                ex = np.array([c, s])
+                ey = np.array([-s, c])
+                p1 = gp - _rail_hw * ex + _gap_y * ey
+                p2 = gp + _rail_hw * ex + _gap_y * ey
+                p3 = gp - _rail_hw * ex - _gap_y * ey
+                p4 = gp + _rail_hw * ex - _gap_y * ey
+                r1_art, = ax.plot(
+                    [p1[0], p2[0]], [p1[1], p2[1]],
+                    color="#006978", linewidth=1.4,
+                    solid_capstyle="butt", zorder=7,
+                )
+                r2_art, = ax.plot(
+                    [p3[0], p4[0]], [p3[1], p4[1]],
+                    color="#006978", linewidth=1.4,
+                    solid_capstyle="butt", zorder=7,
+                )
+            else:
+                patch = MplCircle(
+                    gp, radius=_r * 0.5,
+                    facecolor="#888888", edgecolor="#333333",
+                    linewidth=0.8, zorder=7,
+                )
+                ax.add_patch(patch)
+
+            self._joint_patches.append(patch)
+            self._joint_transforms.append(t_sq)
+            self._joint_rail1.append(r1_art)
+            self._joint_rail2.append(r2_art)
+
+        self._canvas.draw_idle()

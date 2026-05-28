@@ -10,12 +10,207 @@ from matplotlib.figure import Figure
 from matplotlib.widgets import RectangleSelector
 from PySide6.QtCore import Signal, Qt, QEvent
 from PySide6.QtGui import QCursor
-from PySide6.QtWidgets import QMenu, QToolBar, QToolButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QCheckBox,
+    QComboBox,
+    QDialog,
+    QDialogButtonBox,
+    QDoubleSpinBox,
+    QFormLayout,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMenu,
+    QPushButton,
+    QTabWidget,
+    QToolBar,
+    QToolButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 from ._zoom_inset import ZoomInset
 from ..models import CurveItem
 from ... import icons as _icons
 from ...style import CANVAS_BG_DARK, CANVAS_BG_LIGHT, CANVAS_FG_DARK, CANVAS_FG_LIGHT
+
+
+# ---------------------------------------------------------------------------
+# Helper dialog — Figure options (axes settings + X-axis independent variable)
+# ---------------------------------------------------------------------------
+
+class _FigureOptionsDialog(QDialog):
+    """Custom 'Figure options' dialog.
+
+    Replaces the matplotlib-native ``NavigationToolbar2QT.edit_parameters()``
+    dialog so that the **independent variable (X axis)** selector can be
+    included alongside the standard axis/title fields.
+
+    Parameters
+    ----------
+    canvas : FigureCanvasQTAgg
+        The matplotlib canvas (needed for ``draw_idle()`` on Apply).
+    axes : list[Axes]
+        All Axes objects in the figure (one per subplot / unit group).
+    curves : list[CurveItem]
+        Currently plotted curves (populates the X-axis combo).
+    x_curve : CurveItem or None
+        The currently selected X-axis curve (``None`` = time).
+    dark : bool
+        Whether the dark theme is active (cosmetic only, not used yet).
+    parent : QWidget or None
+    """
+
+    def __init__(self, canvas, axes, curves, x_curve, dark, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Figure options")
+        self._canvas = canvas
+        self._axes = axes
+        self._curves = curves
+        self._x_curve = x_curve
+
+        outer = QVBoxLayout(self)
+        outer.setSpacing(8)
+
+        # ---- Independent variable selector --------------------------------
+        x_form = QFormLayout()
+        x_form.setContentsMargins(0, 0, 0, 0)
+        self._x_var_combo = QComboBox()
+        self._x_var_combo.addItem("Time [s]", userData=None)
+        for c in curves:
+            self._x_var_combo.addItem(c.label, userData=c)
+        if x_curve is None:
+            self._x_var_combo.setCurrentIndex(0)
+        else:
+            for i in range(self._x_var_combo.count()):
+                if self._x_var_combo.itemData(i) is x_curve:
+                    self._x_var_combo.setCurrentIndex(i)
+                    break
+        x_form.addRow("Independent variable (X axis):", self._x_var_combo)
+        outer.addLayout(x_form)
+
+        sep = QFrame()
+        sep.setFrameShape(QFrame.Shape.HLine)
+        sep.setFrameShadow(QFrame.Shadow.Sunken)
+        outer.addWidget(sep)
+
+        # ---- Per-axes controls (one tab per axis if >1, flat form if 1) ---
+        self._ax_widgets: list[dict] = []  # one dict per axes
+        if not axes:
+            pass
+        elif len(axes) == 1:
+            aw = self._make_axis_form(axes[0])
+            outer.addLayout(aw["layout"])
+            self._ax_widgets.append(aw)
+        else:
+            tabs = QTabWidget()
+            for idx, ax in enumerate(axes):
+                aw = self._make_axis_form(ax)
+                tab_w = QWidget()
+                tab_w.setLayout(aw["layout"])
+                tabs.addTab(tab_w, f"Axis {idx + 1}")
+                self._ax_widgets.append(aw)
+            outer.addWidget(tabs)
+
+        # ---- Legend checkbox ----------------------------------------------
+        self._legend_check = QCheckBox("(Re-)Generate automatic legend")
+        self._legend_check.setChecked(False)
+        outer.addWidget(self._legend_check)
+
+        # ---- Buttons ------------------------------------------------------
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok
+            | QDialogButtonBox.StandardButton.Cancel
+            | QDialogButtonBox.StandardButton.Apply,
+        )
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        buttons.button(QDialogButtonBox.StandardButton.Apply).clicked.connect(
+            self._on_apply)
+        outer.addWidget(buttons)
+
+        self.setMinimumWidth(420)
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _make_axis_form(ax) -> dict:
+        """Build form rows for a single Axes; return widget dict."""
+        form = QFormLayout()
+        form.setContentsMargins(0, 4, 0, 4)
+
+        title_edit = QLineEdit(ax.get_title())
+        form.addRow("Title:", title_edit)
+
+        xlim = ax.get_xlim()
+        xmin = QDoubleSpinBox()
+        xmin.setRange(-1e12, 1e12); xmin.setDecimals(6); xmin.setValue(xlim[0])
+        xmax = QDoubleSpinBox()
+        xmax.setRange(-1e12, 1e12); xmax.setDecimals(6); xmax.setValue(xlim[1])
+        xlabel = QLineEdit(ax.get_xlabel())
+        xscale = QComboBox(); xscale.addItems(["linear", "log"])
+        xscale.setCurrentText(ax.get_xscale())
+        form.addRow("X Min:", xmin)
+        form.addRow("X Max:", xmax)
+        form.addRow("X Label:", xlabel)
+        form.addRow("X Scale:", xscale)
+
+        ylim = ax.get_ylim()
+        ymin = QDoubleSpinBox()
+        ymin.setRange(-1e12, 1e12); ymin.setDecimals(6); ymin.setValue(ylim[0])
+        ymax = QDoubleSpinBox()
+        ymax.setRange(-1e12, 1e12); ymax.setDecimals(6); ymax.setValue(ylim[1])
+        ylabel = QLineEdit(ax.get_ylabel())
+        yscale = QComboBox(); yscale.addItems(["linear", "log"])
+        yscale.setCurrentText(ax.get_yscale())
+        form.addRow("Y Min:", ymin)
+        form.addRow("Y Max:", ymax)
+        form.addRow("Y Label:", ylabel)
+        form.addRow("Y Scale:", yscale)
+
+        return {
+            "layout": form,
+            "ax": ax,
+            "title": title_edit,
+            "xmin": xmin, "xmax": xmax, "xlabel": xlabel, "xscale": xscale,
+            "ymin": ymin, "ymax": ymax, "ylabel": ylabel, "yscale": yscale,
+        }
+
+    def _on_apply(self) -> None:
+        self.apply_axes_settings()
+        self._canvas.draw_idle()
+
+    # ------------------------------------------------------------------
+    # Public API called by PlotCanvas._on_customize
+    # ------------------------------------------------------------------
+
+    def selected_x_curve(self):
+        """Return the chosen X-axis curve, or ``None`` for the time axis."""
+        return self._x_var_combo.currentData()
+
+    def apply_axes_settings(self) -> None:
+        """Write form values back to the Axes objects."""
+        for aw in self._ax_widgets:
+            ax = aw["ax"]
+            ax.set_title(aw["title"].text())
+            try:
+                ax.set_xscale(aw["xscale"].currentText())
+            except Exception:
+                pass
+            ax.set_xlim(aw["xmin"].value(), aw["xmax"].value())
+            ax.set_xlabel(aw["xlabel"].text())
+            try:
+                ax.set_yscale(aw["yscale"].currentText())
+            except Exception:
+                pass
+            ax.set_ylim(aw["ymin"].value(), aw["ymax"].value())
+            ax.set_ylabel(aw["ylabel"].text())
+        if self._legend_check.isChecked():
+            for aw in self._ax_widgets:
+                aw["ax"].legend()
 
 
 class PlotCanvas(QWidget):
@@ -30,6 +225,8 @@ class PlotCanvas(QWidget):
     step_requested = Signal(int)  # emitted on click: nearest time-step index
     # Emitted when the time-cursor lock state changes.
     cursor_lock_changed = Signal(bool)
+    # Emitted when a math operation creates a new curve (Feature F).
+    curve_computed = Signal(object)  # payload: CurveItem
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -79,12 +276,27 @@ class PlotCanvas(QWidget):
         # Intercept right-clicks for the time-cursor lock menu.
         self._canvas.installEventFilter(self)
 
+        # Feature C: custom X-axis variable.
+        self._x_curve: CurveItem | None = None
+
+        # Feature F: line ↔ curve mappings and selection state.
+        self._line_to_curve: dict = {}   # Line2D → CurveItem
+        self._curve_to_line: dict = {}   # id(CurveItem) → Line2D
+        self._line_original_lw: dict = {}  # id(Line2D) → float
+        self._selected_curves: list = []   # up to 2 CurveItem
+
+        self._canvas.mpl_connect("pick_event", self._on_pick_curve)
+
         # Custom visible toolbar (built after instance vars)
         self._toolbar = self._build_toolbar()
+        self._math_bar = self._build_math_bar()
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self._toolbar)
+        # NOTE: self._math_bar is intentionally NOT added here.
+        # main_window.py inserts it into the right_layout so it sits at the
+        # same vertical level as the AnimationCanvas (Fix 1).
         layout.addWidget(self._canvas, stretch=1)
 
     def _build_toolbar(self) -> QToolBar:
@@ -307,12 +519,23 @@ class PlotCanvas(QWidget):
         self._nav.configure_subplots()
 
     def _on_customize(self):
-        """Open the matplotlib 'Edit axis, curve and image parameters' dialog.
-
-        Lets the user toggle the grid, change line colour/style/width,
-        rename axes/legend entries, set scales, etc.
-        """
-        self._nav.edit_parameters()
+        """Open the custom 'Figure options' dialog (axes settings + X-axis variable)."""
+        dlg = _FigureOptionsDialog(
+            canvas=self._canvas,
+            axes=self._axes,
+            curves=self._curves,
+            x_curve=self._x_curve,
+            dark=self._dark,
+            parent=self,
+        )
+        result = dlg.exec()
+        if result == QDialog.DialogCode.Accepted:
+            dlg.apply_axes_settings()
+            new_x = dlg.selected_x_curve()
+            if new_x is not self._x_curve:
+                self._set_x_curve(new_x)
+            else:
+                self._canvas.draw_idle()
 
     def _on_grid(self, checked: bool):
         """Toggle the dashed grid on every subplot.
@@ -819,17 +1042,53 @@ class PlotCanvas(QWidget):
         self._time_cursor_lines.clear()
         self._figure.clear()
 
+        # Reset Feature-C/F line mappings (lines are recreated below).
+        self._line_to_curve.clear()
+        self._curve_to_line.clear()
+        self._line_original_lw.clear()
+        # Keep only selected curves that still appear in the new set.
+        self._selected_curves = [c for c in self._selected_curves if any(c is x for x in curves)]
+        # Validate _x_curve: drop if no longer present.
+        # First try exact identity (same object), then fall back to matching
+        # by label so the selection survives a unit-change rebuild.
+        if self._x_curve is not None:
+            if not any(self._x_curve is x for x in curves):
+                old_label = self._x_curve.label
+                self._x_curve = next(
+                    (x for x in curves if x.label == old_label), None
+                )
+
         if not curves:
             ax0 = self._figure.add_subplot(111)
             self._axes = [ax0]
             self.set_dark(self._dark)
+            self._refresh_x_axis_menu()
+            self._update_math_buttons()
             self._canvas.draw_idle()
             return
 
-        # Group curves by unit (= shared Y-label); preserves insertion order
+        # Independent variable for X axis (None → use c.T / time).
+        x_src = self._x_curve
+
+        # Group curves by unit (= shared Y-label); preserves insertion order.
+        # The X-axis curve itself is excluded — it provides X data only;
+        # plotting it would produce an uninformative diagonal line.
         groups: dict[str, list] = {}
         for c in curves:
+            if c is x_src:
+                continue
             groups.setdefault(c.unit or "Value", []).append(c)
+
+        if not groups:
+            # Only the X-axis curve is visible — nothing left to plot.
+            ax0 = self._figure.add_subplot(111)
+            ax0.set_xlabel(x_src.label if x_src is not None else "Time [s]")
+            self._axes = [ax0]
+            self.set_dark(self._dark)
+            self._refresh_x_axis_menu()
+            self._update_math_buttons()
+            self._canvas.draw_idle()
+            return
 
         n = len(groups)
         self._axes = []
@@ -837,7 +1096,15 @@ class PlotCanvas(QWidget):
             ax = self._figure.add_subplot(n, 1, idx + 1)
             self._axes.append(ax)
             for c in group:
-                ax.plot(c.T, c.data, color=c.color, label=c.label)
+                if x_src is not None and len(x_src.data) == len(c.data):
+                    x_vals = x_src.data
+                else:
+                    x_vals = c.T
+                (line,) = ax.plot(x_vals, c.data, color=c.color, label=c.label)
+                line.set_picker(5)
+                self._line_to_curve[line] = c
+                self._curve_to_line[id(c)] = line
+                self._line_original_lw[id(line)] = line.get_linewidth()
             ax.set_ylabel(ylabel)
             ax.legend(fontsize="small", loc="best")
             if self._grid_on:
@@ -845,13 +1112,18 @@ class PlotCanvas(QWidget):
             else:
                 ax.grid(False)
             if idx == n - 1:
-                ax.set_xlabel("Time [s]")
+                ax.set_xlabel(x_src.label if x_src is not None else "Time [s]")
+
+        # Re-apply selection highlight on the freshly drawn lines.
+        self._highlight_selected_lines()
 
         # Recreate the animation time-cursor (if any) against the new
         # set of axes; preserves position and visibility across redraws.
         self._refresh_time_cursor()
 
         self.set_dark(self._dark)
+        self._refresh_x_axis_menu()
+        self._update_math_buttons()
         self._canvas.draw_idle()
 
     # ------------------------------------------------------------------
@@ -994,8 +1266,13 @@ class PlotCanvas(QWidget):
         bg = CANVAS_BG_DARK if self._dark else CANVAS_BG_LIGHT
 
         # Group curves by axis (mirrors update_plot's grouping).
+        # The X-axis curve is excluded here too, matching update_plot:
+        # it has no plotted line so no dot/label should appear for it.
+        x_src = self._x_curve
         groups: dict[str, list] = {}
         for c in self._curves:
+            if c is x_src:
+                continue
             groups.setdefault(c.unit or "Value", []).append(c)
         groups_list = list(groups.values())
 
@@ -1044,15 +1321,29 @@ class PlotCanvas(QWidget):
                          "labels": labels, "curves": curves}
                 self._time_cursor_artists[ax] = entry
 
+            # When x_src is active the X axis is in x_src data-space, not
+            # time-space.  Compute the single x coordinate (cx) to use for
+            # the vline and every dot/label so the cursor stays on the curve.
+            if t is not None and x_src is not None and len(x_src.T) > 0:
+                T_x = x_src.T
+                ix = int(np.searchsorted(T_x, t))
+                if ix >= len(T_x):
+                    ix = len(T_x) - 1
+                elif ix > 0 and abs(T_x[ix - 1] - t) < abs(T_x[ix] - t):
+                    ix -= 1
+                cx: float | None = float(x_src.data[ix])
+            else:
+                cx = t  # None or time value (x axis is time)
+
             vline = entry["vline"]
-            if t is not None:
-                vline.set_xdata([t, t])
+            if cx is not None:
+                vline.set_xdata([cx, cx])
             vline.set_visible(show)
 
             # Position each dot + label at the curve's value at time t.
             ax_bbox = ax.get_window_extent()
             for dot, lab, c in zip(entry["dots"], entry["labels"], curves):
-                if t is None or len(c.T) == 0:
+                if t is None or cx is None or len(c.T) == 0:
                     dot.set_visible(False)
                     lab.set_visible(False)
                     continue
@@ -1063,12 +1354,12 @@ class PlotCanvas(QWidget):
                 elif i > 0 and abs(T[i - 1] - t) < abs(T[i] - t):
                     i -= 1
                 cy = float(c.data[i])
-                dot.set_data([t], [cy])
+                dot.set_data([cx], [cy])
                 # Decide left/right placement so the value label stays
                 # inside the axes when the cursor approaches the right
                 # edge (mirrors the manual Cursor mode behaviour).
                 try:
-                    px = ax.transData.transform((t, cy))[0]
+                    px = ax.transData.transform((cx, cy))[0]
                     place_left = (px - ax_bbox.x0) > (ax_bbox.width * 0.75)
                 except Exception:
                     place_left = False
@@ -1076,7 +1367,7 @@ class PlotCanvas(QWidget):
                     lab.set_ha("right"); lab.xyann = (-8, 0)
                 else:
                     lab.set_ha("left"); lab.xyann = (8, 0)
-                lab.xy = (t, cy)
+                lab.xy = (cx, cy)
                 lab.set_text(f"{cy:.4g}")
                 dot.set_visible(show)
                 lab.set_visible(show)
@@ -1141,7 +1432,138 @@ class PlotCanvas(QWidget):
             return
         if not self._curves or event.inaxes not in self._axes or event.xdata is None:
             return
-        t_click = event.xdata
-        T = self._curves[0].T
-        step = int(np.argmin(np.abs(T - t_click)))
+        x_src = self._x_curve
+        if x_src is not None and len(x_src.data) > 0:
+            # X axis is in x_src data-space: find the nearest sample index
+            # by searching x_src.data, then step is that index.
+            step = int(np.argmin(np.abs(np.asarray(x_src.data) - event.xdata)))
+        else:
+            # X axis is time: find the nearest time-step index directly.
+            T = self._curves[0].T
+            step = int(np.argmin(np.abs(T - event.xdata)))
         self.step_requested.emit(step)
+
+    # ------------------------------------------------------------------
+    # Feature C: custom X-axis
+    # ------------------------------------------------------------------
+
+    def _refresh_x_axis_menu(self) -> None:
+        """No-op — kept for call-site compatibility after toolbar button removal."""
+
+    def _set_x_curve(self, curve) -> None:
+        """Set the independent variable for the X axis and redraw."""
+        self._x_curve = curve
+        self.update_plot(self._curves)
+
+    # ------------------------------------------------------------------
+    # Feature F: math bar + curve selection
+    # ------------------------------------------------------------------
+
+    def _build_math_bar(self) -> QWidget:
+        """Build the math-operations bar shown below the main toolbar."""
+        bar = QWidget()
+        row = QHBoxLayout(bar)
+        row.setContentsMargins(4, 2, 4, 2)
+        row.setSpacing(6)
+        row.addWidget(QLabel("Math:"))
+        self._btn_math_add = QPushButton("A + B")
+        self._btn_math_sub = QPushButton("A \u2212 B")
+        self._btn_math_mul = QPushButton("A \u00d7 B")
+        self._btn_math_clr = QPushButton("Clear selection")
+        for btn in (self._btn_math_add, self._btn_math_sub, self._btn_math_mul):
+            btn.setEnabled(False)
+            btn.setFixedHeight(24)
+            row.addWidget(btn)
+        row.addSpacing(8)
+        self._btn_math_clr.setFixedHeight(24)
+        row.addWidget(self._btn_math_clr)
+        row.addStretch()
+        self._btn_math_add.clicked.connect(lambda: self._on_math("+"))
+        self._btn_math_sub.clicked.connect(lambda: self._on_math("-"))
+        self._btn_math_mul.clicked.connect(lambda: self._on_math("*"))
+        self._btn_math_clr.clicked.connect(self._deselect_all_curves)
+        return bar
+
+    def _on_pick_curve(self, event) -> None:
+        """Select / deselect a curve by clicking on its plotted line."""
+        artist = event.artist
+        if artist not in self._line_to_curve:
+            return
+        curve = self._line_to_curve[artist]
+        if curve in self._selected_curves:
+            self._selected_curves.remove(curve)
+            lw = self._line_original_lw.get(id(artist), 1.5)
+            artist.set_linewidth(lw)
+            artist.set_linestyle("-")
+        else:
+            if len(self._selected_curves) >= 2:
+                old = self._selected_curves[1]
+                old_line = self._curve_to_line.get(id(old))
+                if old_line is not None:
+                    old_line.set_linewidth(
+                        self._line_original_lw.get(id(old_line), 1.5))
+                    old_line.set_linestyle("-")
+                self._selected_curves[1] = curve
+            else:
+                self._selected_curves.append(curve)
+            self._highlight_selected_lines()
+        self._update_math_buttons()
+        self._canvas.draw_idle()
+
+    def _highlight_selected_lines(self) -> None:
+        """Apply visual highlight to the currently selected curves."""
+        for i, c in enumerate(self._selected_curves):
+            line = self._curve_to_line.get(id(c))
+            if line is None:
+                continue
+            orig = self._line_original_lw.get(id(line), 1.5)
+            line.set_linewidth(orig * 2.5)
+            line.set_linestyle("-" if i == 0 else "--")
+
+    def _deselect_all_curves(self) -> None:
+        """Restore all lines to normal weight and clear selection."""
+        for c in self._selected_curves:
+            line = self._curve_to_line.get(id(c))
+            if line is not None:
+                line.set_linewidth(self._line_original_lw.get(id(line), 1.5))
+                line.set_linestyle("-")
+        self._selected_curves.clear()
+        self._update_math_buttons()
+        self._canvas.draw_idle()
+
+    def _update_math_buttons(self) -> None:
+        """Enable math buttons only when exactly 2 curves are selected."""
+        enabled = len(self._selected_curves) == 2
+        self._btn_math_add.setEnabled(enabled)
+        self._btn_math_sub.setEnabled(enabled)
+        self._btn_math_mul.setEnabled(enabled)
+
+    def _on_math(self, op: str) -> None:
+        """Compute A op B and emit *curve_computed*."""
+        if len(self._selected_curves) != 2:
+            return
+        a, b = self._selected_curves[0], self._selected_curves[1]
+        if len(a.data) != len(b.data):
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.warning(
+                self, "Length mismatch",
+                f"Cannot compute: curves have different lengths "
+                f"({len(a.data)} vs {len(b.data)}).")
+            return
+        if op == "+":
+            result_data = a.data + b.data
+            sym = "+"
+        elif op == "-":
+            result_data = a.data - b.data
+            sym = "\u2212"
+        else:
+            result_data = a.data * b.data
+            sym = "\u00d7"
+        label = f"({a.label}) {sym} ({b.label})"
+        from ..models import CurveItem as _CI
+        _palette = ["#e74c3c", "#2ecc71", "#9b59b6", "#f39c12",
+                    "#1abc9c", "#3498db", "#e67e22", "#95a5a6"]
+        used = {a.color, b.color}
+        color = next((c for c in _palette if c not in used), "#cccccc")
+        curve = _CI(label=label, T=a.T, data=result_data, color=color)
+        self.curve_computed.emit(curve)

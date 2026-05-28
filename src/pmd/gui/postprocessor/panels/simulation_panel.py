@@ -16,6 +16,27 @@ from PySide6.QtWidgets import (
 from ... import icons as _icons
 
 
+class _KeepOpenMenu(QMenu):
+    """QMenu subclass that stays open on Ctrl+click.
+
+    When the user holds Ctrl and clicks a checkable action the menu remains
+    visible so multiple items can be toggled without reopening the menu each
+    time.  A plain click (no Ctrl) behaves identically to a normal QMenu.
+    """
+
+    def mouseReleaseEvent(self, event) -> None:
+        action = self.activeAction()
+        if (
+            event.button() == Qt.LeftButton
+            and event.modifiers() & Qt.ControlModifier
+            and action is not None
+            and action.isCheckable()
+        ):
+            action.trigger()  # toggle + emit signals manually
+            return  # do not call super() → menu stays open
+        super().mouseReleaseEvent(event)
+
+
 class SimulationPanel(QWidget):
     """Sidebar with File / View / Simulations nav buttons and a footer.
 
@@ -33,6 +54,8 @@ class SimulationPanel(QWidget):
     export_requested           = Signal(str)   # "plot" | "csv" | "txt"
     close_requested            = Signal()
     animation_toggle_requested = Signal(bool)
+    math_toggle_requested      = Signal(bool)
+    joint_glyph_requested      = Signal()
 
     def __init__(self, sessions, parent=None):
         super().__init__(parent)
@@ -43,6 +66,7 @@ class SimulationPanel(QWidget):
         self._icon_items: list[tuple[QPushButton, str, bool]] = []
         self._is_dark = False
         self._is_anim = False
+        self._is_math = False
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -178,26 +202,40 @@ class SimulationPanel(QWidget):
         menu.exec(self._popup_below(self._btn_file))
 
     def _on_view(self):
-        menu = QMenu(self)
+        menu = _KeepOpenMenu(self)
         anim_action = menu.addAction("Animation Pane")
         anim_action.setCheckable(True)
         anim_action.setChecked(self._is_anim)
         anim_action.toggled.connect(self._on_anim_toggled)
+        math_action = menu.addAction("Math bar")
+        math_action.setCheckable(True)
+        math_action.setChecked(self._is_math)
+        math_action.toggled.connect(self._on_math_toggled)
+        menu.addSeparator()
+        glyph_action = menu.addAction("Joint glyph size\u2026")
+        glyph_action.triggered.connect(self.joint_glyph_requested.emit)
         menu.exec(self._popup_below(self._btn_view))
 
     def _on_anim_toggled(self, checked: bool):
         self._is_anim = checked
         self.animation_toggle_requested.emit(checked)
 
+    def _on_math_toggled(self, checked: bool):
+        self._is_math = checked
+        self.math_toggle_requested.emit(checked)
+
     def _on_simulations(self):
-        menu = QMenu(self)
+        menu = _KeepOpenMenu(self)
         for session in self._sessions:
-            session_menu = menu.addMenu(session.name)
-            bodies_menu = session_menu.addMenu("Bodies")
+            session_menu = _KeepOpenMenu(session.name, menu)
+            menu.addMenu(session_menu)
+            bodies_menu = _KeepOpenMenu("Bodies", session_menu)
+            session_menu.addMenu(bodies_menu)
             for action, desc in self._leaf_actions:
                 if desc["session"] is session and desc["kind"] == "body":
                     bodies_menu.addAction(action)
-            joints_menu = session_menu.addMenu("Joints")
+            joints_menu = _KeepOpenMenu("Joints", session_menu)
+            session_menu.addMenu(joints_menu)
             for action, desc in self._leaf_actions:
                 if desc["session"] is session and desc["kind"] == "joint":
                     joints_menu.addAction(action)

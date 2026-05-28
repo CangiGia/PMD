@@ -19,7 +19,7 @@ units = UnitSystem(length="mm", force="N", angle="rad")
 T_FINAL = 2.0  # assumption, all the flow used for the cylinder extension
 N_EVAL = int(T_FINAL / 0.001) + 1
 IC_CORRECT = True
-L_CYL = 797.306  # hydraulic full extended length
+L_CYL = 787.20  # hydraulic full extended length
 L0_CYL = 680.646  # hydraulic cylinder initial length
 DELTA_S = L_CYL - L0_CYL  # hydraulic cylinder available stroke
 
