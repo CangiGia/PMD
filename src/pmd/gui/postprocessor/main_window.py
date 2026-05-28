@@ -6,7 +6,11 @@ import logging
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QApplication,
+    QDialog,
+    QDialogButtonBox,
+    QDoubleSpinBox,
     QFileDialog,
+    QFormLayout,
     QMainWindow,
     QMessageBox,
     QSplitter,
@@ -47,44 +51,6 @@ class MainWindow(QMainWindow):
         self._build_central_area()
         self._build_status_bar()
 
-    # Menu bar
-
-    def _build_menu_bar(self):
-        menu_bar = self.menuBar()
-
-        # File menu
-        file_menu = menu_bar.addMenu("&File")
-
-        self._act_export_plot = QAction("Export &Plot…", self)
-        self._act_export_plot.triggered.connect(self._on_export_plot)
-        file_menu.addAction(self._act_export_plot)
-
-        self._act_export_csv = QAction("Export &CSV…", self)
-        self._act_export_csv.triggered.connect(self._on_export_csv)
-        file_menu.addAction(self._act_export_csv)
-
-        self._act_export_txt = QAction("Export &TXT…", self)
-        self._act_export_txt.triggered.connect(self._on_export_txt)
-        file_menu.addAction(self._act_export_txt)
-
-        file_menu.addSeparator()
-
-        self._act_close = QAction("&Close", self)
-        self._act_close.triggered.connect(self.close)
-        file_menu.addAction(self._act_close)
-
-        # View menu
-        view_menu = menu_bar.addMenu("&View")
-
-        # Dark Theme is controlled from the Settings button in SimulationPanel;
-        # keep the action as a state holder but do not add it to any menu.
-        self._dark_action = QAction("Dark Theme", self, checkable=True)
-        self._dark_action.toggled.connect(self._on_toggle_theme)
-
-        self._anim_action = QAction("Animation Pane", self, checkable=True)
-        self._anim_action.toggled.connect(self._on_toggle_animation)
-        view_menu.addAction(self._anim_action)
-
     # Central area (splitter: NavigationPanel | FilterPanel + plot)
 
     def _build_central_area(self):
@@ -100,6 +66,8 @@ class MainWindow(QMainWindow):
         self._sim_panel.export_requested.connect(self._on_export_requested)
         self._sim_panel.close_requested.connect(self.close)
         self._sim_panel.animation_toggle_requested.connect(self._on_toggle_animation)
+        self._sim_panel.math_toggle_requested.connect(self._on_toggle_math)
+        self._sim_panel.joint_glyph_requested.connect(self._on_joint_glyph_size)
 
         # Right side — FilterPanel on top, vertical splitter (plot | animation), ResultSetPanel bottom
         right_widget = QWidget()
@@ -121,7 +89,16 @@ class MainWindow(QMainWindow):
         # into a tiny strip on common laptop screens.
         viz_splitter = QSplitter(Qt.Orientation.Horizontal)
         self._plot_canvas = PlotCanvas()
+        self._plot_canvas.curve_computed.connect(self._on_curve_computed)
         viz_splitter.addWidget(self._plot_canvas)
+
+        # Math bar (Feature F) — lives here so it spans the full right area
+        # (plot canvas + animation canvas), keeping both vertically aligned.
+        # Inserted AFTER self._plot_canvas is created.
+        # Hidden until the user enables it via View → Math bar.
+        self._math_bar_widget = self._plot_canvas._math_bar
+        right_layout.addWidget(self._math_bar_widget)
+        self._math_bar_widget.setVisible(False)
         # When all sessions were launched from the preprocessor, use the
         # preprocessor-style animation canvas (real body shapes, marker
         # axes, fuchsia revolute discs) instead of the plain coloured
@@ -212,17 +189,22 @@ class MainWindow(QMainWindow):
         self.statusBar().showMessage(msg)
         logger.debug("Selection changed: %s", [d["label"] for d in selection])
 
-    def _on_add_curves(self, category, component, selection):
-        """Build CurveItems, add them to the ResultSetPanel, then clear selection."""
-        curves = build_curves(category, component, selection, self._display_units)
-        if curves:
-            self._result_set_panel.add_curves_with_request(
-                curves, category, component, selection
-            )
+    def _on_add_curves(self, cat_keys, comp_keys, selection):
+        """Build CurveItems for each (cat, comp) pair and add them to the panel."""
+        added = 0
+        for cat_key in cat_keys:
+            for comp_key in comp_keys:
+                curves = build_curves(cat_key, comp_key, selection,
+                                      self._display_units)
+                if curves:
+                    self._result_set_panel.add_curves_with_request(
+                        curves, cat_key, comp_key, selection)
+                    added += len(curves)
+        if added:
             self._sim_panel.clear_selection()
         logger.debug(
-            "Add curves: category=%s, component=%s, added=%d",
-            category, component, len(curves),
+            "Add curves: cats=%s, comps=%s, added=%d",
+            cat_keys, comp_keys, added,
         )
 
     def _on_units_changed(self, unit_system: UnitSystem):
@@ -264,6 +246,10 @@ class MainWindow(QMainWindow):
             except Exception:
                 pass
         self._sim_panel.set_animation(checked)
+
+    def _on_toggle_math(self, checked: bool) -> None:
+        """Show/hide the math bar (View → Math bar)."""
+        self._math_bar_widget.setVisible(checked)
 
     def _on_export_requested(self, kind: str):
         """Dispatch export actions triggered from the sidebar File menu."""
@@ -368,3 +354,38 @@ class MainWindow(QMainWindow):
                     for c in curves
                 ]
                 f.write("\t".join(row) + "\n")
+
+    def _on_curve_computed(self, curve) -> None:
+        """Add a math-computed curve (from PlotCanvas) to the result set panel."""
+        self._result_set_panel.add_curves([curve])
+
+    def _on_joint_glyph_size(self) -> None:
+        """Open a dialog to set the joint glyph radius in the animation canvas."""
+        if not hasattr(self._anim_canvas, "_rebuild_joint_glyphs"):
+            QMessageBox.information(
+                self, "Joint glyph size",
+                "Joint glyph resize is not available for the current animation canvas.")
+            return
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Joint glyph size")
+        form = QFormLayout(dlg)
+
+        spin = QDoubleSpinBox()
+        spin.setDecimals(4)
+        spin.setRange(1e-6, 1e6)
+        spin.setSingleStep(0.01)
+        current = getattr(self._anim_canvas, "_joint_radius",
+                          getattr(self._anim_canvas, "_triad_L", 0.1) * 0.10)
+        spin.setValue(current)
+        form.addRow("Glyph size (model units):", spin)
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok
+            | QDialogButtonBox.StandardButton.Cancel)
+        buttons.accepted.connect(dlg.accept)
+        buttons.rejected.connect(dlg.reject)
+        form.addRow(buttons)
+
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            self._anim_canvas._rebuild_joint_glyphs(spin.value())
