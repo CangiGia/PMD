@@ -25,11 +25,13 @@ class MoveTool(Tool):
         super().activate()
         for item in self.window._body_items.values():
             item.setFlag(QGraphicsItem.ItemIsMovable, True)
+            item.show_rotation_handle(True, on_done=self._on_rotation_done)
 
     def deactivate(self) -> None:
         super().deactivate()
         for item in self.window._body_items.values():
             item.setFlag(QGraphicsItem.ItemIsMovable, False)
+            item.show_rotation_handle(False)
 
     # ── events ────────────────────────────────────────────────
     def mouse_press(self, event) -> bool:
@@ -50,3 +52,12 @@ class MoveTool(Tool):
             self.window._inspector.show_item("body", body_item.spec.id)
             self._commit()
         return False
+
+    def _on_rotation_done(self, body_item) -> None:
+        """Refresh inspector after a rotation-handle drag.
+
+        Does NOT call ``_commit()`` — that would clear the current
+        selection and wipe the inspector. We only need to update the
+        orientation field that just changed.
+        """
+        self.window._inspector.show_item("body", body_item.spec.id)

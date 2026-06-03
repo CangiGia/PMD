@@ -224,6 +224,7 @@ class BodyEditor(EditorBase):
         self.form.addRow("ω", self.omega)
 
         # ── Shape params ───────────────────────────────────────
+        self._depth_note: QLabel | None = None
         if s.shape is not None:
             self.form.addRow(QLabel(
                 f"<b>Shape</b> &nbsp; <span style='color:#6b7280'>"
@@ -239,15 +240,15 @@ class BodyEditor(EditorBase):
             # Depth (out-of-plane). Belongs to the shape conceptually
             # — it's only consumed by the mass-property calculator.
             self.form.addRow("depth (z)", self.thickness_z)
-            note = QLabel(
+            self._depth_note = QLabel(
                 "Note: the z dimension is used only to compute mass "
                 "properties; it has no other effect on the simulation."
             )
-            note.setWordWrap(True)
-            f = note.font(); f.setPointSize(max(7, f.pointSize() - 2))
-            note.setFont(f)
-            note.setStyleSheet("color: #6b7280;")
-            self.form.addRow("", note)
+            self._depth_note.setWordWrap(True)
+            f = self._depth_note.font(); f.setPointSize(max(7, f.pointSize() - 2))
+            self._depth_note.setFont(f)
+            self._depth_note.setStyleSheet("color: #6b7280;")
+            self.form.addRow("", self._depth_note)
         else:
             self._shape_widgets = {}
             # No shape: still expose depth so the user can tweak the
@@ -373,6 +374,13 @@ class BodyEditor(EditorBase):
         auto = not self.spec.mass_override
         _set_autoval(self.mass, auto)
         _set_autoval(self.inertia, auto)
+        show_depth = not self.spec.mass_override
+        self.thickness_z.setVisible(show_depth)
+        lbl = self.form.labelForField(self.thickness_z)
+        if lbl is not None:
+            lbl.setVisible(show_depth)
+        if self._depth_note is not None:
+            self._depth_note.setVisible(show_depth)
 
 
 # ──────────────────────────────────────────────────────────────────
