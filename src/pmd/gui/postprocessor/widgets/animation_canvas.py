@@ -1303,12 +1303,18 @@ class AnimationCanvas(QWidget):
             return n + n % 2
 
         def _grab_rgb(widget) -> np.ndarray:
-            """Capture a QWidget to an (H, W, 3) uint8 RGB array."""
+            """Capture a QWidget to an (H, W, 3) uint8 RGB array.
+
+            QImage rows are padded to 4-byte boundaries, so bytesPerLine()
+            may exceed width*3.  We reshape using the actual bytes-per-line
+            and then slice off the padding before returning.
+            """
             img = widget.grab().toImage().convertToFormat(
                 _QImage.Format.Format_RGB888)
+            h, w, bpl = img.height(), img.width(), img.bytesPerLine()
             ptr = img.bits()
-            return np.array(ptr, dtype=np.uint8).reshape(
-                img.height(), img.width(), 3).copy()
+            raw = np.frombuffer(ptr, dtype=np.uint8).reshape(h, bpl)
+            return raw[:, :w * 3].reshape(h, w, 3).copy()
 
         plot_canvas_ref = getattr(self, "_plot_canvas_ref", None)
         use_combo = (layout == "combo") and (plot_canvas_ref is not None)
