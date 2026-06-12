@@ -173,6 +173,24 @@ class AnimationCanvas(QWidget):
             "1\u00d7 plays the simulation at its physical wall-clock rate.")
         self._fps_spin.valueChanged.connect(self._on_speed_changed)
 
+        # Display refresh rate — how many render calls per second.
+        # Lowering this frees render budget per frame and eliminates
+        # choppiness on complex scenes or slow GPUs.  Orthogonal to
+        # Speed: Speed governs how much sim-time elapses per real
+        # second; Display governs how often the canvas is redrawn.
+        self._disp_fps_spin = QDoubleSpinBox()
+        self._disp_fps_spin.setDecimals(0)
+        self._disp_fps_spin.setRange(5.0, 60.0)
+        self._disp_fps_spin.setSingleStep(5.0)
+        self._disp_fps_spin.setValue(25.0)
+        self._disp_fps_spin.setSuffix(" Hz")
+        self._disp_fps_spin.setMinimumWidth(80)
+        self._disp_fps_spin.setToolTip(
+            "Display refresh rate.\n"
+            "Lower values reduce choppiness on complex models or slow GPUs.\n"
+            "Does not affect playback speed — only how often the canvas redraws.")
+        self._disp_fps_spin.valueChanged.connect(self._on_disp_fps_changed)
+
         # Locked-cursor controls (hidden when cursor is free)
         self._cursor_lock_lbl = QLabel("\U0001f512 t =")
         self._cursor_lock_lbl.setToolTip("Plot cursor locked — edit time to jump to a configuration")
@@ -200,6 +218,9 @@ class AnimationCanvas(QWidget):
         ctrl.addSpacing(8)
         ctrl.addWidget(QLabel("Speed:"))
         ctrl.addWidget(self._fps_spin)
+        ctrl.addSpacing(4)
+        ctrl.addWidget(QLabel("Display:"))
+        ctrl.addWidget(self._disp_fps_spin)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -244,7 +265,7 @@ class AnimationCanvas(QWidget):
         # (re-)set every time playback starts or the speed changes.
         self._timer = QTimer(self)
         self._timer.setTimerType(Qt.PreciseTimer)
-        self._timer.setInterval(16)
+        self._timer.setInterval(40)   # 25 Hz default; user-adjustable via Display spin
         self._timer.timeout.connect(self._advance_frame)
         self._wall_t0 = 0.0
         self._sim_t0 = 0.0
@@ -294,6 +315,10 @@ class AnimationCanvas(QWidget):
         self._btn_coords.setChecked(False)
         tb.addSeparator()
         self._btn_save = self._make_btn(tb, "Save",    "mdi6.content-save",            self._on_save)
+        tb.addSeparator()
+        self._btn_export_video = self._make_btn(
+            tb, "Export animation video", "mdi6.video-outline",
+            self._on_export_video)
         return tb
 
     @staticmethod
@@ -317,6 +342,7 @@ class AnimationCanvas(QWidget):
         self._btn_save.setIcon(_icons.icon("mdi6.content-save"))
         self._btn_markers.setIcon(_icons.icon("mdi6.axis-arrow"))
         self._btn_coords.setIcon(_icons.icon("mdi6.crosshairs-gps"))
+        self._btn_export_video.setIcon(_icons.icon("mdi6.video-outline"))
         play_icon = "mdi6.pause" if self._playing else "mdi6.play"
         self._play_btn.setIcon(_icons.icon(play_icon))
 
@@ -1141,6 +1167,10 @@ class AnimationCanvas(QWidget):
         if self._playing:
             self._anchor_playback()
 
+    def _on_disp_fps_changed(self, fps: float) -> None:
+        """Update the render timer interval when the Display spin changes."""
+        self._timer.setInterval(max(1, int(1000.0 / max(fps, 1.0))))
+
     def _advance_frame(self):
         # Wall-clock driven: figure out which step corresponds to the
         # elapsed wall time at the current playback speed, snap to it,
@@ -1166,6 +1196,198 @@ class AnimationCanvas(QWidget):
             s += 1
         if s != self._step:
             self.set_step(s)
+
+    # ------------------------------------------------------------------
+    # Video export
+    # ------------------------------------------------------------------
+
+    def _on_export_video(self) -> None:
+        """Open the export dialog and run the offscreen render pipeline."""
+        from ..dialogs import ExportVideoDialog
+        from PySide6.QtWidgets import QMessageBox
+        dlg = ExportVideoDialog(
+            current_speed=float(self._fps_spin.value()),
+            parent=self,
+        )
+        if dlg.exec() != ExportVideoDialog.DialogCode.Accepted:
+            return
+        try:
+            self._export_video(
+                output_path=dlg.output_path,
+                video_fps=dlg.video_fps,
+                speed=dlg.speed,
+                layout=dlg.layout,
+                dpi=dlg.dpi,
+            )
+        except Exception as exc:
+            QMessageBox.critical(self, "Export failed", str(exc))
+            return
+        QMessageBox.information(
+            self, "Export complete",
+            f"Video saved to:\n{dlg.output_path}"
+        )
+
+    def _export_video(
+        self,
+        output_path: str,
+        video_fps: int = 30,
+        speed: float = 1.0,
+        layout: str = "anim",
+        dpi: int = 100,
+    ) -> None:
+        """Render an offscreen video of the animation (and optionally the plots).
+
+        Parameters
+        ----------
+        output_path : str
+            Destination file path (.mp4 recommended).
+        video_fps : int
+            Output video frame rate.
+        speed : float
+            Simulation time per real second in the video.
+        layout : str
+            ``"anim"`` — animation canvas only.
+            ``"combo"`` — animation + plot canvas side by side.
+        dpi : int
+            Rendering resolution for both canvases.
+        """
+        import shutil
+        import subprocess
+        import numpy as np
+        from PySide6.QtWidgets import QProgressDialog, QApplication
+        from PySide6.QtCore import Qt
+
+        if not shutil.which("ffmpeg"):
+            raise RuntimeError(
+                "ffmpeg not found in PATH.\n"
+                "Install ffmpeg and ensure it is accessible from the command line."
+            )
+
+        # -- compute which steps to render ------------------------------------
+        T = self._T
+        n_steps = self._n_steps
+        if n_steps < 2:
+            raise RuntimeError("Need at least 2 time steps to export a video.")
+        dt_sim = float(T[-1] - T[0])
+        dt_per_frame = speed / video_fps      # sim-time per video frame
+        # Build a list of step indices, one per video frame
+        frame_steps: list[int] = []
+        t_cursor = float(T[0])
+        while t_cursor <= float(T[-1]) + 1e-12:
+            idx = int(np.argmin(np.abs(T - t_cursor)))
+            frame_steps.append(idx)
+            t_cursor += dt_per_frame
+        if not frame_steps:
+            raise RuntimeError("No frames to export.")
+
+        # -- canvas geometry --------------------------------------------------
+        self._figure.set_dpi(dpi)
+        fig_a = self._figure
+        w_a = int(fig_a.get_figwidth()  * dpi)
+        h_a = int(fig_a.get_figheight() * dpi)
+
+        plot_canvas_ref = getattr(self, "_plot_canvas_ref", None)
+        use_combo = (layout == "combo") and (plot_canvas_ref is not None)
+        if use_combo:
+            fig_p = plot_canvas_ref.fig
+            orig_dpi_p = fig_p.get_dpi()
+            fig_p.set_dpi(dpi)
+            w_p = int(fig_p.get_figwidth()  * dpi)
+            h_p = int(fig_p.get_figheight() * dpi)
+            W = w_a + w_p
+            H = max(h_a, h_p)
+        else:
+            W, H = w_a, h_a
+
+        # Ensure dimensions are even (required by yuv420p)
+        W += W % 2
+        H += H % 2
+
+        # -- stash current state ----------------------------------------------
+        saved_step = self._step
+        was_playing = self._playing
+        if was_playing:
+            self._timer.stop()
+            self._playing = False
+            self._play_btn.setIcon(_icons.icon("mdi6.play"))
+
+        self._hide_for_play()
+
+        # -- launch ffmpeg pipe -----------------------------------------------
+        cmd = [
+            "ffmpeg", "-y",
+            "-f", "rawvideo", "-vcodec", "rawvideo",
+            "-s", f"{W}x{H}",
+            "-pix_fmt", "rgb24",
+            "-r", str(video_fps),
+            "-i", "pipe:0",
+            "-vcodec", "libx264",
+            "-pix_fmt", "yuv420p",
+            output_path,
+        ]
+        pipe = subprocess.Popen(cmd, stdin=subprocess.PIPE,
+                                stdout=subprocess.DEVNULL,
+                                stderr=subprocess.DEVNULL)
+
+        # -- progress dialog --------------------------------------------------
+        n_frames = len(frame_steps)
+        prog = QProgressDialog(
+            "Exporting video…", "Cancel", 0, n_frames, self
+        )
+        prog.setWindowTitle("Export animation video")
+        prog.setWindowModality(Qt.WindowModality.WindowModal)
+        prog.setMinimumDuration(0)
+        prog.setValue(0)
+
+        cancelled = False
+        try:
+            for fi, step in enumerate(frame_steps):
+                if prog.wasCanceled():
+                    cancelled = True
+                    break
+
+                # Update animation frame (synchronous draw)
+                self.set_step(step)
+                fig_a.canvas.draw()
+                raw_a = fig_a.canvas.buffer_rgba()
+                buf_a = np.frombuffer(raw_a, dtype=np.uint8).reshape(h_a, w_a, 4)[:, :, :3]
+
+                if use_combo:
+                    # set_step emits time_changed → PlotCanvas updates cursor
+                    fig_p.canvas.draw()
+                    raw_p = fig_p.canvas.buffer_rgba()
+                    buf_p = np.frombuffer(raw_p, dtype=np.uint8).reshape(h_p, w_p, 4)[:, :, :3]
+                    frame = np.zeros((H, W, 3), dtype=np.uint8)
+                    frame[:h_a, :w_a] = buf_a
+                    frame[:h_p, w_a:w_a + w_p] = buf_p
+                else:
+                    frame = np.zeros((H, W, 3), dtype=np.uint8)
+                    frame[:h_a, :w_a] = buf_a
+
+                pipe.stdin.write(frame.tobytes())
+
+                if fi % 5 == 0:
+                    prog.setValue(fi)
+                    QApplication.processEvents()
+
+        finally:
+            pipe.stdin.close()
+            pipe.wait()
+            prog.close()
+            # Restore DPI and artists
+            self._figure.set_dpi(100)
+            if use_combo:
+                fig_p.set_dpi(orig_dpi_p)
+            self._restore_play_hidden()
+            self.set_step(saved_step)
+
+        if cancelled:
+            import os
+            try:
+                os.remove(output_path)
+            except OSError:
+                pass
+            raise RuntimeError("Export cancelled by user.")
 
     # ------------------------------------------------------------------
     # Hide / restore artists during playback (Feature A)

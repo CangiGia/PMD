@@ -114,6 +114,10 @@ class MainWindow(QMainWindow):
             self._anim_canvas = AnimationCanvas(self._sessions)
         viz_splitter.addWidget(self._anim_canvas)
         self._anim_canvas.setVisible(False)
+        # Give AnimationCanvas a reference to PlotCanvas so that the video
+        # export backend can draw synchronised plot frames (combo layout).
+        if hasattr(self._anim_canvas, "_export_video"):
+            self._anim_canvas._plot_canvas_ref = self._plot_canvas
         if hasattr(self._anim_canvas, "set_step"):
             self._plot_canvas.step_requested.connect(self._anim_canvas.set_step)
         # When the preprocessor-style canvas is in use, mirror its
