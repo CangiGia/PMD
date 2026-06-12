@@ -1303,15 +1303,15 @@ class AnimationCanvas(QWidget):
             return n + n % 2
 
         fig_a   = self._figure
-        w_a_raw = round(fig_a.get_figwidth()  * dpi)
-        h_a_raw = round(fig_a.get_figheight() * dpi)
+        w_a_raw = int(fig_a.get_figwidth()  * dpi)
+        h_a_raw = int(fig_a.get_figheight() * dpi)
 
         plot_canvas_ref = getattr(self, "_plot_canvas_ref", None)
         use_combo = (layout == "combo") and (plot_canvas_ref is not None)
         if use_combo:
             fig_p   = plot_canvas_ref._figure
-            w_p_raw = round(fig_p.get_figwidth()  * dpi)
-            h_p_raw = round(fig_p.get_figheight() * dpi)
+            w_p_raw = int(fig_p.get_figwidth()  * dpi)
+            h_p_raw = int(fig_p.get_figheight() * dpi)
             # Mirror the GUI splitter order: PlotCanvas LEFT, AnimCanvas RIGHT.
             # Pad the TOTAL frame to even for yuv420p; individual bufs use raw dims.
             W = _even(w_p_raw + w_a_raw)
