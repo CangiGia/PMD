@@ -1288,6 +1288,13 @@ class AnimationCanvas(QWidget):
         # causing the visible layout to shift during export.  Instead every
         # frame is rendered fully offscreen via savefig(format='raw') which
         # invokes the Agg renderer in memory without touching the Qt canvas.
+        #
+        # Two sets of dimensions are kept separate:
+        #   *_raw  — what matplotlib's Agg actually renders: round(inches × dpi)
+        #            → used for reshaping the savefig buffer (must match exactly)
+        #   W / H  — ffmpeg frame size, rounded UP to nearest even pixel as
+        #            required by yuv420p; any leftover edge pixels stay black.
+        # Mixing the two caused the "cannot reshape array" crash.
 
         import io as _io
 
@@ -1295,21 +1302,23 @@ class AnimationCanvas(QWidget):
             """Round up to nearest even pixel (required by yuv420p)."""
             return n + n % 2
 
-        fig_a = self._figure
-        w_a = _even(round(fig_a.get_figwidth()  * dpi))
-        h_a = _even(round(fig_a.get_figheight() * dpi))
+        fig_a   = self._figure
+        w_a_raw = round(fig_a.get_figwidth()  * dpi)
+        h_a_raw = round(fig_a.get_figheight() * dpi)
 
         plot_canvas_ref = getattr(self, "_plot_canvas_ref", None)
         use_combo = (layout == "combo") and (plot_canvas_ref is not None)
         if use_combo:
-            fig_p = plot_canvas_ref._figure
-            w_p = _even(round(fig_p.get_figwidth()  * dpi))
-            h_p = _even(round(fig_p.get_figheight() * dpi))
-            # Mirror the GUI splitter order: PlotCanvas LEFT, AnimCanvas RIGHT
-            W = w_p + w_a
-            H = max(h_p, h_a)
+            fig_p   = plot_canvas_ref._figure
+            w_p_raw = round(fig_p.get_figwidth()  * dpi)
+            h_p_raw = round(fig_p.get_figheight() * dpi)
+            # Mirror the GUI splitter order: PlotCanvas LEFT, AnimCanvas RIGHT.
+            # Pad the TOTAL frame to even for yuv420p; individual bufs use raw dims.
+            W = _even(w_p_raw + w_a_raw)
+            H = _even(max(h_p_raw, h_a_raw))
         else:
-            W, H = w_a, h_a
+            W = _even(w_a_raw)
+            H = _even(h_a_raw)
 
         # -- stash current state ----------------------------------------------
         saved_step = self._step
@@ -1358,23 +1367,25 @@ class AnimationCanvas(QWidget):
                 # updates the PlotCanvas time cursor (used in combo layout).
                 self.set_step(step)
 
-                # Render animation offscreen — pure Agg, no Qt canvas touched.
+                # Render offscreen via savefig — pure Agg, no Qt canvas touched.
+                # Reshape MUST use the *_raw dimensions (exact Agg output size);
+                # the frame array is larger (W/H, even-padded) and stays black
+                # in any padding pixels.
                 _buf_a = _io.BytesIO()
                 fig_a.savefig(_buf_a, format="raw", dpi=dpi, bbox_inches=None)
-                buf_a = np.frombuffer(_buf_a.getvalue(), dtype=np.uint8).reshape(h_a, w_a, 4)[:, :, :3]
+                buf_a = np.frombuffer(_buf_a.getvalue(), dtype=np.uint8).reshape(h_a_raw, w_a_raw, 4)[:, :, :3]
 
                 if use_combo:
                     _buf_p = _io.BytesIO()
                     fig_p.savefig(_buf_p, format="raw", dpi=dpi, bbox_inches=None)
-                    buf_p = np.frombuffer(_buf_p.getvalue(), dtype=np.uint8).reshape(h_p, w_p, 4)[:, :, :3]
-                    # PlotCanvas LEFT (col 0..w_p-1), AnimCanvas RIGHT (col w_p..W-1)
-                    # — matches the GUI viz_splitter order.
+                    buf_p = np.frombuffer(_buf_p.getvalue(), dtype=np.uint8).reshape(h_p_raw, w_p_raw, 4)[:, :, :3]
+                    # PlotCanvas LEFT, AnimCanvas RIGHT — mirrors GUI splitter order.
                     frame = np.zeros((H, W, 3), dtype=np.uint8)
-                    frame[:h_p, :w_p] = buf_p
-                    frame[:h_a, w_p:w_p + w_a] = buf_a
+                    frame[:h_p_raw, :w_p_raw]              = buf_p
+                    frame[:h_a_raw, w_p_raw:w_p_raw + w_a_raw] = buf_a
                 else:
                     frame = np.zeros((H, W, 3), dtype=np.uint8)
-                    frame[:h_a, :w_a] = buf_a
+                    frame[:h_a_raw, :w_a_raw] = buf_a
 
                 pipe.stdin.write(frame.tobytes())
 
