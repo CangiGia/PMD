@@ -1290,7 +1290,7 @@ class AnimationCanvas(QWidget):
         plot_canvas_ref = getattr(self, "_plot_canvas_ref", None)
         use_combo = (layout == "combo") and (plot_canvas_ref is not None)
         if use_combo:
-            fig_p = plot_canvas_ref.fig
+            fig_p = plot_canvas_ref._figure
             orig_dpi_p = fig_p.get_dpi()
             fig_p.set_dpi(dpi)
             w_p = int(fig_p.get_figwidth()  * dpi)
