@@ -1282,27 +1282,34 @@ class AnimationCanvas(QWidget):
             raise RuntimeError("No frames to export.")
 
         # -- canvas geometry --------------------------------------------------
-        self._figure.set_dpi(dpi)
+        # Pixel sizes are computed from the figure's logical size × export DPI.
+        # We NEVER call set_dpi() or canvas.draw() on the live Qt figures:
+        # those operations resize the embedded widget and redraw on screen,
+        # causing the visible layout to shift during export.  Instead every
+        # frame is rendered fully offscreen via savefig(format='raw') which
+        # invokes the Agg renderer in memory without touching the Qt canvas.
+
+        import io as _io
+
+        def _even(n: int) -> int:
+            """Round up to nearest even pixel (required by yuv420p)."""
+            return n + n % 2
+
         fig_a = self._figure
-        w_a = int(fig_a.get_figwidth()  * dpi)
-        h_a = int(fig_a.get_figheight() * dpi)
+        w_a = _even(round(fig_a.get_figwidth()  * dpi))
+        h_a = _even(round(fig_a.get_figheight() * dpi))
 
         plot_canvas_ref = getattr(self, "_plot_canvas_ref", None)
         use_combo = (layout == "combo") and (plot_canvas_ref is not None)
         if use_combo:
             fig_p = plot_canvas_ref._figure
-            orig_dpi_p = fig_p.get_dpi()
-            fig_p.set_dpi(dpi)
-            w_p = int(fig_p.get_figwidth()  * dpi)
-            h_p = int(fig_p.get_figheight() * dpi)
-            W = w_a + w_p
-            H = max(h_a, h_p)
+            w_p = _even(round(fig_p.get_figwidth()  * dpi))
+            h_p = _even(round(fig_p.get_figheight() * dpi))
+            # Mirror the GUI splitter order: PlotCanvas LEFT, AnimCanvas RIGHT
+            W = w_p + w_a
+            H = max(h_p, h_a)
         else:
             W, H = w_a, h_a
-
-        # Ensure dimensions are even (required by yuv420p)
-        W += W % 2
-        H += H % 2
 
         # -- stash current state ----------------------------------------------
         saved_step = self._step
@@ -1347,20 +1354,24 @@ class AnimationCanvas(QWidget):
                     cancelled = True
                     break
 
-                # Update animation frame (synchronous draw)
+                # Advance animation state; set_step emits time_changed which
+                # updates the PlotCanvas time cursor (used in combo layout).
                 self.set_step(step)
-                fig_a.canvas.draw()
-                raw_a = fig_a.canvas.buffer_rgba()
-                buf_a = np.frombuffer(raw_a, dtype=np.uint8).reshape(h_a, w_a, 4)[:, :, :3]
+
+                # Render animation offscreen — pure Agg, no Qt canvas touched.
+                _buf_a = _io.BytesIO()
+                fig_a.savefig(_buf_a, format="raw", dpi=dpi, bbox_inches=None)
+                buf_a = np.frombuffer(_buf_a.getvalue(), dtype=np.uint8).reshape(h_a, w_a, 4)[:, :, :3]
 
                 if use_combo:
-                    # set_step emits time_changed → PlotCanvas updates cursor
-                    fig_p.canvas.draw()
-                    raw_p = fig_p.canvas.buffer_rgba()
-                    buf_p = np.frombuffer(raw_p, dtype=np.uint8).reshape(h_p, w_p, 4)[:, :, :3]
+                    _buf_p = _io.BytesIO()
+                    fig_p.savefig(_buf_p, format="raw", dpi=dpi, bbox_inches=None)
+                    buf_p = np.frombuffer(_buf_p.getvalue(), dtype=np.uint8).reshape(h_p, w_p, 4)[:, :, :3]
+                    # PlotCanvas LEFT (col 0..w_p-1), AnimCanvas RIGHT (col w_p..W-1)
+                    # — matches the GUI viz_splitter order.
                     frame = np.zeros((H, W, 3), dtype=np.uint8)
-                    frame[:h_a, :w_a] = buf_a
-                    frame[:h_p, w_a:w_a + w_p] = buf_p
+                    frame[:h_p, :w_p] = buf_p
+                    frame[:h_a, w_p:w_p + w_a] = buf_a
                 else:
                     frame = np.zeros((H, W, 3), dtype=np.uint8)
                     frame[:h_a, :w_a] = buf_a
@@ -1375,10 +1386,6 @@ class AnimationCanvas(QWidget):
             pipe.stdin.close()
             pipe.wait()
             prog.close()
-            # Restore DPI and artists
-            self._figure.set_dpi(100)
-            if use_combo:
-                fig_p.set_dpi(orig_dpi_p)
             self._restore_play_hidden()
             self.set_step(saved_step)
 
