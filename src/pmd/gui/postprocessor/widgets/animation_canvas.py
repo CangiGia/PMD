@@ -125,12 +125,12 @@ class AnimationCanvas(QWidget):
 
         # --- matplotlib widgets ---
         self._figure = Figure()
-        # Fixed margins prevent tight_layout from recalculating on every
-        # draw, which caused the axes box to jump/resize during pan.
-        self._figure.subplots_adjust(left=0.06, right=0.97,
-                                     top=0.96,  bottom=0.06)
+        # Tight margins: no axis labels, canvas occupies the full area.
+        self._figure.subplots_adjust(left=0.01, right=0.99,
+                                     top=0.99,  bottom=0.01)
         self._ax = self._figure.add_subplot(111)
         self._ax.set_aspect("equal")
+        self._ax.set_axis_off()   # hide ticks, tick-labels and axis lines
         self._canvas = FigureCanvasQTAgg(self._figure)
         self._canvas.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self._canvas.installEventFilter(self)
@@ -353,10 +353,6 @@ class AnimationCanvas(QWidget):
         fg = CANVAS_FG_DARK  if enabled else CANVAS_FG_LIGHT
         self._figure.set_facecolor(bg)
         self._ax.set_facecolor(bg)
-        self._ax.tick_params(colors=fg, which="both")
-        self._ax.xaxis.label.set_color(fg)
-        self._ax.yaxis.label.set_color(fg)
-        self._ax.title.set_color(fg)
         for spine in self._ax.spines.values():
             spine.set_edgecolor(fg)
         # Marker glyphs: keep the yellow fill (pops on both themes)
