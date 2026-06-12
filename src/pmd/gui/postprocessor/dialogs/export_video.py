@@ -62,7 +62,7 @@ class ExportVideoDialog(QDialog):
 
         # Video FPS
         self._fps_spin = QSpinBox()
-        self._fps_spin.setRange(10, 60)
+        self._fps_spin.setRange(10, 120)
         self._fps_spin.setValue(30)
         self._fps_spin.setSuffix(" fps")
         self._fps_spin.setToolTip(

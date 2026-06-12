@@ -180,14 +180,15 @@ class AnimationCanvas(QWidget):
         # second; Display governs how often the canvas is redrawn.
         self._disp_fps_spin = QDoubleSpinBox()
         self._disp_fps_spin.setDecimals(0)
-        self._disp_fps_spin.setRange(5.0, 60.0)
+        self._disp_fps_spin.setRange(5.0, 144.0)
         self._disp_fps_spin.setSingleStep(5.0)
-        self._disp_fps_spin.setValue(25.0)
-        self._disp_fps_spin.setSuffix(" Hz")
+        self._disp_fps_spin.setValue(60.0)
+        self._disp_fps_spin.setSuffix(" fps")
         self._disp_fps_spin.setMinimumWidth(80)
         self._disp_fps_spin.setToolTip(
-            "Display refresh rate.\n"
-            "Lower values reduce choppiness on complex models or slow GPUs.\n"
+            "Display refresh rate (frames per second).\n"
+            "Higher values give smoother playback; lower values reduce\n"
+            "CPU/GPU load on complex models.\n"
             "Does not affect playback speed — only how often the canvas redraws.")
         self._disp_fps_spin.valueChanged.connect(self._on_disp_fps_changed)
 
@@ -265,7 +266,7 @@ class AnimationCanvas(QWidget):
         # (re-)set every time playback starts or the speed changes.
         self._timer = QTimer(self)
         self._timer.setTimerType(Qt.PreciseTimer)
-        self._timer.setInterval(40)   # 25 Hz default; user-adjustable via Display spin
+        self._timer.setInterval(16)   # 60 fps default; user-adjustable via Display spin
         self._timer.timeout.connect(self._advance_frame)
         self._wall_t0 = 0.0
         self._sim_t0 = 0.0
