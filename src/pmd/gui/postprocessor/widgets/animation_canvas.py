@@ -1282,38 +1282,47 @@ class AnimationCanvas(QWidget):
             raise RuntimeError("No frames to export.")
 
         # -- canvas geometry --------------------------------------------------
-        # Pixel sizes are computed from the figure's logical size × export DPI.
-        # We NEVER call set_dpi() or canvas.draw() on the live Qt figures:
-        # those operations resize the embedded widget and redraw on screen,
-        # causing the visible layout to shift during export.  Instead every
-        # frame is rendered fully offscreen via savefig(format='raw') which
-        # invokes the Agg renderer in memory without touching the Qt canvas.
+        # We capture full widgets via QWidget.grab() so that the animation pane
+        # includes the toolbar + matplotlib figure + transport bar — not just
+        # the bare matplotlib figure.  This eliminates the black-zone artefact
+        # that appeared when the animation figure was shorter than the plot canvas.
         #
-        # Two sets of dimensions are kept separate:
-        #   *_raw  — what matplotlib's Agg actually renders: round(inches × dpi)
-        #            → used for reshaping the savefig buffer (must match exactly)
-        #   W / H  — ffmpeg frame size, rounded UP to nearest even pixel as
-        #            required by yuv420p; any leftover edge pixels stay black.
-        # Mixing the two caused the "cannot reshape array" crash.
+        # QWidget.grab() renders to an offscreen pixmap without touching the
+        # displayed window.  The only visible side-effect is that we call
+        # self._canvas.draw() (synchronous) before each grab so matplotlib has
+        # committed the new frame; this briefly repaints the figure area but
+        # does NOT resize any widget (old DPI/set_dpi bug is gone).
+        #
+        # Dimensions come from the first pre-grab and stay constant for the
+        # whole export (widget sizes don't change during playback).
 
-        import io as _io
+        from PySide6.QtGui import QImage as _QImage
 
         def _even(n: int) -> int:
             """Round up to nearest even pixel (required by yuv420p)."""
             return n + n % 2
 
-        fig_a   = self._figure
-        w_a_raw = int(fig_a.get_figwidth()  * dpi)
-        h_a_raw = int(fig_a.get_figheight() * dpi)
+        def _grab_rgb(widget) -> np.ndarray:
+            """Capture a QWidget to an (H, W, 3) uint8 RGB array."""
+            img = widget.grab().toImage().convertToFormat(
+                _QImage.Format.Format_RGB888)
+            ptr = img.bits()
+            return np.array(ptr, dtype=np.uint8).reshape(
+                img.height(), img.width(), 3).copy()
 
         plot_canvas_ref = getattr(self, "_plot_canvas_ref", None)
         use_combo = (layout == "combo") and (plot_canvas_ref is not None)
+
+        # Pre-grab to measure actual pixel sizes (constant for the whole export).
+        self._canvas.draw()
+        _sample_a = _grab_rgb(self)
+        h_a_raw, w_a_raw = _sample_a.shape[:2]
+
         if use_combo:
-            fig_p   = plot_canvas_ref._figure
-            w_p_raw = int(fig_p.get_figwidth()  * dpi)
-            h_p_raw = int(fig_p.get_figheight() * dpi)
-            # Mirror the GUI splitter order: PlotCanvas LEFT, AnimCanvas RIGHT.
-            # Pad the TOTAL frame to even for yuv420p; individual bufs use raw dims.
+            plot_canvas_ref._canvas.draw()
+            _sample_p = _grab_rgb(plot_canvas_ref)
+            h_p_raw, w_p_raw = _sample_p.shape[:2]
+            # PlotCanvas LEFT, AnimCanvas RIGHT — mirrors GUI splitter order.
             W = _even(w_p_raw + w_a_raw)
             H = _even(max(h_p_raw, h_a_raw))
         else:
@@ -1367,19 +1376,15 @@ class AnimationCanvas(QWidget):
                 # updates the PlotCanvas time cursor (used in combo layout).
                 self.set_step(step)
 
-                # Render offscreen via savefig — pure Agg, no Qt canvas touched.
-                # Reshape MUST use the *_raw dimensions (exact Agg output size);
-                # the frame array is larger (W/H, even-padded) and stays black
-                # in any padding pixels.
-                _buf_a = _io.BytesIO()
-                fig_a.savefig(_buf_a, format="raw", dpi=dpi, bbox_inches=None)
-                buf_a = np.frombuffer(_buf_a.getvalue(), dtype=np.uint8).reshape(h_a_raw, w_a_raw, 4)[:, :, :3]
+                # Synchronous matplotlib draw → grab full widget (toolbar +
+                # figure + transport bar).  grab() captures only this widget's
+                # rectangle, so the progress dialog never appears in the frame.
+                self._canvas.draw()
+                buf_a = _grab_rgb(self)
 
                 if use_combo:
-                    _buf_p = _io.BytesIO()
-                    fig_p.savefig(_buf_p, format="raw", dpi=dpi, bbox_inches=None)
-                    buf_p = np.frombuffer(_buf_p.getvalue(), dtype=np.uint8).reshape(h_p_raw, w_p_raw, 4)[:, :, :3]
-                    # PlotCanvas LEFT, AnimCanvas RIGHT — mirrors GUI splitter order.
+                    plot_canvas_ref._canvas.draw()
+                    buf_p = _grab_rgb(plot_canvas_ref)
                     frame = np.zeros((H, W, 3), dtype=np.uint8)
                     frame[:h_p_raw, :w_p_raw]              = buf_p
                     frame[:h_a_raw, w_p_raw:w_p_raw + w_a_raw] = buf_a
