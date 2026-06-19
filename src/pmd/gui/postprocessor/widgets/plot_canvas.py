@@ -684,19 +684,26 @@ class PlotCanvas(QWidget):
             return
 
         x_target = event.xdata
-        # Sample each curve at the column closest to x_target (shared T grid is
-        # not assumed: each curve is sampled independently).
+        # When a custom X-axis variable is active, search on its data array
+        # (which is what is actually plotted on X).  Fallback to c.T (time)
+        # when X-axis is the default time axis.
+        x_arr = (
+            self._x_curve.data
+            if self._x_curve is not None and len(self._x_curve.data) > 0
+            else None
+        )
         samples: list[tuple[float, float]] = []
         for c in curves:
-            T = c.T
-            i = int(np.searchsorted(T, x_target))
-            if i >= len(T):
-                i = len(T) - 1
-            elif i > 0 and abs(T[i - 1] - x_target) < abs(T[i] - x_target):
+            search_arr = x_arr if x_arr is not None and len(x_arr) == len(c.data) else c.T
+            i = int(np.searchsorted(search_arr, x_target))
+            if i >= len(search_arr):
+                i = len(search_arr) - 1
+            elif i > 0 and abs(search_arr[i - 1] - x_target) < abs(search_arr[i] - x_target):
                 i -= 1
-            samples.append((float(T[i]), float(c.data[i])))
+            anchor_xi = float(search_arr[i])
+            samples.append((anchor_xi, float(c.data[i])))
 
-        # Use the first curve's x as the anchor (typically all share the time grid)
+        # Use the first curve's x as the anchor
         anchor_x = samples[0][0]
 
         # Hide cursors on the other axes
@@ -787,15 +794,21 @@ class PlotCanvas(QWidget):
             return
 
         x_target = event.xdata
+        x_arr = (
+            self._x_curve.data
+            if self._x_curve is not None and len(self._x_curve.data) > 0
+            else None
+        )
         samples: list[tuple[float, float]] = []
         for c in curves:
-            T = c.T
-            i = int(np.searchsorted(T, x_target))
-            if i >= len(T):
-                i = len(T) - 1
-            elif i > 0 and abs(T[i - 1] - x_target) < abs(T[i] - x_target):
+            search_arr = x_arr if x_arr is not None and len(x_arr) == len(c.data) else c.T
+            i = int(np.searchsorted(search_arr, x_target))
+            if i >= len(search_arr):
+                i = len(search_arr) - 1
+            elif i > 0 and abs(search_arr[i - 1] - x_target) < abs(search_arr[i] - x_target):
                 i -= 1
-            samples.append((float(T[i]), float(c.data[i])))
+            anchor_xi = float(search_arr[i])
+            samples.append((anchor_xi, float(c.data[i])))
 
         anchor_x = samples[0][0]
         self._pin_datatip(ax, anchor_x, curves, samples, event)

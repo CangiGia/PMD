@@ -308,10 +308,10 @@ double_hydralic_steering_model = PlanarMultibodyModel(
         yoke_right_tie_rod_revolute_joint,
         yoke_left_tie_rod_revolute_joint,
     ],
-    # forces=[actuator_left],
-    # functions=[extension_law_left],
-    forces=[actuator_right],
-    functions=[extension_law_right],
+    forces=[actuator_left],
+    functions=[extension_law_left],
+    # forces=[actuator_right],
+    # functions=[extension_law_right],
     units=units,
 )
 

@@ -1111,6 +1111,7 @@ class AnimationCanvas(QWidget):
         if self._playing:
             self._timer.stop()
             self._play_btn.setIcon(_icons.icon("mdi6.play"))
+            self._restore_play_hidden()
         else:
             if self._step >= self._n_steps - 1:
                 self._step = 0
