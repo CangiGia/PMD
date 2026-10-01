@@ -1,22 +1,6 @@
 # GUI
 
-PMD includes two GUI tools built with PyQt6.
-
-## PreProcessor
-
-Interactive model builder.  Launch with:
-
-```python
-from pmd.gui import PreProcessor
-PreProcessor().show()
-```
-
-The pre-processor lets you:
-
-- Add and position bodies graphically.
-- Attach markers and joints via point-and-click.
-- Configure force elements and driver functions.
-- Export the assembled model as a JSON file.
+PMD includes a GUI tool built with PyQt6.
 
 ## PostProcessor
 

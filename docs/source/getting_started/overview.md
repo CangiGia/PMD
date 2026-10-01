@@ -32,5 +32,4 @@ building and simulating planar rigid-body mechanical systems.
 
 ## Visualisation
 
-Use the built-in `PostProcessor` to plot results, or the interactive
-`PreProcessor` GUI to build models visually.
+Use the built-in `PostProcessor` to plot results.

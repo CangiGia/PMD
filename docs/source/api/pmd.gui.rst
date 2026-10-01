@@ -7,5 +7,4 @@ pmd.gui — GUI tools
    :toctree: generated/
    :nosignatures:
 
-   PreProcessor
    PostProcessor

@@ -99,19 +99,7 @@ class MainWindow(QMainWindow):
         self._math_bar_widget = self._plot_canvas._math_bar
         right_layout.addWidget(self._math_bar_widget)
         self._math_bar_widget.setVisible(False)
-        # When all sessions were launched from the preprocessor, use the
-        # preprocessor-style animation canvas (real body shapes, marker
-        # axes, fuchsia revolute discs) instead of the plain coloured
-        # circles fallback. Falls back to the legacy AnimationCanvas
-        # otherwise (e.g. sessions loaded from a .pkl).
-        specs = [getattr(s, "preprocessor_spec", None) for s in self._sessions]
-        if specs and all(sp is not None for sp in specs):
-            from ..preprocessor.dialogs import PreprocessorAnimationCanvas
-            s0 = self._sessions[0]
-            self._anim_canvas = PreprocessorAnimationCanvas(
-                specs[0], s0.model, s0.T)
-        else:
-            self._anim_canvas = AnimationCanvas(self._sessions)
+        self._anim_canvas = AnimationCanvas(self._sessions)
         viz_splitter.addWidget(self._anim_canvas)
         self._anim_canvas.setVisible(False)
         # Give AnimationCanvas a reference to PlotCanvas so that the video
@@ -120,8 +108,8 @@ class MainWindow(QMainWindow):
             self._anim_canvas._plot_canvas_ref = self._plot_canvas
         if hasattr(self._anim_canvas, "set_step"):
             self._plot_canvas.step_requested.connect(self._anim_canvas.set_step)
-        # When the preprocessor-style canvas is in use, mirror its
-        # current frame as a synchronised vertical cursor on every plot.
+        # Mirror the animation canvas's current frame as a synchronised
+        # vertical cursor on every plot.
         if hasattr(self._anim_canvas, "time_changed"):
             self._anim_canvas.time_changed.connect(
                 self._plot_canvas.set_time_cursor)

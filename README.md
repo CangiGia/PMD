@@ -69,13 +69,7 @@ Then open **http://localhost:8000/** in your browser.
 
 ## �🖥️ Interactive GUI
 
-PMD ships two optional graphical interfaces (requires PySide6):
-
-**PreProcessor** — an interactive canvas to build the model visually:
-- Create bodies and place markers by click or snap
-- Add joints and forces from a ribbon toolbar
-- Set initial conditions and launch the solver directly from the UI
-- Save and reload models to/from JSON
+PMD ships an optional graphical interface (requires PySide6):
 
 **PostProcessor** — a results viewer for one or more simulation sessions:
 - Time-history plots of positions, velocities, accelerations, and constraint reactions
