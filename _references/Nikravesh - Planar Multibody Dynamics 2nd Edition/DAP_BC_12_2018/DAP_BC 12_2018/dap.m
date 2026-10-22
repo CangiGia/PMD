@@ -35,6 +35,7 @@ end
     u = zeros(nB6,1); Bodies_to_u;
     t_initial = 0; t_final = input('Final time = ? '); % Input time data
     showtime = 1;
+    tSim = tic;
     if t_final == 0
         analysis(0, u); % one step function evaluation
         T = 0; uT = u';
@@ -44,8 +45,22 @@ end
         options = odeset('RelTol', 1e-6, 'AbsTol', 1e-9);
         [T, uT] = ode45('analysis', Tspan, u, options);        
     end
+    sim_time = toc(tSim); % wall-clock duration of the simulation [s]
+
+% Position-constraint violation, ||Phi||, at every reporting time
+    phi_norm = zeros(length(T), 1);
+    if nConst ~= 0
+        for k = 1:length(T)
+            u = uT(k,:)'; u_to_Bodies; Update_Position;
+            phi_norm(k) = norm(Constraints(T(k)));
+        end
+    end
+    phi_max = max(phi_norm);
     
     disp(['Number of function evaluations = ' num2str(num)])
+    disp(['Simulation time = ' num2str(sim_time) ' s'])
+    disp(['Max constraint violation = ' num2str(phi_max)])
+    disp(['Final constraint violation = ' num2str(phi_norm(end))])
     beep
 
     

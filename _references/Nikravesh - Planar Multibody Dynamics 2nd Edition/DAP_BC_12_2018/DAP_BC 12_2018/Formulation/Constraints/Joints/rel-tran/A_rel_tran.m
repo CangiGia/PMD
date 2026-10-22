@@ -9,10 +9,10 @@
     
     f = fun*fun_dd + fun_d^2;
     if Bi == 0
-        f = f + d'*s_rot(Points(Pj).sP_d)'*Bodies(Bj).p_d;
+        f = f + d'*s_rot(Points(Pj).sP_d)*Bodies(Bj).p_d - d_d'*d_d;
     elseif Bj == 0
-        f = f - d'*s_rot(Points(Pi).sP_d)'*Bodies(Bi).p_d - d_d'*d_d;
+        f = f - d'*s_rot(Points(Pi).sP_d)*Bodies(Bi).p_d - d_d'*d_d;
     else
-        f = f + d'*s_rot(Points(Pj).sP_d)'*Bodies(Bj).p_d ...
-              - d'*s_rot(Points(Pi).sP_d)'*Bodies(Bi).p_d - d_d'*d_d;
+        f = f + d'*s_rot(Points(Pj).sP_d)*Bodies(Bj).p_d ...
+              - d'*s_rot(Points(Pi).sP_d)*Bodies(Bi).p_d - d_d'*d_d;
     end
