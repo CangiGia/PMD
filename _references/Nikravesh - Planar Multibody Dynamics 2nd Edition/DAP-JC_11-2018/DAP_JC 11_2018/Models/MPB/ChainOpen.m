@@ -6,6 +6,7 @@ if check <= 2
     % Update coordinates
     Coord_Rev(7, 1, theta(1));
     Coord_Rev(2, 3, theta(2));
+    Update_P(4);
     Update_P(5);
     Update_U(1);
 end

@@ -4,7 +4,7 @@ function inBodies
 B1 = Body_struct;
 B1.m = 2;
 B1.J = 0.5;
-B1.p = 6.0819;
+B1.theta = 0;
 
 B2 = Body_struct;
 B2.theta = 6.0819;

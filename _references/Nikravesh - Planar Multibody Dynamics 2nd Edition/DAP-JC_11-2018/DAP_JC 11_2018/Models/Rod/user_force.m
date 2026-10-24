@@ -3,7 +3,7 @@ function user_force
 %     global pen1_d0 pen2_d0
     
 % Parameters for the contact model
-    k = 10^11; e = 0.99;
+    k = 10^11; e = 0.95;
     
 % Contact(Contact index, Point index, Body index, k, e, Model index)    
 %    Model-index = 1: Eq. 11.42

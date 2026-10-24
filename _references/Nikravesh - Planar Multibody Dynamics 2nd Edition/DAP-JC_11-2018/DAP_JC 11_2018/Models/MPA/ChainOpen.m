@@ -7,6 +7,7 @@ if check <= 2
     Coord_Rev(8, 1, theta(1));
     Coord_Rev(2, 3, theta(2));
     Coord_Rev(7, 6, theta(3));
+    Update_P(4);
     Update_P(5);
     Update_U(1);
     Update_U(2);
