@@ -1,0 +1,16 @@
+Model                       : Cart_C
+Formulation                 : BCF
+Model folder                : Cart_C
+Solver folder               : C:\Users\Giaco\anaconda3\envs\GiacoEnv\PMD\_references\Nikravesh - Planar Multibody Dynamics 2nd Edition\DAP_BC_12_2018\DAP_BC 12_2018
+Final time [s]              : 1
+Reporting time-step [s]     : 0.01
+Time samples                : 101
+Generalized coordinates     : 9
+Number of constraints       : 8
+Constraint rank             : 8 of 8
+Function evaluations        : 270
+Simulation time [s]         : 3.0775
+Max constraint violation    : 8.66599e-15
+Final constraint violation  : 8.66599e-15
+Max |lambda|                : 156.308
+Generated                   : 25-Oct-2026 22:54:26

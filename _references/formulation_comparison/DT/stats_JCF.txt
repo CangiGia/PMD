@@ -1,0 +1,16 @@
+Model                       : DT
+Formulation                 : JCF
+Model folder                : DT
+Solver folder               : C:\Users\Giaco\anaconda3\envs\GiacoEnv\PMD\_references\Nikravesh - Planar Multibody Dynamics 2nd Edition\DAP-JC_11-2018\DAP_JC 11_2018
+Final time [s]              : 5
+Reporting time-step [s]     : 0.01
+Time samples                : 501
+Generalized coordinates     : 15
+Number of constraints       : 5
+Constraint rank             : 5 of 5
+Function evaluations        : 706
+Simulation time [s]         : 4.16749
+Max constraint violation    : 1.79709e-07
+Final constraint violation  : 1.2998e-07
+Max |lambda|                : 54829.4
+Generated                   : 23-Oct-2026 13:34:11

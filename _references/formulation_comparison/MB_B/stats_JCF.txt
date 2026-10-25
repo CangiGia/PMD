@@ -1,0 +1,16 @@
+Model                       : MB_B
+Formulation                 : JCF
+Model folder                : MBB
+Solver folder               : C:\Users\Giaco\anaconda3\envs\GiacoEnv\PMD\_references\Nikravesh - Planar Multibody Dynamics 2nd Edition\DAP-JC_11-2018\DAP_JC 11_2018
+Final time [s]              : 1
+Reporting time-step [s]     : 0.01
+Time samples                : 101
+Generalized coordinates     : 18
+Number of constraints       : 3
+Constraint rank             : 3 of 3
+Function evaluations        : 6732
+Simulation time [s]         : 158.933
+Max constraint violation    : 8.20316e-13
+Final constraint violation  : 8.20316e-13
+Max |lambda|                : 239.033
+Generated                   : 23-Oct-2026 13:45:35

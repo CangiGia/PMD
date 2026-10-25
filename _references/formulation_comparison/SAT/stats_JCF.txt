@@ -1,0 +1,16 @@
+Model                       : SAT
+Formulation                 : JCF
+Model folder                : SAT
+Solver folder               : C:\Users\Giaco\anaconda3\envs\GiacoEnv\PMD\_references\Nikravesh - Planar Multibody Dynamics 2nd Edition\DAP-JC_11-2018\DAP_JC 11_2018
+Final time [s]              : 3
+Reporting time-step [s]     : 0.01
+Time samples                : 301
+Generalized coordinates     : 15
+Number of constraints       : 4
+Constraint rank             : 4 of 4
+Function evaluations        : 1142
+Simulation time [s]         : 13.3163
+Max constraint violation    : 4.24631e-07
+Final constraint violation  : 4.24631e-07
+Max |lambda|                : 318.886
+Generated                   : 23-Oct-2026 13:51:14

@@ -1,0 +1,16 @@
+Model                       : HN
+Formulation                 : BCF
+Model folder                : HN
+Solver folder               : C:\Users\Giaco\anaconda3\envs\GiacoEnv\PMD\_references\Nikravesh - Planar Multibody Dynamics 2nd Edition\DAP_BC_12_2018\DAP_BC 12_2018
+Final time [s]              : 1
+Reporting time-step [s]     : 0.01
+Time samples                : 101
+Generalized coordinates     : 30
+Number of constraints       : 18
+Constraint rank             : 18 of 18
+Function evaluations        : 4620
+Simulation time [s]         : 49.9013
+Max constraint violation    : 6.51768e-11
+Final constraint violation  : 6.51768e-11
+Max |lambda|                : 584.831
+Generated                   : 23-Oct-2026 13:35:05

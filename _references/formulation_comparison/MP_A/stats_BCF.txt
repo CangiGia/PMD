@@ -1,0 +1,16 @@
+Model                       : MP_A
+Formulation                 : BCF
+Model folder                : MP_A
+Solver folder               : C:\Users\Giaco\anaconda3\envs\GiacoEnv\PMD\_references\Nikravesh - Planar Multibody Dynamics 2nd Edition\DAP_BC_12_2018\DAP_BC 12_2018
+Final time [s]              : 1
+Reporting time-step [s]     : 0.01
+Time samples                : 101
+Generalized coordinates     : 9
+Number of constraints       : 8
+Constraint rank             : 8 of 8
+Function evaluations        : 1104
+Simulation time [s]         : 11.4817
+Max constraint violation    : 9.17663e-08
+Final constraint violation  : 9.17663e-08
+Max |lambda|                : 1049.85
+Generated                   : 23-Oct-2026 15:28:22

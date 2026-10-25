@@ -1,0 +1,16 @@
+Model                       : SP
+Formulation                 : JCF
+Model folder                : SP
+Solver folder               : C:\Users\Giaco\anaconda3\envs\GiacoEnv\PMD\_references\Nikravesh - Planar Multibody Dynamics 2nd Edition\DAP-JC_11-2018\DAP_JC 11_2018
+Final time [s]              : 1
+Reporting time-step [s]     : 0.01
+Time samples                : 101
+Generalized coordinates     : 6
+Number of constraints       : 0
+Constraint rank             : not applicable (no constraints)
+Function evaluations        : 282
+Simulation time [s]         : 2.40856
+Max constraint violation    : 0
+Final constraint violation  : 0
+Max |lambda|                : 0
+Generated                   : 23-Oct-2026 13:51:24

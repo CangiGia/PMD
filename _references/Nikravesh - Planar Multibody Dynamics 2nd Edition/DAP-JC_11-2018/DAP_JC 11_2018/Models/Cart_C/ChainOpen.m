@@ -4,8 +4,8 @@ function ChainOpen(check, theta, theta_d, t)
     
 if check <= 2
     % Update coordinates
-    R = 0.1; a = 0.6;
-    Bodies(1).r = [-R*theta(1); R];
+    R = 0.1; a = 0.6; x0 = 0.2; % origin shift matching BCF disc joints
+    Bodies(1).r = [x0 - R*theta(1); R];
     Bodies(1).p = theta(1);
     Bodies(1).A = Matrix_A(theta(1));
     Update_P(1);
@@ -16,7 +16,7 @@ if check <= 2
     Points(2).rP = Points(1).rP;
     Bodies(2).r = Points(2).rP - Points(2).sP;
     Update_P(3);
-    Bodies(3).r = [a-R*theta(3); R];
+    Bodies(3).r = [x0 + a - R*theta(3); R];
     Bodies(3).p = theta(3);
     Bodies(3).A = Matrix_A(theta(3));
     Update_P(4);

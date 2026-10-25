@@ -29,7 +29,6 @@ function add_labels_to_results(only)
         'MC',     'MC',     'MC'
         'MP_A',   'MP_A',   'MPA'
         'MP_B',   'MP_B',   'MPB'
-        'Rod',    'Rod',    'Rod'
         'SAT',    'SAT',    'SAT'
         'SP',     'SP',     'SP'
         };

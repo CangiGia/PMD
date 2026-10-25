@@ -20,11 +20,11 @@ from pmd.core import (
 units = UnitSystem(length="mm", force="N", angle="rad")
 
 T_FINAL = 2.0                           # simulation duration for each half-ROM [s]
-N_EVAL  = int(T_FINAL / 0.001) + 1     # number of output steps
+N_EVAL  = int(T_FINAL / 0.001) + 1      # number of output steps
 IC_CORRECT = True
 L_CYL   = 787.20                        # fully extended cylinder length [mm]
 L0_CYL  = 680.646                       # rest (neutral) cylinder length [mm]
-DELTA_S = L_CYL - L0_CYL              # extension stroke [mm]  (retraction is asymmetric — see __main__)
+DELTA_S = L_CYL - L0_CYL                # extension stroke [mm]  (retraction is asymmetric — see __main__)
 SHIFT   = 130.026                       # x-offset of right-side tie-rod attachment [mm]
 
 

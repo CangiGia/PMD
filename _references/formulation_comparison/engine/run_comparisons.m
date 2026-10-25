@@ -35,7 +35,6 @@ function run_comparisons(only)
         'MC',     'MC',     'MC',  1.0, 0.01
         'MP_A',   'MP_A',   'MPA', 1.0, 0.01
         'MP_B',   'MP_B',   'MPB', 1.0, 0.01
-        'Rod',    'Rod',    'Rod', 1.0, 0.01
         'SAT',    'SAT',    'SAT', 3.0, 0.01
         'SP',     'SP',     'SP',  1.0, 0.01
         };
