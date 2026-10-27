@@ -138,7 +138,7 @@ legend_handles = [
 fig.legend(
     handles=legend_handles,
     loc="lower center",
-    bbox_to_anchor=(0.5, -0.02),
+    bbox_to_anchor=(0.5, -0.05),
     ncol=2,
     frameon=False,
 )
